@@ -1,0 +1,17 @@
+name: Architecture-Helper
+
+# Checks core design docs at version tags. Flags drift via issue. Never fails.
+# See: scripts/architecture-helper.sh
+
+on:
+  push:
+    tags: ["v*"]
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v7
+      - name: Run architecture audit
+        run: bash scripts/architecture-helper.sh

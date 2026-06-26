@@ -113,12 +113,19 @@ impl CacheBackend for MokaBackend {
 pub(crate) fn parse_size(s: &str) -> Option<u64> {
     let s = s.trim().to_lowercase();
     if s.is_empty() { return None; }
-    let (num_str, unit) = s.split_at(s.len().max(1) - 1);
+    // If the last char is not a digit, it's a unit suffix
+    let last_char = s.chars().last()?;
+    if last_char.is_ascii_digit() {
+        return s.parse().ok();
+    }
+    let unit = &s[s.len()-1..];
+    let num_str = &s[..s.len()-1];
     let num = num_str.parse::<u64>().ok()?;
     match unit {
         "k" => Some(num * 1_000),
         "m" => Some(num * 1_000_000),
         "g" => Some(num * 1_000_000_000),
+        "t" => Some(num * 1_000_000_000_000),
         _ => Some(num),
     }
 }

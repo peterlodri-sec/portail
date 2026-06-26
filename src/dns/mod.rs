@@ -5,6 +5,7 @@ use std::str::FromStr;
 use std::sync::Arc;
 
 pub mod reliability;
+pub mod resolver;
 
 // ── DNS Configuration ────────────────────────────────────────────
 

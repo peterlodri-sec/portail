@@ -1,0 +1,14 @@
+name: PR-Governance
+on:
+  pull_request:
+    types: [opened, edited]
+  issues:
+    types: [opened, edited]
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Check templates
+        run: bash scripts/pr-governance.sh
