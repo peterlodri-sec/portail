@@ -34,9 +34,11 @@ uuid = { version = "1", features = ["v4"] }
 bytes = "1"
 anyhow = "1"
 blake3 = "1"
-tokio-stream = { version = "0.1", features = ["fs"] }
+tokio-stream = { version = "0.1", features = ["fs", "sync"] }
 metrics = "0.24"
 metrics-exporter-prometheus = "0.16"
+mimalloc = "0.1"
+rustc-hash = "2"
 
 [profile.release]
 opt-level = 3

@@ -1,5 +1,6 @@
 use crate::cdn;
 use crate::gateway;
+use crate::hooks;
 use crate::mcp;
 use crate::AppState;
 
@@ -9,7 +10,7 @@ use axum::extract::{Request, State};
 use axum::http::StatusCode;
 use axum::middleware::{self, Next};
 use axum::response::{IntoResponse, Response};
-use axum::routing::{any, get};
+use axum::routing::{any, delete, get};
 use axum::{Json, Router};
 use metrics::{counter, histogram};
 use serde_json::json;
@@ -35,6 +36,10 @@ pub fn build_router(state: Arc<AppState>) -> Router {
         .route("/mcp/{*path}", any(route_mcp))
         .route("/mcp-rest/{*path}", any(route_mcp))
         .route("/stats", get(stats_handler))
+        .route("/events", get(crate::events::handle_recent).post(crate::events::handle_publish))
+        .route("/events/stream", get(crate::events::handle_stream))
+        .route("/hooks", get(crate::hooks::handle_list).post(crate::hooks::handle_create))
+        .route("/hooks/{id}", delete(crate::hooks::handle_delete))
         .fallback(route_to_ai_gateway)
         .layer(middleware::from_fn(request_id_middleware))
         .layer(middleware::from_fn(metrics_middleware))
@@ -118,7 +123,36 @@ async fn route_to_ai_gateway(
     let Some(upstream) = cfg else {
         return (StatusCode::NOT_IMPLEMENTED, "ai gateway disabled").into_response();
     };
-    gateway::forward(&upstream, req).await
+
+    let path = req.uri().path().to_string();
+    let matching_hooks = state.hooks.match_message(&path);
+
+    if matching_hooks.is_empty() {
+        return gateway::forward(&upstream, req).await;
+    }
+
+    let (parts, body) = req.into_parts();
+    let body_bytes = axum::body::to_bytes(body, 10_000_000).await.unwrap_or_default();
+
+    let modified = serde_json::from_slice::<serde_json::Value>(&body_bytes)
+        .ok()
+        .and_then(|v| hooks::apply_message_hooks(&v, &matching_hooks))
+        .and_then(|v| serde_json::to_vec(&v).ok())
+        .unwrap_or(body_bytes.to_vec());
+
+    counter!("hook_injections").increment(matching_hooks.len() as u64);
+    state.event_log.publish(crate::events::AgentEvent {
+        agent_id: "hooks".into(),
+        event_type: "injected".into(),
+        severity: "info".into(),
+        timestamp: 0,
+        metadata: rustc_hash::FxHashMap::from_iter([
+            ("path".into(), path),
+            ("count".into(), matching_hooks.len().to_string()),
+        ]),
+    });
+
+    gateway::forward_with_body(&upstream, parts, modified.into()).await
 }
 
 async fn route_cdn(
@@ -185,7 +219,9 @@ mod tests {
     fn test_state() -> Arc<AppState> {
         Arc::new(AppState {
             config: RwLock::new(crate::config::Config::default()),
+            event_log: Arc::new(crate::events::EventLog::new(100)),
             cdn_cache: None,
+            hooks: Arc::new(crate::hooks::HookStore::new()),
             metrics_handle: global_metrics().clone(),
         })
     }
@@ -296,15 +332,60 @@ mod tests {
     #[tokio::test]
     async fn metrics_records_counter() {
         let app = build_router(test_state());
-        // hit healthz to trigger counter
         let req = Request::builder().uri("/healthz").body(Body::empty()).unwrap();
         let _ = app.oneshot(req).await;
-        // now check /metrics includes the counter
         let app = build_router(test_state());
         let req = Request::builder().uri("/metrics").body(Body::empty()).unwrap();
         let resp = app.oneshot(req).await.unwrap();
         let body = axum::body::to_bytes(resp.into_body(), 100_000).await.unwrap();
         let text = String::from_utf8_lossy(&body);
         assert!(text.contains("health_checks") || text.contains("http_requests"));
+    }
+
+    #[tokio::test]
+    async fn hooks_create_list_delete() {
+        let app = build_router(test_state());
+        let hook = serde_json::json!({
+            "id": "test-hook",
+            "match_path": "/chat",
+            "inject": "prepend",
+            "content": "be helpful",
+            "enabled": true
+        });
+        let req = Request::builder()
+            .uri("/hooks")
+            .method("POST")
+            .header("content-type", "application/json")
+            .body(Body::from(serde_json::to_vec(&hook).unwrap()))
+            .unwrap();
+        let resp = app.oneshot(req).await.unwrap();
+        assert_eq!(resp.status(), StatusCode::CREATED);
+    }
+
+    #[tokio::test]
+    async fn event_stream_returns_ok() {
+        let app = build_router(test_state());
+        let req = Request::builder().uri("/events/stream").body(Body::empty()).unwrap();
+        let resp = app.oneshot(req).await.unwrap();
+        assert_eq!(resp.status(), StatusCode::OK);
+    }
+
+    #[tokio::test]
+    async fn events_recent_accepts_event() {
+        let state = test_state();
+        state.event_log.publish(crate::events::AgentEvent {
+            agent_id: "test".into(),
+            event_type: "ping".into(),
+            severity: "info".into(),
+            timestamp: 1,
+            metadata: rustc_hash::FxHashMap::default(),
+        });
+        let app = build_router(state);
+        let req = Request::builder().uri("/events").body(Body::empty()).unwrap();
+        let resp = app.oneshot(req).await.unwrap();
+        assert_eq!(resp.status(), StatusCode::OK);
+        let body = axum::body::to_bytes(resp.into_body(), 100_000).await.unwrap();
+        let events: serde_json::Value = serde_json::from_slice(&body).unwrap();
+        assert!(!events.as_array().unwrap().is_empty());
     }
 }

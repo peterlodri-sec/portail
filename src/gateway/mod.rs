@@ -1,6 +1,7 @@
 use axum::extract::Request;
 use axum::http::{HeaderMap, HeaderName, HeaderValue, StatusCode};
 use axum::response::{IntoResponse, Response};
+use bytes::Bytes;
 use metrics::counter;
 use reqwest::Client;
 use std::sync::OnceLock;
@@ -50,9 +51,13 @@ fn add_x_forwarded_for(headers: &mut HeaderMap) {
     }
 }
 
-pub async fn forward(upstream: &str, req: Request) -> Response {
-    let (parts, body) = req.into_parts();
-    let uri = parts.uri;
+/// Forward a request to upstream. Accepts pre-read body bytes for hook injection.
+pub async fn forward_with_body(
+    upstream: &str,
+    parts: axum::http::request::Parts,
+    body_bytes: Bytes,
+) -> Response {
+    let uri = &parts.uri;
     let method = parts.method.clone();
 
     let path = uri.path_and_query().map(|pq| pq.as_str()).unwrap_or("/");
@@ -61,7 +66,6 @@ pub async fn forward(upstream: &str, req: Request) -> Response {
     let mut forward_headers = strip_hop_by_hop(&parts.headers);
     add_x_forwarded_for(&mut forward_headers);
 
-    let body_bytes = axum::body::to_bytes(body, 10_000_000).await.unwrap_or_default();
     debug!(method = %method, %upstream_url, body_size = body_bytes.len(), "forwarding");
 
     let client = client();
@@ -93,6 +97,13 @@ pub async fn forward(upstream: &str, req: Request) -> Response {
             (StatusCode::BAD_GATEWAY, format!("upstream unreachable: {e}")).into_response()
         }
     }
+}
+
+/// Forward a complete request to upstream.
+pub async fn forward(upstream: &str, req: Request) -> Response {
+    let (parts, body) = req.into_parts();
+    let body_bytes = axum::body::to_bytes(body, 10_000_000).await.unwrap_or_default();
+    forward_with_body(upstream, parts, body_bytes).await
 }
 
 #[cfg(test)]

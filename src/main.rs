@@ -1,11 +1,18 @@
 use clap::Parser;
+use mimalloc::MiMalloc;
 use portail::cdn;
 use portail::config;
 use portail::config::Config;
+use portail::events::EventLog;
 use portail::AppState;
 use portail::mcp;
 use std::sync::{Arc, RwLock};
 use tracing_subscriber::EnvFilter;
+
+#[global_allocator]
+static GLOBAL: MiMalloc = MiMalloc;
+
+const MAX_EVENTS: usize = 2000;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -22,6 +29,8 @@ async fn main() -> anyhow::Result<()> {
     let config = Config::load(&cli)?;
     let listen = config.listen.clone();
     tracing::info!(%listen, "portail starting");
+
+    let event_log = Arc::new(EventLog::new(MAX_EVENTS));
 
     let cdn_cache = if let Some(cdn_cfg) = config.cdn.as_ref().filter(|c| c.enabled) {
         let cache = cdn::CacheManager::new(cdn_cfg);
@@ -49,8 +58,17 @@ async fn main() -> anyhow::Result<()> {
 
     let state = Arc::new(AppState {
         config: RwLock::new(config),
-        cdn_cache,
+        event_log: Arc::clone(&event_log),
+        cdn_cache: cdn_cache.clone(),
+        hooks: Arc::new(portail::hooks::HookStore::new()),
         metrics_handle: handle,
+    });
+
+    // ── Sentinel: background watcher ──────────────────────────────────
+    tokio::spawn({
+        let log = Arc::clone(&event_log);
+        let cache = cdn_cache.clone();
+        async move { portail::sentinel::run_sentinel(log, cache).await }
     });
 
     let app = portail::proxy::build_router(Arc::clone(&state));
