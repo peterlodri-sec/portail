@@ -153,6 +153,7 @@ async fn main() -> anyhow::Result<()> {
         session_store: portail::sessions::SessionStore::new(100),
         file_cache: portail::file_cache::FileCache::new(&portail::file_cache::FileCacheConfig::default()),
         config_watcher: config_watcher.clone(),
+        supervisor: Arc::new(portail::supervisor::Supervisor::new(Arc::clone(&event_log))),
     });
 
     tokio::spawn({
@@ -160,6 +161,15 @@ async fn main() -> anyhow::Result<()> {
         let cache = cdn_cache.clone();
         async move { portail::sentinel::run_sentinel(log, cache).await }
     });
+
+    // ── v2.0: NATS event bridge ──
+    let nats_bridge = portail::nats_bridge::NatsEventBridge::new(&config).await;
+    if nats_bridge.is_connected() {
+        portail::nats_bridge::spawn_bridge(
+            std::sync::Arc::new(nats_bridge),
+            Arc::clone(&event_log),
+        );
+    }
 
     // ── v0.2: background agents ──
     tokio::spawn({
@@ -216,19 +226,70 @@ async fn dispatch_cli(cmd: &cli::Commands, cli: &cli::Cli) -> anyhow::Result<()>
         cli::Commands::Status => {
             println!("portail v{}", env!("CARGO_PKG_VERSION"));
             println!("config: {}", cli.config.display());
+            let cfg = Config::load(Some(&cli.config))?;
+            println!("listen: {}", cfg.listen);
+            println!("rate_limit: {}", if cfg.rate_limit.enabled { "on" } else { "off" });
+            println!("auth: {}", if cfg.auth.enabled { "on" } else { "off" });
+            println!("store: {} (provider: {})", if cfg.store.enabled { "on" } else { "off" }, cfg.store.provider);
+            // Check if server is running
+            let url = format!("http://{}", cfg.listen);
+            if let Ok(resp) = reqwest::blocking::get(format!("{}/healthz", url)) {
+                println!("server: running (healthz: {})", resp.status());
+            } else {
+                println!("server: not running");
+            }
             Ok(())
         }
-        cli::Commands::Events { count, stream: _ } => {
-            let n = count.unwrap_or(20);
-            println!("showing {} recent events", n);
+        cli::Commands::Events { count: _, stream: _ } => {
+            // Events require a running server. Print guidance.
+            let cfg = Config::load(Some(&cli.config))?;
+            let url = format!("http://{}/events", cfg.listen);
+            if let Ok(resp) = reqwest::blocking::get(&url) {
+                let body = resp.text().unwrap_or_default();
+                let events: serde_json::Value = serde_json::from_str(&body).unwrap_or_default();
+                if let Some(arr) = events.as_array() {
+                    for e in arr.iter().take(20) {
+                        let agent = e["agent_id"].as_str().unwrap_or("-");
+                        let typ = e["event_type"].as_str().unwrap_or("-");
+                        println!("  [{}] {}", agent, typ);
+                    }
+                    println!("  ({})", arr.len());
+                }
+            } else {
+                println!("server not running. Start with 'portail serve' then try again.");
+            }
             Ok(())
         }
         cli::Commands::Hooks { action } => {
+            let cfg = Config::load(Some(&cli.config))?;
+            let base = format!("http://{}/hooks", cfg.listen);
+            let client = reqwest::blocking::Client::new();
             match action {
-                cli::HookAction::List => println!("hooks: list"),
-                cli::HookAction::Add { hook } => println!("hooks: add {}", hook),
-                cli::HookAction::Delete { id } => println!("hooks: delete {}", id),
-                cli::HookAction::Show { id } => println!("hooks: show {}", id),
+                cli::HookAction::List => {
+                    match client.get(&base).send() {
+                        Ok(resp) => println!("{}", resp.text().unwrap_or_default()),
+                        Err(_) => println!("server not running. Start with 'portail serve'."),
+                    }
+                }
+                cli::HookAction::Add { hook } => {
+                    let body: serde_json::Value = serde_json::from_str(hook)?;
+                    match client.post(&base).json(&body).send() {
+                        Ok(resp) => println!("created: {}", resp.status()),
+                        Err(_) => println!("server not running."),
+                    }
+                }
+                cli::HookAction::Delete { id } => {
+                    match client.delete(format!("{}/{}", base, id)).send() {
+                        Ok(resp) => println!("deleted: {}", resp.status()),
+                        Err(_) => println!("server not running."),
+                    }
+                }
+                cli::HookAction::Show { id } => {
+                    match client.get(format!("{}/{}", base, id)).send() {
+                        Ok(resp) => println!("{}", resp.text().unwrap_or_default()),
+                        Err(_) => println!("server not running."),
+                    }
+                }
             }
             Ok(())
         }
@@ -286,16 +347,48 @@ async fn dispatch_cli(cmd: &cli::Commands, cli: &cli::Cli) -> anyhow::Result<()>
             Ok(())
         }
         cli::Commands::Cache { action } => {
+            let cfg = Config::load(Some(&cli.config))?;
+            let base = format!("http://{}/cache", cfg.listen);
+            let client = reqwest::blocking::Client::new();
             match action {
-                Some(cli::CacheAction::Stats) => println!("cache: stats"),
-                Some(cli::CacheAction::Purge { prefix }) => println!("cache: purge {}", prefix),
-                Some(cli::CacheAction::Ratio) => println!("cache: ratio"),
-                None => println!("cache: stats (default)"),
+                Some(cli::CacheAction::Stats) => {
+                    match client.get(&base).send() {
+                        Ok(resp) => println!("{}", resp.text().unwrap_or_default()),
+                        Err(_) => println!("server not running. Start with 'portail serve'."),
+                    }
+                }
+                Some(cli::CacheAction::Purge { prefix }) => {
+                    match client.post(format!("{}/flush", base)).json(&serde_json::json!({"prefix": prefix})).send() {
+                        Ok(resp) => println!("purged: {}", resp.status()),
+                        Err(_) => println!("server not running."),
+                    }
+                }
+                Some(cli::CacheAction::Ratio) => {
+                    match client.get(&base).send() {
+                        Ok(resp) => {
+                            let v: serde_json::Value = serde_json::from_str(&resp.text().unwrap_or_default()).unwrap_or_default();
+                            println!("{}", serde_json::to_string_pretty(&v).unwrap_or_default());
+                        }
+                        Err(_) => println!("server not running."),
+                    }
+                }
+                None => {
+                    match client.get(&base).send() {
+                        Ok(resp) => println!("{}", resp.text().unwrap_or_default()),
+                        Err(_) => println!("server not running."),
+                    }
+                }
             }
             Ok(())
         }
         cli::Commands::Health => {
-            println!("health: OK");
+            let cfg = Config::load(Some(&cli.config))?;
+            let url = format!("http://{}/healthz", cfg.listen);
+            match reqwest::blocking::get(&url) {
+                Ok(resp) if resp.status().is_success() => println!("server is healthy (healthz: {})", resp.status()),
+                Ok(resp) => println!("server is running but unhealthy (healthz: {})", resp.status()),
+                Err(_) => println!("server is not running on {}. Start with 'portail serve'.", cfg.listen),
+            }
             Ok(())
         }
         cli::Commands::Complexity { format, output, ci, ci_report_path } => {

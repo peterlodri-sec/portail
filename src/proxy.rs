@@ -66,6 +66,7 @@ pub fn build_router(state: Arc<AppState>) -> Router {
         .merge(crate::hyper_engine::router())
         .merge(crate::graphql::router())
         .merge(crate::file_cache::router_with_state())
+        .route("/supervisor/status", axum::routing::get(supervisor_handler))
         .route("/sessions", axum::routing::get(sessions_handler))
         .route("/sessions/{id}", axum::routing::get(session_detail_handler))
         .fallback(route_to_ai_gateway)
@@ -396,6 +397,12 @@ async fn dashboard_handler(State(state): State<Arc<AppState>>) -> Json<serde_jso
     }).into()
 }
 
+// ── Supervisor handler (v2.0) ──────────────────────────────────────
+
+async fn supervisor_handler(State(state): State<Arc<AppState>>) -> Json<Vec<crate::supervisor::TaskStatus>> {
+    Json(state.supervisor.status())
+}
+
 // ── Session handlers ──────────────────────────────────────────────
 
 async fn sessions_handler(
@@ -446,6 +453,7 @@ mod tests {
             session_store: crate::sessions::SessionStore::new(20),
             file_cache: crate::file_cache::FileCache::new(&crate::file_cache::FileCacheConfig { path: "/tmp/portail-test-cache".into(), ..Default::default() }),
             config_watcher: crate::config_watcher::ConfigWatcher::new(std::path::PathBuf::from("portail.toml")),
+            supervisor: std::sync::Arc::new(crate::supervisor::Supervisor::new(std::sync::Arc::new(crate::events::EventLog::new(100)))),
         })
     }
 

@@ -197,3 +197,43 @@ pub fn router() -> axum::Router<SessionStore> {
         .route("/sessions", axum::routing::get(handle_list_sessions))
         .route("/sessions/{id}", axum::routing::get(handle_get_session))
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn new_store_is_empty() {
+        let store = SessionStore::new(10);
+        assert!(store.list_sessions().is_empty());
+    }
+
+    #[test]
+    fn record_and_get_session() {
+        let store = SessionStore::new(10);
+        store.record_request(
+            "sess-1", "GET", "/test", 200,
+            std::time::Duration::from_millis(100),
+            std::time::Duration::from_millis(5),
+            100, 200, false, 0,
+        );
+        let stats = store.get_session("sess-1");
+        assert!(stats.is_some());
+        assert_eq!(stats.unwrap().request_count, 1);
+    }
+
+    #[test]
+    fn list_sessions_returns_summaries() {
+        let store = SessionStore::new(10);
+        store.record_request("s1", "GET", "/a", 200, std::time::Duration::from_millis(10), std::time::Duration::from_millis(1), 0, 0, false, 0);
+        store.record_request("s2", "POST", "/b", 201, std::time::Duration::from_millis(20), std::time::Duration::from_millis(2), 10, 20, true, 1);
+        let list = store.list_sessions();
+        assert_eq!(list.len(), 2);
+    }
+
+    #[test]
+    fn missing_session_returns_none() {
+        let store = SessionStore::new(10);
+        assert!(store.get_session("nonexistent").is_none());
+    }
+}

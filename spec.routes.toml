@@ -1,5 +1,5 @@
 generated_at = "2026-06-26T17:09:43.986567+00:00"
-version = "0.2.0"
+version = "1.4.0"
 
 [[routes]]
 method = "GET"
@@ -190,7 +190,7 @@ method = "GET"
 path = "/godfather/status"
 
 [[routes]]
-method = "POST"
+method = "GET"
 path = "/nullclaw/heartbeat"
 
 [[routes]]
@@ -212,3 +212,47 @@ path = "/iouring/stats"
 [[routes]]
 method = "GET"
 path = "/hyper/stats"
+
+[[routes]]
+method = "GET"
+path = "/a2a/ws"
+
+[[routes]]
+method = "GET"
+path = "/dashboard"
+
+[[routes]]
+method = "GET"
+path = "/sessions"
+
+[[routes]]
+method = "GET"
+path = "/sessions/{id}"
+
+[[routes]]
+method = "POST"
+path = "/graphql"
+
+[[routes]]
+method = "GET"
+path = "/graphql"
+
+[[routes]]
+method = "PUT"
+path = "/file-cache/{key}"
+
+[[routes]]
+method = "GET"
+path = "/file-cache/{key}"
+
+[[routes]]
+method = "DELETE"
+path = "/file-cache/{key}"
+
+[[routes]]
+method = "GET"
+path = "/file-cache/stats"
+
+[[routes]]
+method = "GET"
+path = "/supervisor/status"

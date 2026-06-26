@@ -140,3 +140,42 @@ async fn handle_delete_app(State(s): State<Arc<crate::AppState>>, Path(k): Path<
 async fn handle_stats_app(State(s): State<Arc<crate::AppState>>) -> Json<FileCacheStats> {
     handle_stats(State(s.file_cache.clone())).await
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn test_cache() -> FileCache {
+        let path = format!("/tmp/portail-test-file-cache-{}", std::process::id());
+        // Clean up any prior test debris
+        let _ = std::fs::remove_dir_all(&path);
+        FileCache::new(&FileCacheConfig {
+            enabled: true,
+            path,
+            max_size: "10MB".into(),
+        })
+    }
+
+    #[tokio::test]
+    async fn put_and_get() {
+        let cache = test_cache();
+        let key = "test-key";
+        cache.put(key, b"hello world").await.unwrap();
+        let bytes = cache.get(key).await.unwrap();
+        assert_eq!(bytes, b"hello world");
+        cache.delete(key).await;
+    }
+
+    #[tokio::test]
+    async fn get_missing_returns_err() {
+        let cache = test_cache();
+        let result = cache.get("nonexistent-key").await;
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn config_defaults() {
+        let cfg = FileCacheConfig::default();
+        assert!(cfg.path.starts_with("/var/cache/portail"));
+    }
+}

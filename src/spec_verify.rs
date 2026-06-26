@@ -85,6 +85,7 @@ pub fn generate() -> RouteSpec {
         route("GET", "/.well-known/agent.json"),
         route("POST", "/a2a/tasks"),
         route("GET", "/a2a/tasks/{id}"),
+        route("GET", "/a2a/ws"),
         // A2C
         route("POST", "/a2c/chat"),
         // CI
@@ -114,7 +115,7 @@ pub fn generate() -> RouteSpec {
         route("POST", "/cache/flush"),
         // Diagnostics
         route("GET", "/godfather/status"),
-        route("POST", "/nullclaw/heartbeat"),
+        route("GET", "/nullclaw/heartbeat"),
         route("GET", "/nullclaw/agents"),
         route("GET", "/ebpf/stats"),
         route("GET", "/dpdk/stats"),

@@ -421,6 +421,7 @@ mod tests {
             session_store: crate::sessions::SessionStore::new(20),
             file_cache: crate::file_cache::FileCache::new(&crate::file_cache::FileCacheConfig { path: "/tmp/portail-test-cache".into(), ..Default::default() }),
             config_watcher: crate::config_watcher::ConfigWatcher::new(std::path::PathBuf::from("portail.toml")),
+            supervisor: std::sync::Arc::new(crate::supervisor::Supervisor::new(std::sync::Arc::new(crate::events::EventLog::new(100)))),
         }
     }
 }

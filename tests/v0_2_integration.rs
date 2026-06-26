@@ -42,6 +42,7 @@ mod v0_2_integration {
             session_store: sessions::SessionStore::new(20),
             file_cache: portail::file_cache::FileCache::new(&portail::file_cache::FileCacheConfig { path: "/tmp/portail-test-cache".into(), ..Default::default() }),
             config_watcher: portail::config_watcher::ConfigWatcher::new(std::path::PathBuf::from("portail.toml")),
+            supervisor: std::sync::Arc::new(portail::supervisor::Supervisor::new(std::sync::Arc::new(portail::events::EventLog::new(100)))),
         }
     }
 

@@ -86,4 +86,5 @@ pub struct AppState {
     pub event_store: Option<store::EventStore>,
     pub session_store: sessions::SessionStore,
     pub file_cache: file_cache::FileCache,
+    pub supervisor: Arc<supervisor::Supervisor>,
 }
