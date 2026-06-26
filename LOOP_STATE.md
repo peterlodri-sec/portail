@@ -4,9 +4,9 @@
 
 ```
 LOOP: plan → implement → test → review → ship → repeat
-STATE:  v1.0 one-command Nix gateway (sensible defaults, init wizard)
+STATE:  v1.0 shipped (sensible defaults, init wizard, A2A interop, 144 tests)
 NEXT:   v1.1 self-healing config
-OPEN:   #24 integration matrix, #1 super devnote (HUMAN ONLY)
+OPEN:   #24 integration matrix (Turso pending), #1 super devnote (HUMAN ONLY)
 ```
 
 ---
@@ -73,6 +73,9 @@ OPEN:   #24 integration matrix, #1 super devnote (HUMAN ONLY)
 - `portail init` wizard: generates portail.toml interactively
 - Verified on: x86_64-linux, aarch64-linux, aarch64-darwin
 - CI: Nix flake check + binary smoke test on all 3 platforms
+- A2A WebSocket /a2a/ws route wired (was dead code)
+- 6 new A2A tests: 3 JSON serialization + 3 HTTP integration (144 total)
+- AgentGateway interop complete — A2A spec compliance verified
 
 ## v1.1 — Self-Healing Config (IX)              🚧 PLANNED
 **Target:** 2026-08-08  **Effort:** 3 days
