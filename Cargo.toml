@@ -4,7 +4,7 @@ members = [".", "creative_tui"]
 
 [package]
 name = "portail"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2024"
 rust-version = "1.85"
 description = "Unified proxy/gateway: AI Gateway + MCP Gateway + CDN cache"
@@ -50,6 +50,23 @@ hmac = "0.12"
 sha2 = "0.10"
 hex = "0.4"
 dirs = "5"
+
+# v0.2 — rate limiting
+governor = { version = "0.7", features = ["std"] }
+
+# v0.2 — authentication
+jsonwebtoken = "9"
+base64 = "0.22"
+
+# v0.2 — persistent event store
+rusqlite = { version = "0.33", features = ["bundled"] }
+
+# v0.2 — OpenTelemetry OTLP
+opentelemetry = "0.27"
+opentelemetry_sdk = { version = "0.27", features = ["rt-tokio"] }
+opentelemetry-otlp = { version = "0.27", features = ["grpc-tonic", "metrics"] }
+opentelemetry-semantic-conventions = "0.27"
+tracing-opentelemetry = "0.28"
 
 [profile.release]
 opt-level = 3

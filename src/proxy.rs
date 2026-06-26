@@ -23,7 +23,7 @@ use tower_http::trace::TraceLayer;
 const MAX_BODY_BYTES: usize = 10 * 1024 * 1024; // 10MB
 
 pub fn build_router(state: Arc<AppState>) -> Router {
-    Router::new()
+    let mut router = Router::new()
         .route("/healthz", get(healthz))
         .route("/livez", get(healthz))
         .route("/readyz", get(readyz))
@@ -43,13 +43,25 @@ pub fn build_router(state: Arc<AppState>) -> Router {
         .route("/events/stream", get(crate::events::handle_stream))
         .route("/hooks", get(crate::hooks::handle_list).post(crate::hooks::handle_create))
         .route("/hooks/{id}", delete(crate::hooks::handle_delete))
-        // A2A: Agent-to-Agent protocol
         .route("/.well-known/agent.json", get(crate::a2a::handle_agent_card))
         .route("/a2a/tasks", axum::routing::post(crate::a2a::handle_task_create))
         .route("/a2a/tasks/{id}", get(crate::a2a::handle_task_get))
-        // A2C: Agent-to-Consumer interface
         .route("/a2c/chat", axum::routing::post(crate::a2c::handle_chat))
+        // ── v0.2: plugin & diagnostics routers ──
+        .merge(crate::ci::router())
+        .merge(crate::discovery::router())
+        .merge(crate::dns::router())
+        .merge(crate::plugins::tinyurl::router())
+        .merge(crate::plugins::tracer::router())
+        .merge(crate::plugins::redis_cache::router())
+        .merge(crate::godfather::router())
+        .merge(crate::nullclaw::router())
+        .merge(crate::ebpf::router())
+        .merge(crate::dpdk::router())
+        .merge(crate::iouring::router())
+        .merge(crate::hyper_engine::router())
         .fallback(route_to_ai_gateway)
+        // Decorating middleware (inner → outer)
         .layer(middleware::from_fn(security_headers_middleware))
         .layer(middleware::from_fn(request_id_middleware))
         .layer(middleware::from_fn(metrics_middleware))
@@ -66,7 +78,25 @@ pub fn build_router(state: Arc<AppState>) -> Router {
                         "request completed"
                     );
                 }),
-        )
+        );
+
+    // ── v0.2: auth (before rate limit so per-key limits work) ──
+    if state.auth_state.is_some() {
+        router = router.layer(middleware::from_fn_with_state(
+            state.auth_state.clone().unwrap(),
+            crate::auth::auth_middleware,
+        ));
+    }
+
+    // ── v0.2: rate limit ──
+    if state.rate_limiter.is_some() {
+        router = router.layer(middleware::from_fn_with_state(
+            state.rate_limiter.clone().unwrap(),
+            crate::rate_limit::rate_limit_middleware,
+        ));
+    }
+
+    router
         .layer(
             CorsLayer::new()
                 .allow_origin(Any)
@@ -293,6 +323,9 @@ mod tests {
             hyper: Arc::new(crate::hyper_engine::HyperManager::new(crate::hyper_engine::HyperConfig::default())),
             ci_status: Arc::new(crate::ci::CiStatusStore::new(100, None)),
             metrics_handle: crate::test_utils::global_metrics().clone(),
+            rate_limiter: None,
+            auth_state: None,
+            event_store: None,
         })
     }
 

@@ -415,6 +415,9 @@ mod tests {
             hyper: Arc::new(crate::hyper_engine::HyperManager::new(crate::hyper_engine::HyperConfig::default())),
             ci_status: Arc::new(crate::ci::CiStatusStore::new(100, None)),
             metrics_handle: crate::test_utils::global_metrics().clone(),
+            rate_limiter: None,
+            auth_state: None,
+            event_store: None,
         }
     }
 }
