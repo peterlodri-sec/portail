@@ -28,6 +28,9 @@
 | Axum server patterns | [`docs/cheatsheets/axum.md`](docs/cheatsheets/axum.md) |
 | Tokio async patterns | [`docs/cheatsheets/tokio.md`](docs/cheatsheets/tokio.md) |
 | Tower middleware | [`docs/cheatsheets/tower.md`](docs/cheatsheets/tower.md) |
+| Rust AI stack (candle, burn, rig) | [`docs/cheatsheets/rust-ai-stack.md`](docs/cheatsheets/rust-ai-stack.md) |
+| MCP servers reference | [`docs/cheatsheets/mcp.md`](docs/cheatsheets/mcp.md) |
+| Connection upgrader pattern | [`docs/cheatsheets/connection-upgrader.md`](docs/cheatsheets/connection-upgrader.md) |
 | Command intercept demo | [`docs/demos/git-intercept-demo.md`](docs/demos/git-intercept-demo.md) |
 | Release-audit v2 plan | [`docs/RELEASE_AUDIT_V2_PLAN.md`](docs/RELEASE_AUDIT_V2_PLAN.md) |
 | Dependencies + features | [`Cargo.toml`](Cargo.toml) |
