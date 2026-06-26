@@ -51,6 +51,9 @@ sha2 = "0.10"
 hex = "0.4"
 dirs = "5"
 
+# v0.6 — system resource monitor (Godfather)
+sysinfo = "0.32"
+
 # v0.2 — rate limiting
 governor = { version = "0.7", features = ["std"] }
 
