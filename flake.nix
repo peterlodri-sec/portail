@@ -34,6 +34,8 @@
             tokio-console
             hyperfine
             just
+            upx
+            cosign
           ] ++ lib.optionals pkgs.stdenv.isLinux [
             mold-wrapped
             gdb

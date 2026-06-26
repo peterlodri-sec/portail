@@ -28,6 +28,30 @@ codegen-units = 1
 strip = "symbols"
 ```
 
+### Release distribution pipeline (`release.yml`)
+Triggered on `v*` tags. Performs the following for each target:
+
+1. **Build** — `cargo build --release --target $target --bin portail`
+2. **UPX** — `upx --best --lzma` compresses the binary (60-80% size reduction)
+3. **Checksum** — `sha256sum` of the compressed binary
+4. **Cosign (keyless)** — `cosign sign-blob` using GitHub OIDC:
+   - Signs the compressed binary → `.sig` + `.pem`
+   - Signs the checksum file → `.sha256.sig` + `.sha256.pem`
+5. **GitHub Release** — uploads all assets + combined `SHA256SUMS` (signed)
+6. **crates.io** — `cargo publish` via `CARGO_REGISTRY_TOKEN`
+
+**Targets:**
+- `x86_64-unknown-linux-gnu` (UPX: --best --lzma)
+- `aarch64-unknown-linux-gnu` (UPX: --best --lzma)
+- `aarch64-apple-darwin` (UPX: --best)
+
+**Verification:** cosign signatures are verified before creating the release.
+
+### Nix build (`nix/package.nix`)
+- Runs `upx --best --lzma` in `postInstall` phase
+- LTO, codegen-units=1, strip via `CARGO_PROFILE_RELEASE_*` env vars
+- Builds only `--bin portail` (not portail-mon or benches)
+
 ### CI pipeline
 `.github/workflows/ci.yml` — runs on push/PR to main:
 1. `cargo check` (fastest)

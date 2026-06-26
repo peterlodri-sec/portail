@@ -1,5 +1,5 @@
 { lib, stdenv, rustPlatform, callPackage, fetchFromGitHub
-, installShellFiles, pkg-config, openssl, zlib, zstd
+, installShellFiles, pkg-config, openssl, zlib, zstd, upx
 }:
 
 let
@@ -12,7 +12,7 @@ rustPlatform.buildRustPackage {
   src = ../.;
   cargoLock.lockFile = ../Cargo.lock;
 
-  nativeBuildInputs = [ installShellFiles pkg-config ];
+  nativeBuildInputs = [ installShellFiles pkg-config upx ];
   buildInputs = [ openssl zlib ]
     ++ lib.optionals stdenv.isLinux [ zstd ];
 
@@ -31,6 +31,11 @@ rustPlatform.buildRustPackage {
   cargoBuildFlags = [ "--bin" "portail" ];
 
   checkFlags = [ "--lib" "--bins" "--tests" ];
+
+  # 🔒 UPX-compress the release binary (best ratio, LZMA for smallest output)
+  postInstall = ''
+    upx --best --lzma $out/bin/portail
+  '';
 
   # Python MCP plugin — installed as a sibling package
   passthru.mcpPlugin = callPackage ./mcp-plugin.nix { };

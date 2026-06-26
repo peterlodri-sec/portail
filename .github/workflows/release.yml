@@ -1,0 +1,136 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+env:
+  CARGO_TERM_COLOR: always
+  RUSTFLAGS: -D warnings
+  CARGO_INCREMENTAL: 0
+  SCCACHE_GHA_ENABLED: "true"
+
+jobs:
+  release:
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            upx_args: --best --lzma
+          - os: ubuntu-latest
+            target: aarch64-unknown-linux-gnu
+            upx_args: --best --lzma
+          - os: macos-latest
+            target: aarch64-apple-darwin
+            upx_args: --best
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          target: ${{ matrix.target }}
+
+      - uses: mozilla-actions/sccache-action@v0.0.7
+
+      - name: Build release binary
+        run: cargo build --release --target ${{ matrix.target }} --bin portail
+
+      - name: Install UPX
+        uses: crazy-max/ghaction-upx@v3
+        with:
+          install-only: true
+
+      - name: Compress with UPX
+        run: |
+          binary="target/${{ matrix.target }}/release/portail"
+          upx ${{ matrix.upx_args }} "$binary"
+          mv "$binary" "portail-${{ matrix.target }}"
+
+      - name: Generate checksums
+        run: |
+          sha256sum portail-${{ matrix.target }} > portail-${{ matrix.target }}.sha256
+          cat portail-${{ matrix.target }}.sha256
+
+      - name: Install cosign
+        uses: sigstore/cosign-installer@v3
+
+      - name: Sign binary with cosign (keyless)
+        run: |
+          cosign sign-blob --yes \
+            --output-signature portail-${{ matrix.target }}.sig \
+            --output-certificate portail-${{ matrix.target }}.pem \
+            portail-${{ matrix.target }}
+
+      - name: Sign checksum with cosign (keyless)
+        run: |
+          cosign sign-blob --yes \
+            --output-signature portail-${{ matrix.target }}.sha256.sig \
+            --output-certificate portail-${{ matrix.target }}.sha256.pem \
+            portail-${{ matrix.target }}.sha256
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: portail-${{ matrix.target }}
+          path: |
+            portail-${{ matrix.target }}
+            portail-${{ matrix.target }}.sha256
+            portail-${{ matrix.target }}.sig
+            portail-${{ matrix.target }}.pem
+            portail-${{ matrix.target }}.sha256.sig
+            portail-${{ matrix.target }}.sha256.pem
+
+  github-release:
+    needs: [release]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: portail-*
+          merge-multiple: true
+
+      - name: Verify cosign signatures
+        uses: sigstore/cosign-installer@v3
+      - run: |
+          for f in portail-*.sig; do
+            stem="${f%.sig}"
+            cosign verify-blob --cert "$stem.pem" --signature "$f" "$stem"
+          done
+
+      - name: Generate combined SHA256SUMS
+        run: cat portail-*.sha256 | tee SHA256SUMS
+
+      - name: Sign combined checksums
+        run: |
+          cosign sign-blob --yes \
+            --output-signature SHA256SUMS.sig \
+            --output-certificate SHA256SUMS.pem \
+            SHA256SUMS
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: Portail ${{ github.ref_name }}
+          body_path: CHANGELOG.md
+          files: |
+            portail-*
+            SHA256SUMS
+            SHA256SUMS.sig
+            SHA256SUMS.pem
+          generate_release_notes: true
+
+  crates-io:
+    needs: [github-release]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
+      - name: Publish to crates.io
+        run: cargo publish --token ${{ secrets.CARGO_REGISTRY_TOKEN }}

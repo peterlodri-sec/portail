@@ -66,10 +66,34 @@ nix-check:
 nix-build:
     nix build .#portail
 
+# ── Release ────────────────────────────────────────────────────────────
+release-dist: release
+    upx --best --lzma target/release/portail
+    sha256sum target/release/portail | tee target/release/portail.sha256
+
+release-sign: release-dist
+    cosign sign-blob --yes \
+      --output-signature target/release/portail.sig \
+      --output-certificate target/release/portail.pem \
+      target/release/portail
+    cosign sign-blob --yes \
+      --output-signature target/release/portail.sha256.sig \
+      --output-certificate target/release/portail.sha256.pem \
+      target/release/portail.sha256
+
+release-verify:
+    cosign verify-blob \
+      --cert target/release/portail.pem \
+      --signature target/release/portail.sig \
+      target/release/portail
+
 # ── Help ───────────────────────────────────────────────────────────────
 help:
     @echo "  build          cargo build (debug)"
     @echo "  release        cargo build --release (LTO fat)"
+    @echo "  release-dist   build + UPX compress"
+    @echo "  release-sign   build + UPX + cosign sign"
+    @echo "  release-verify verify cosign signature"
     @echo "  test           cargo test"
     @echo "  test-fast      cargo nextest run"
     @echo "  bench          cargo bench (criterion)"
