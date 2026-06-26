@@ -33,6 +33,7 @@ pub mod events;
 pub mod fuzz_route;
 pub mod gateway;
 pub mod godfather;
+pub mod graphql;
 pub mod hooks;
 pub mod hyper_engine;
 pub mod iouring;

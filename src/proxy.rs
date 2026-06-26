@@ -60,6 +60,7 @@ pub fn build_router(state: Arc<AppState>) -> Router {
         .merge(crate::dpdk::router())
         .merge(crate::iouring::router())
         .merge(crate::hyper_engine::router())
+        .merge(crate::graphql::router())
         .fallback(route_to_ai_gateway)
         // Decorating middleware (inner → outer)
         .layer(middleware::from_fn(security_headers_middleware))

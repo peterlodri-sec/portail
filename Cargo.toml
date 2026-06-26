@@ -16,7 +16,7 @@ categories = ["web-programming::http-server", "network-programming", "caching"]
 readme = "README.md"
 
 [dependencies]
-axum = { version = "0.8", features = ["macros"] }
+axum = { version = "0.8", features = ["macros", "ws"] }
 tokio = { version = "1", features = ["full"] }
 tower = { version = "0.5", features = ["util"] }
 tower-http = { version = "0.6", features = ["cors", "trace", "limit"] }
@@ -67,6 +67,10 @@ opentelemetry_sdk = { version = "0.27", features = ["rt-tokio"] }
 opentelemetry-otlp = { version = "0.27", features = ["grpc-tonic", "metrics"] }
 opentelemetry-semantic-conventions = "0.27"
 tracing-opentelemetry = "0.28"
+
+# v0.6 — GraphQL API
+async-graphql = "7"
+async-stream = "0.3"
 
 [profile.release]
 opt-level = 3

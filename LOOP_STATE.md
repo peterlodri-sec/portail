@@ -4,8 +4,8 @@
 
 ```
 LOOP: plan → implement → test → review → ship → repeat
-STATE:  v0.4 drift-detect shipped       (current)
-NEXT:   v0.5 spec-verify CI agent        (2026-07-15)
+STATE:  v0.6 fuzz-route shipped          (current)
+NEXT:   v1.0 one-command Nix gateway      (2026-08-01)
 ```
 
 ---
