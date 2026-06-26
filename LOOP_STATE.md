@@ -4,8 +4,9 @@
 
 ```
 LOOP: plan → implement → test → review → ship → repeat
-STATE:  v0.6 fuzz-route shipped          (current)
-NEXT:   v1.0 one-command Nix gateway      (2026-08-01)
+STATE:  v0.6 shipped (godfather+sysinfo, sessions, supervisor, file-cache)
+NEXT:   v1.0 one-command Nix gateway           (2026-08-01)
+OPEN:   #24 integration matrix, #1 super devnote (HUMAN ONLY)
 ```
 
 ---
