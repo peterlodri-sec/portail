@@ -12,7 +12,7 @@ homepage = "https://github.com/peterlodri-sec/portail"
 repository = "https://github.com/peterlodri-sec/portail"
 license = "MIT"
 keywords = ["proxy", "gateway", "ai", "mcp", "cdn"]
-categories = ["web-programming::http-server", "web-programming::reverse-proxy"]
+categories = ["web-programming::http-server", "network-programming", "caching"]
 readme = "README.md"
 
 [dependencies]
