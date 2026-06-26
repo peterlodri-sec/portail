@@ -1,3 +1,4 @@
+pub mod amberify;
 pub mod complexity;
 pub mod dashboard;
 pub mod guide;
@@ -134,6 +135,17 @@ pub enum Commands {
 
     /// Interactive guide for branch protection setup
     Guide,
+
+    /// Convert shell scripts to Amber language
+    Amberify {
+        /// Input file or directory
+        #[arg(short, long)]
+        input: PathBuf,
+
+        /// Output directory
+        #[arg(short, long)]
+        output: Option<PathBuf>,
+    },
 }
 
 #[derive(Debug, Clone, clap::ValueEnum)]

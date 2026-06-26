@@ -1,0 +1,177 @@
+# Portail Taskfile
+# https://taskfile.dev
+
+version: '3'
+
+vars:
+  BINARY: portail
+  VERSION:
+    sh: cargo metadata --no-deps --format-version=1 | jq -r '.packages[0].version'
+
+tasks:
+  default:
+    desc: Show available tasks
+    cmds:
+      - task --list
+
+  build:
+    desc: Build debug binary
+    cmds:
+      - cargo build
+
+  build-release:
+    desc: Build release binary with LTO
+    cmds:
+      - cargo build --release
+
+  test:
+    desc: Run all tests
+    cmds:
+      - cargo test
+
+  test-fast:
+    desc: Run tests with nextest
+    cmds:
+      - cargo nextest run
+
+  lint:
+    desc: Run clippy and format check
+    cmds:
+      - cargo clippy --locked --all-targets -- -D warnings
+      - cargo fmt --check
+
+  format:
+    desc: Format code
+    cmds:
+      - cargo fmt
+
+  check:
+    desc: Run cargo check
+    cmds:
+      - cargo check --locked
+
+  bench:
+    desc: Run benchmarks
+    cmds:
+      - cargo bench
+
+  clean:
+    desc: Clean build artifacts
+    cmds:
+      - cargo clean
+
+  # ── Amber ──────────────────────────────────────────────────────
+
+  amberify:
+    desc: Convert shell scripts to Amber
+    vars:
+      INPUT: '{{.INPUT | default "scripts/"}}'
+      OUTPUT: '{{.OUTPUT | default "scripts/amber/"}}'
+    cmds:
+      - mkdir -p {{.OUTPUT}}
+      - cargo run -- amberify --input {{.INPUT}} --output {{.OUTPUT}}
+
+  amberify-file:
+    desc: Convert a single shell script to Amber
+    vars:
+      INPUT: '{{.INPUT | required}}'
+    cmds:
+      - cargo run -- amberify --input {{.INPUT}}
+
+  # ── CI ─────────────────────────────────────────────────────────
+
+  ci:
+    desc: Run full CI pipeline
+    cmds:
+      - task: check
+      - task: lint
+      - task: test
+
+  complexity:
+    desc: Run complexity analysis
+    cmds:
+      - ./scripts/complexity-analysis.sh
+
+  # ── Docker ─────────────────────────────────────────────────────
+
+  docker-build:
+    desc: Build Docker image
+    cmds:
+      - docker build -t {{.BINARY}}:latest .
+
+  docker-run:
+    desc: Run Docker container
+    deps: [docker-build]
+    cmds:
+      - docker run --rm -p 8787:8787 {{.BINARY}}:latest
+
+  docker-slim:
+    desc: Check compressed binary size
+    cmds:
+      - docker build -t {{.BINARY}}:slim --target build -f Dockerfile .
+      - docker run --rm {{.BINARY}}:slim ls -lh /build/target/release/{{.BINARY}}
+
+  # ── Nix ────────────────────────────────────────────────────────
+
+  nix-check:
+    desc: Run nix flake check
+    cmds:
+      - nix flake check --impure
+
+  nix-build:
+    desc: Build nix package
+    cmds:
+      - nix build .#portail
+
+  # ── Release ────────────────────────────────────────────────────
+
+  release:
+    desc: Build release binary with UPX
+    cmds:
+      - cargo build --release
+      - upx --best --lzma target/release/{{.BINARY}}
+      - sha256sum target/release/{{.BINARY}} | tee target/release/{{.BINARY}}.sha256
+
+  release-sign:
+    desc: Sign release with cosign
+    deps: [release]
+    cmds:
+      - cosign sign-blob --yes --output-signature target/release/{{.BINARY}}.sig --output-certificate target/release/{{.BINARY}}.pem target/release/{{.BINARY}}
+      - cosign sign-blob --yes --output-signature target/release/{{.BINARY}}.sha256.sig --output-certificate target/release/{{.BINARY}}.sha256.pem target/release/{{.BINARY}}.sha256
+
+  release-verify:
+    desc: Verify release signature
+    cmds:
+      - cosign verify-blob --cert target/release/{{.BINARY}}.pem --signature target/release/{{.BINARY}}.sig target/release/{{.BINARY}}
+
+  # ── Credentials ────────────────────────────────────────────────
+
+  login:
+    desc: Login to crates.io
+    cmds:
+      - cargo login
+
+  publish-dry:
+    desc: Dry run publish
+    cmds:
+      - cargo publish --dry-run
+
+  publish:
+    desc: Publish to crates.io
+    cmds:
+      - cargo publish
+
+  # ── Docs ───────────────────────────────────────────────────────
+
+  docs:
+    desc: Generate and open documentation
+    cmds:
+      - cargo doc --no-deps --document-private-items
+      - open target/doc/portail/index.html
+
+  # ── Help ───────────────────────────────────────────────────────
+
+  help:
+    desc: Show this help
+    cmds:
+      - task --list
