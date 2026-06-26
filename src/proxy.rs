@@ -46,6 +46,7 @@ pub fn build_router(state: Arc<AppState>) -> Router {
         .route("/.well-known/agent.json", get(crate::a2a::handle_agent_card))
         .route("/a2a/tasks", axum::routing::post(crate::a2a::handle_task_create))
         .route("/a2a/tasks/{id}", get(crate::a2a::handle_task_get))
+        .route("/a2a/ws", axum::routing::get(crate::a2a::handle_ws))
         .route("/a2c/chat", axum::routing::post(crate::a2c::handle_chat))
         // ── v0.2: plugin & diagnostics routers ──
         .merge(crate::ci::router())
@@ -581,5 +582,47 @@ mod tests {
         let body = axum::body::to_bytes(resp.into_body(), 100_000).await.unwrap();
         let events: serde_json::Value = serde_json::from_slice(&body).unwrap();
         assert!(!events.as_array().unwrap().is_empty());
+    }
+
+    // ── A2A integration tests ────────────────────────────────────
+
+    #[tokio::test]
+    async fn a2a_agent_card_returns_valid_json() {
+        let app = build_router(test_state());
+        let req = Request::builder().uri("/.well-known/agent.json").body(Body::empty()).unwrap();
+        let resp = app.oneshot(req).await.unwrap();
+        assert_eq!(resp.status(), StatusCode::OK);
+        let body = axum::body::to_bytes(resp.into_body(), 100_000).await.unwrap();
+        let card: serde_json::Value = serde_json::from_slice(&body).unwrap();
+        assert_eq!(card["name"], "portail");
+        assert!(card["capabilities"]["streaming"].as_bool().unwrap());
+    }
+
+    #[tokio::test]
+    async fn a2a_task_create_returns_201() {
+        let app = build_router(test_state());
+        let task_json = serde_json::json!({
+            "messages": [{"role": "user", "parts": [{"type": "text", "text": "hello"}]}]
+        });
+        let req = Request::builder()
+            .uri("/a2a/tasks")
+            .method("POST")
+            .header("content-type", "application/json")
+            .body(Body::from(serde_json::to_vec(&task_json).unwrap()))
+            .unwrap();
+        let resp = app.oneshot(req).await.unwrap();
+        assert_eq!(resp.status(), StatusCode::CREATED);
+        let body = axum::body::to_bytes(resp.into_body(), 100_000).await.unwrap();
+        let task: serde_json::Value = serde_json::from_slice(&body).unwrap();
+        assert_eq!(task["status"], "submitted");
+        assert!(task["id"].as_str().unwrap().len() > 0);
+    }
+
+    #[tokio::test]
+    async fn a2a_task_get_returns_404_for_unknown() {
+        let app = build_router(test_state());
+        let req = Request::builder().uri("/a2a/tasks/nonexistent").body(Body::empty()).unwrap();
+        let resp = app.oneshot(req).await.unwrap();
+        assert_eq!(resp.status(), StatusCode::NOT_FOUND);
     }
 }

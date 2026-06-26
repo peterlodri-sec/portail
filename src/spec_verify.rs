@@ -288,7 +288,7 @@ mod tests {
 
     #[test]
     fn added_route_is_detected() {
-        let mut golden = generate();
+        let golden = generate();
         let mut current = generate();
         current.routes.push(RouteEntry { method: "GET".into(), path: "/new-route".into() });
         let report = compute_diff(&golden, &current).unwrap();
@@ -300,7 +300,7 @@ mod tests {
     #[test]
     fn removed_route_is_detected() {
         let mut golden = generate();
-        let mut current = generate();
+        let current = generate();
         golden.routes.push(RouteEntry { method: "GET".into(), path: "/old-route".into() });
         let report = compute_diff(&golden, &current).unwrap();
         assert!(report.has_diff);

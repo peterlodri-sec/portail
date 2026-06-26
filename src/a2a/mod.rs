@@ -383,6 +383,7 @@ pub fn router() -> axum::Router<Arc<crate::AppState>> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use serde_json::json;
 
     #[test]
     fn task_lifecycle() {
@@ -409,5 +410,80 @@ mod tests {
         let store = TaskStore::new();
         assert!(store.get("nonexistent").is_none());
         assert!(store.update_status("nonexistent", TaskStatus::Completed).is_none());
+    }
+
+    #[test]
+    fn agent_card_json_roundtrip() {
+        let card = AgentCard {
+            name: "portail".into(),
+            description: "test".into(),
+            url: "http://0.0.0.0:8787".into(),
+            version: "0.6.0".into(),
+            capabilities: AgentCapabilities {
+                streaming: true,
+                push_notifications: false,
+                state_transition_history: true,
+            },
+            skills: vec![Skill {
+                id: "proxy".into(),
+                name: "Proxy".into(),
+                description: "Routes requests".into(),
+                tags: vec!["http".into()],
+                examples: vec![],
+            }],
+            authentication: Some(Authentication {
+                schemes: vec!["bearer".into()],
+                credentials: None,
+            }),
+        };
+        let json = serde_json::to_string(&card).unwrap();
+        let roundtrip: AgentCard = serde_json::from_str(&json).unwrap();
+        assert_eq!(roundtrip.name, "portail");
+        assert_eq!(roundtrip.skills.len(), 1);
+        assert!(roundtrip.capabilities.streaming);
+    }
+
+    #[test]
+    fn task_json_roundtrip() {
+        let task = Task {
+            id: "t1".into(),
+            status: TaskStatus::Working,
+            messages: vec![Message {
+                role: "user".into(),
+                parts: vec![Part::Text { text: "hello".into() }],
+                metadata: FxHashMap::default(),
+            }],
+            artifacts: vec![],
+            metadata: {
+                let mut m = FxHashMap::default();
+                m.insert("priority".into(), "high".into());
+                m
+            },
+        };
+        let json = serde_json::to_string(&task).unwrap();
+        let roundtrip: Task = serde_json::from_str(&json).unwrap();
+        assert_eq!(roundtrip.id, "t1");
+        assert_eq!(roundtrip.status, TaskStatus::Working);
+        assert_eq!(roundtrip.messages.len(), 1);
+        assert_eq!(roundtrip.metadata.get("priority").unwrap(), "high");
+    }
+
+    #[test]
+    fn part_json_variants() {
+        let text = serde_json::to_string(&Part::Text { text: "hi".into() }).unwrap();
+        assert!(text.contains("text"));
+        assert!(text.contains("hi"));
+
+        let file = serde_json::to_string(&Part::File { file: FilePart {
+            name: "data.csv".into(),
+            bytes: Some("base64...".into()),
+            mime_type: Some("text/csv".into()),
+            uri: None,
+        }}).unwrap();
+        assert!(file.contains("file"));
+        assert!(file.contains("data.csv"));
+
+        let data = serde_json::to_string(&Part::Data { data: serde_json::json!({}) }).unwrap();
+        assert!(data.contains("data"));
     }
 }
