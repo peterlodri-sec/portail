@@ -4,13 +4,13 @@
 
 ```
 LOOP: plan → implement → test → review → ship → repeat
-STATE:  v2.x shipped — 174 tests, Nix-first, sqlx, SSL, nightly, wild linker
-AGENTS: 9 CI agents (complexity, drift, spec, fuzz, chore, arch-helper, trending, pr-governance, ralph-loop)
-NEXT:   v2.1 bulletproof CLI (daemon, completions) — #27
-THEN:   v2.2 Nix/OSS release — #28
-THEN:   v2.3 TLS/deploy — #29
-THEN:   v3.0 AI-native — #30 (Go+Rust+Wasm hybrid architecture)
+STATE:  v2.x shipped — 174 tests, Nix-first, 10 CI agents, 5 SOTA abstractions
+NEXT:   v2.1 contributor DX (guide, e2e env, package research) — #32
+THEN:   v2.2 documentation + OSS release (crates.io, Homebrew, blog) — #33
+THEN:   v2.3 stability + benchmarks (80% coverage, 200+ tests) — #34
+THEN:   v3.0 AI-native hybrid architecture — #30 + #31
 FREEZE: no new features until v3.0. Bug fixes and stability only.
+OPEN:   #27, #28, #29, #30, #31, #32, #33, #34, #1 super devnote (HUMAN ONLY)
 ```
 OPEN:   #27, #28, #29, #30, #1 super devnote (HUMAN ONLY)
 ```
@@ -168,9 +168,22 @@ v1.2  [SHIPPED]  2026-06-26  dashboard endpoint, rate/auth counters
 v1.3  [SHIPPED]  2026-06-26  type hardening, BoundedMeta
 v1.4  [SHIPPED]  2026-06-26  chore-bot, NATS bridge
 v1.4r [SHIPPED]  2026-06-26  release v1.4.0
-v2.0  [SHIPPED]  2026-06-26  production-stable (174 tests, 9 CI agents)
-v2.1  [NEXT]     2026-07-03  bulletproof CLI — #27
-v2.2             2026-07-10  Nix/OSS release — #28
-v2.3             2026-07-17  TLS + deploy — #29
-v3.0             2026-08-01  AI-native: Go+Rust+Wasm hybrid, Extism/Wazero agents, Arrow IPC
+v2.0  [SHIPPED]  2026-06-26  production-stable (174 tests, 10 CI agents)
+v2.1  [NEXT]     2026-07-03  contributor DX: guide, e2e env, package research — docs/V2_1_V2_3_PLAN.md
+v2.2             2026-07-10  documentation + OSS release (crates.io, Homebrew, AUR, blog)
+v2.3             2026-07-17  stability: 80% coverage, benchmarks, bug bash, final release
+v3.0             2026-08-01  AI-native: Go+Rust+Wasm hybrid, Arrow IPC, Extism agents
 ```
+
+### Package Integration Research
+
+| Priority | Crate | Purpose | Target Version |
+|----------|-------|---------|---------------|
+| 1 | hickory-dns | SOTA async DNS library | v2.1 DnsResolver backend |
+| 2 | arrow-rs | Zero-copy IPC for agent communication | v3.0 |
+| 3 | indicatif | Progress bars for CLI | v2.1 |
+| 4 | rkyv | Zero-copy deserialization | v2.2 |
+| 5 | loom | Concurrency testing | v2.3 |
+| 6 | cargo-llvm-cov | Coverage reports | v2.3 |
+| 7 | extism | Wasm plugin host | v3.0 |
+| 8 | figment | Multi-source config | v2.1 |
