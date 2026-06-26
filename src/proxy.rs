@@ -324,48 +324,74 @@ async fn readyz(State(state): State<Arc<AppState>>) -> (StatusCode, &'static str
 }
 
 async fn route_to_ai_gateway(State(state): State<Arc<AppState>>, req: Request) -> Response {
-    let cfg = {
+    // Resolve target from config
+    let (upstream, provider) = {
         let c = state.config.read().unwrap();
-        c.ai_gateway
-            .as_ref()
-            .filter(|g| g.enabled)
-            .map(|g| g.upstream.clone())
-    };
-    let Some(upstream) = cfg else {
-        return (StatusCode::NOT_IMPLEMENTED, "ai gateway disabled").into_response();
+        let cfg = c.ai_gateway.as_ref().filter(|g| g.enabled);
+        let provider_header = req.headers()
+            .get("x-provider")
+            .and_then(|v| v.to_str().ok());
+        let body: Option<&serde_json::Value> = None; // lazy — only parse if needed for model routing
+
+        match cfg {
+            Some(g) => {
+                // Try target template routing
+                let targets = &c.targets;
+                let resolved = if targets.is_empty() {
+                    crate::target_router::ResolvedTarget::NotFound
+                } else {
+                    crate::target_router::resolve_upstream(
+                        targets, g.default_provider.as_deref(), provider_header, body,
+                    )
+                };
+                match resolved.base_url() {
+                    Some(url) => (url.to_string(), resolved.provider().map(|p| p.to_string())),
+                    None => (g.upstream.clone(), None), // legacy fallback
+                }
+            }
+            None => {
+                return (StatusCode::NOT_IMPLEMENTED, "ai gateway disabled").into_response();
+            }
+        }
     };
 
     let path = req.uri().path().to_string();
     let matching_hooks = state.hooks.match_message(&path);
 
-    if matching_hooks.is_empty() {
-        return gateway::forward(&upstream, req).await;
+    let result = if matching_hooks.is_empty() {
+        gateway::forward(&upstream, req).await
+    } else {
+        let (parts, body) = req.into_parts();
+        let body_bytes = axum::body::to_bytes(body, 10_000_000)
+            .await
+            .unwrap_or_default();
+
+        let modified = serde_json::from_slice::<serde_json::Value>(&body_bytes)
+            .ok()
+            .and_then(|v| hooks::apply_message_hooks(&v, &matching_hooks))
+            .and_then(|v| serde_json::to_vec(&v).ok())
+            .unwrap_or(body_bytes.to_vec());
+
+        counter!("hook_injections").increment(matching_hooks.len() as u64);
+        state.event_log.publish(crate::events::AgentEvent {
+            agent_id: "hooks".into(),
+            event_type: "injected".into(),
+            severity: "info".into(),
+            timestamp: 0,
+            metadata: BoundedMeta::from_iter([
+                ("path".into(), path),
+                ("count".into(), matching_hooks.len().to_string()),
+            ]),
+        });
+
+        gateway::forward_with_body(&upstream, parts, modified.into()).await
+    };
+
+    // Tag response with provider info
+    if let Some(p) = provider {
+        let _ = p; // future: inject x-provider response header
     }
-
-    let (parts, body) = req.into_parts();
-    let body_bytes = axum::body::to_bytes(body, 10_000_000)
-        .await
-        .unwrap_or_default();
-
-    let modified = serde_json::from_slice::<serde_json::Value>(&body_bytes)
-        .ok()
-        .and_then(|v| hooks::apply_message_hooks(&v, &matching_hooks))
-        .and_then(|v| serde_json::to_vec(&v).ok())
-        .unwrap_or(body_bytes.to_vec());
-
-    counter!("hook_injections").increment(matching_hooks.len() as u64);
-    state.event_log.publish(crate::events::AgentEvent {
-        agent_id: "hooks".into(),
-        event_type: "injected".into(),
-        severity: "info".into(),
-        timestamp: 0,
-        metadata: BoundedMeta::from_iter([
-            ("path".into(), path),
-            ("count".into(), matching_hooks.len().to_string()),
-        ]),
-    });
-
-    gateway::forward_with_body(&upstream, parts, modified.into()).await
+    result
 }
 
 async fn route_cdn(State(state): State<Arc<AppState>>, req: Request) -> Response {

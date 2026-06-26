@@ -49,6 +49,7 @@ pub mod sentinel;
 pub mod sessions;
 pub mod shutdown;
 pub mod spec_verify;
+pub mod target_router;
 pub mod store;
 pub mod supervisor;
 pub mod telemetry;

@@ -132,6 +132,23 @@
             bun
             nushell
             parallel
+            # Modern CLI layer — no legacy grep/awk/sed/cat/ls/find
+            ripgrep         # rg — replaces grep
+            jq              # structured JSON queries
+            sd              # replaces sed
+            bat             # replaces cat
+            eza             # replaces ls
+            fd              # replaces find
+            dua             # replaces du
+            dust            # visual disk usage
+            bottom          # btm — replaces top
+            delta           # diff viewer
+            doggo           # replaces dig
+            gping           # replaces ping
+            websocat        # replaces netcat/curl for WS
+            httpie          # replaces curl
+            zellij          # replaces tmux
+            mosh            # replaces ssh roaming
           ];
 
           buildInputs = with pkgs; [

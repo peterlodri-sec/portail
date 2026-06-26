@@ -338,6 +338,56 @@ tasks:
     cmds:
       - cargo +nightly build -Zcodegen-backend=cranelift
 
+  # ── Modern CLI (no legacy tools) ──────────────────────────────
+
+  search:
+    desc: Search src/ with ripgrep (replaces grep)
+    vars:
+      PATTERN: '{{.PATTERN | required}}'
+    cmds:
+      - rg {{.PATTERN}} src/
+
+  tree:
+    desc: Directory tree with eza (replaces ls/tree)
+    cmds:
+      - eza --tree --git-ignore --icons
+
+  du:
+    desc: Disk usage with dua (replaces du -sh)
+    cmds:
+      - dua interactive
+
+  top:
+    desc: System monitor with btm (replaces top)
+    cmds:
+      - btm
+
+  json:
+    desc: JSON formatting with jq
+    vars:
+      FILE: '{{.FILE | default "Cargo.toml"}}'
+    cmds:
+      - jq '.' < {{.FILE}}
+
+  diff:
+    desc: Syntax-highlighted diff with delta (replaces diff)
+    cmds:
+      - delta {{.CLI_ARGS}}
+
+  ws:
+    desc: WebSocket test with websocat (replaces netcat)
+    vars:
+      URL: '{{.URL | default "ws://localhost:8787/a2a/ws"}}'
+    cmds:
+      - websocat {{.URL}}
+
+  bat:
+    desc: Read file with bat (replaces cat)
+    vars:
+      FILE: '{{.FILE | required}}'
+    cmds:
+      - bat {{.FILE}}
+
   # ── Help ───────────────────────────────────────────────────────
 
   help:
