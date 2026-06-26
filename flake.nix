@@ -36,8 +36,6 @@
             just
             upx
             cosign
-            cargo-credential-pass
-            cargo-release
           ] ++ lib.optionals pkgs.stdenv.isLinux [
             mold-wrapped
             gdb

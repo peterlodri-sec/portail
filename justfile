@@ -80,7 +80,7 @@ docker-slim:
 
 # ── Credentials ────────────────────────────────────────────────────────
 login:
-    cargo login --credential-provider cargo-credential-pass
+    cargo login
 
 publish-dry:
     cargo publish --dry-run

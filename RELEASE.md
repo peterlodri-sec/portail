@@ -9,10 +9,20 @@
 
 ## One-time: crates.io credentials
 
+Generate a token at https://crates.io/settings/tokens, then:
+
 ```bash
 just login
 ```
-Stores crates.io token in macOS Keychain via `cargo-credential-pass`.
+Paste the token when prompted. Cargo stores it in `~/.cargo/credentials`.
+
+Optional — keychain-backed storage:
+```bash
+cargo install cargo-credential-pass
+# then add to ~/.cargo/config.toml:
+# [registry]
+# global-credential-providers = ["cargo-credential-pass"]
+```
 
 Verify:
 ```bash
