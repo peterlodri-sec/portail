@@ -263,13 +263,16 @@ mod v0_2_integration {
     // ── 3. Event store integration test ──────────────────────────
 
     fn in_memory_store() -> store::EventStore {
-        store::EventStore::open(store::StoreConfig {
+        use portail::store::RusqliteBackend;
+        let config = store::StoreConfig {
             enabled: true,
             db_path: ":memory:".into(),
             retention_days: 0,
+            provider: "rusqlite".into(),
             ..Default::default()
-        })
-        .expect("open in-memory event store")
+        };
+        let backend = std::sync::Arc::new(RusqliteBackend::open(&config).expect("open in-memory store"));
+        store::EventStore::from_backend(backend, config)
     }
 
     fn make_event(agent_id: &str, event_type: &str, timestamp: i64) -> store::StoredEvent {
@@ -283,8 +286,8 @@ mod v0_2_integration {
         }
     }
 
-    #[test]
-    fn event_store_insert_5_and_count() {
+    #[tokio::test]
+    async fn event_store_insert_5_and_count() {
         let store = in_memory_store();
         for i in 0..5 {
             store
@@ -302,8 +305,8 @@ mod v0_2_integration {
         assert_eq!(store.count().unwrap(), 5);
     }
 
-    #[test]
-    fn event_store_query_by_agent_id() {
+    #[tokio::test]
+    async fn event_store_query_by_agent_id() {
         let store = in_memory_store();
         store
             .insert(&make_event("agent-a", "task.started", 1700000000))
@@ -324,8 +327,8 @@ mod v0_2_integration {
         assert_eq!(b_events[0].agent_id, "agent-b");
     }
 
-    #[test]
-    fn event_store_query_by_event_type() {
+    #[tokio::test]
+    async fn event_store_query_by_event_type() {
         let store = in_memory_store();
         store
             .insert(&make_event("agent-1", "task.started", 1700000000))
@@ -349,8 +352,8 @@ mod v0_2_integration {
         assert_eq!(failed[0].severity, "info");
     }
 
-    #[test]
-    fn event_store_export_json() {
+    #[tokio::test]
+    async fn event_store_export_json() {
         let store = in_memory_store();
         store
             .insert(&make_event("agent-x", "test.run", 1700000000))
@@ -366,8 +369,8 @@ mod v0_2_integration {
         assert_eq!(parsed[1]["event_type"], "test.run");
     }
 
-    #[test]
-    fn event_store_empty_returns_zero() {
+    #[tokio::test]
+    async fn event_store_empty_returns_zero() {
         let store = in_memory_store();
         assert_eq!(store.count().unwrap(), 0);
         let json = store.export_json(None).unwrap();

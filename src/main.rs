@@ -104,7 +104,7 @@ async fn main() -> anyhow::Result<()> {
 
     // ── v0.2: persistent event store ──
     let event_store = if config.store.enabled {
-        match portail::store::EventStore::open(config.store.clone()) {
+        match portail::store::EventStore::open(config.store.clone()).await {
             Ok(store) => {
                 tracing::info!(path = %config.store.db_path, "persistent event store opened");
                 Some(store)

@@ -67,7 +67,8 @@ base64 = "0.22"
 # v0.2 — persistent event store
 rusqlite = { version = "0.33", features = ["bundled"] }
 
-# v2.0 — NATS-replicated event store (optional, free/libre)
+# v2.x — sqlx async SQLite (primary backend, compile-time checked queries)
+sqlx = { version = "0.9", features = ["runtime-tokio", "sqlite", "migrate"] }
 # libsql removed: Turso is not free. Replaced with NATS-based replication.
 
 # v0.2 — OpenTelemetry OTLP
@@ -84,6 +85,11 @@ async-stream = "0.3"
 [features]
 default = []
 store-nats = []
+
+# Nightly features (enabled when using nightly toolchain)
+# - portable-simd: stable SIMD intrinsics for blake3/sha2
+# - allocator_api: custom allocator integration
+nightly = []
 
 [profile.release]
 opt-level = 3
@@ -107,6 +113,9 @@ debug = false
 [dev-dependencies]
 criterion = { version = "0.5", features = ["html_reports", "async_tokio"] }
 proptest = "1"
+
+[build-dependencies]
+chrono = "0.4"
 
 [[bench]]
 name = "hot_paths"

@@ -19,6 +19,7 @@
 pub mod a2a;
 pub mod a2c;
 pub mod auth;
+pub mod build_info;
 pub mod cdn;
 pub mod ci;
 pub mod cli;
