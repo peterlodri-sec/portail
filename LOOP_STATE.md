@@ -4,8 +4,8 @@
 
 ```
 LOOP: plan → implement → test → review → ship → repeat
-STATE:  v1.0 shipped (sensible defaults, init wizard, A2A interop, 144 tests)
-NEXT:   v1.1 self-healing config
+STATE:  v1.4 chore-bot shipped (NATS bridge, type hardening, style guide)
+NEXT:   release
 OPEN:   #24 integration matrix (Turso pending), #1 super devnote (HUMAN ONLY)
 ```
 
@@ -107,8 +107,20 @@ OPEN:   #24 integration matrix (Turso pending), #1 super devnote (HUMAN ONLY)
 - CHANGELOG.md consolidated for v1.0 release
 - Performance benchmark baseline published
 
+## v1.4 — Chore Bot (CI agent 5)                ✅ SHIPPED
+**Target:** 2026-06-26  **Effort:** 1 day
+
+- Rust Chore CI Agent — mechanical cleanup automation
+- NATS event bridge — distributed publish/subscribe (portail.events.*)
+- Type hardening — BoundedMeta replaces FxHashMap on hot paths (max 16 entries, key≤128B, val≤512B)
+- /dashboard HTTP endpoint — config health, rate/auth/cdn counters
+- TUI config health indicator (green/red dot)
+- Enhanced Taskfile — chore-check/fix/verify/report, dev shortcuts (c, t, w, counts)
+- GitHub workflow: `.github/workflows/chore-bot.yml`
+- 156 tests pass, 0 errors
+
 ## v1.4 — Release                               🚧 PLANNED
-**Target:** 2026-09-01  **Effort:** 1 day
+**Target:** 2026-07-01  **Effort:** 1 day
 
 - Tag `v1.4.0`
 - All CI green (131+ tests, advisory agents posting comments)
@@ -126,6 +138,7 @@ OPEN:   #24 integration matrix (Turso pending), #1 super devnote (HUMAN ONLY)
 | drift-detect (v0.4) | ❌ never | always 0 | diff report → PR comment |
 | spec-verify (v0.5) | ❌ never | always 0 | spec diff → PR comment |
 | fuzz-route (v0.6) | ⚠️ only on panic | 1 on crash, 0 otherwise | crash report → PR comment |
+| chore-bot (v1.4) | ❌ never | always 0 | fix report → PR comment |
 | clippy (existing) | ✅ always | 1 on warning | inline annotations |
 | test (existing) | ✅ always | 1 on failure | inline annotations |
 
@@ -140,8 +153,9 @@ v0.4  [SHIPPED]  2026-06-26  drift-detect
 v0.5  [SHIPPED]  2026-06-26  spec-verify
 v0.6  [SHIPPED]  2026-06-26  fuzz-route, WebSocket, GraphQL
 v1.0  [SHIPPED]  2026-06-26  one-command Nix gateway
-v1.1  [NEXT]     2026-07-01  self-healing config
-v1.2             2026-07-08  progressive TUI
-v1.3             2026-07-15  polish + docs
-v1.4             2026-07-22  release
+v1.1  [SHIPPED]  2026-06-26  self-healing config
+v1.2  [SHIPPED]  2026-06-26  dashboard endpoint, rate/auth counters
+v1.3  [SHIPPED]  2026-06-26  type hardening, BoundedMeta
+v1.4  [SHIPPED]  2026-06-26  chore-bot, NATS bridge, style guide
+v1.4r [NEXT]     2026-07-01  release (crates.io, homebrew, docker)
 ```
