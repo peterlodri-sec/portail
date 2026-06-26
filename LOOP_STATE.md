@@ -4,8 +4,8 @@
 
 ```
 LOOP: plan → implement → test → review → ship → repeat
-STATE:  v1.4.0 released (tagged, CI running) — 156 tests, 7 CI agents
-NEXT:   v2.0 first production-stable (4-week plan in docs/V2_0_PLAN.md)
+STATE:  v2.0 week 1 shipping (Store trait + Turso + proptests + panic hooks) — 164 tests
+NEXT:   v2.0 week 2 (DPDK/io_uring promo, TLS, DNS)
 OPEN:   #24 integration matrix, #1 super devnote (HUMAN ONLY)
 ```
 

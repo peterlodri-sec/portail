@@ -4,6 +4,8 @@ use std::collections::HashMap;
 use std::net::IpAddr;
 use std::str::FromStr;
 
+pub mod reliability;
+
 // ── DNS Configuration ────────────────────────────────────────────
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]

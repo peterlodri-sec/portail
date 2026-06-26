@@ -84,6 +84,8 @@ async-stream = "0.3"
 [features]
 default = []
 store-turso = ["dep:libsql"]
+dpdk = []
+iouring = []
 
 [profile.release]
 opt-level = 3
