@@ -10,13 +10,16 @@ env:
   CARGO_TERM_COLOR: always
   RUSTFLAGS: -D warnings
   CARGO_INCREMENTAL: 0
-  SCCACHE_GHA_ENABLED: "true"
 
 jobs:
   check:
     strategy:
       matrix:
-        os: [ubuntu-latest, macos-latest]
+        include:
+          - os: self-hosted
+            label: linux
+          - os: macos-latest
+            label: macos
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
@@ -24,17 +27,14 @@ jobs:
         with:
           components: clippy, rustfmt
 
-      - name: Cache cargo
+      - name: Cache cargo registry
         uses: actions/cache@v4
         with:
           path: |
             ~/.cargo/registry
             ~/.cargo/git
-            target
-          key: ${{ runner.os }}-cargo-${{ hashFiles('Cargo.lock') }}
-          restore-keys: ${{ runner.os }}-cargo-
-
-      - uses: mozilla-actions/sccache-action@v0.0.7
+          key: ${{ matrix.label }}-cargo-registry-${{ hashFiles('Cargo.lock') }}
+          restore-keys: ${{ matrix.label }}-cargo-registry-
 
       - name: Check
         run: cargo check --locked
@@ -49,22 +49,14 @@ jobs:
         run: cargo fmt --check
 
   nix:
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     steps:
       - uses: actions/checkout@v4
-      - uses: DeterminateSystems/nix-installer-action@v16
-      - uses: DeterminateSystems/magic-nix-cache-action@v8
-      - uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cache/nix
-            /nix/store
-          key: nix-${{ hashFiles('flake.lock') }}
       - name: Flake check
-        run: nix flake check --all-systems
+        run: nix flake check --impure
 
   python:
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     defaults:
       run:
         working-directory: plugins/portail-mcp
