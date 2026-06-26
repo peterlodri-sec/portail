@@ -40,6 +40,7 @@ pub mod hooks;
 pub mod hyper_engine;
 pub mod iouring;
 pub mod mcp;
+pub mod nats_bridge;
 pub mod nullclaw;
 pub mod plugins;
 pub mod proxy;

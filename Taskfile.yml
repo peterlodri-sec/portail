@@ -169,6 +169,51 @@ tasks:
       - cargo doc --no-deps --document-private-items
       - open target/doc/portail/index.html
 
+  # ── Chore CI Agent ─────────────────────────────────────────────
+
+  chore-check:
+    desc: Check for auto-fixable issues (advisory, never blocks)
+    cmds:
+      - bash scripts/rust-chore.sh check
+
+  chore-fix:
+    desc: Auto-fix imports, warnings, formatting
+    cmds:
+      - bash scripts/rust-chore.sh fix
+
+  chore-verify:
+    desc: Verify cargo check + test after fixes
+    cmds:
+      - bash scripts/rust-chore.sh verify
+
+  chore-report:
+    desc: Generate chore report for CI
+    cmds:
+      - bash scripts/rust-chore.sh report
+
+  # ── Quick Dev Commands ─────────────────────────────────────────
+
+  c:
+    desc: cargo check (fast feedback)
+    cmds:
+      - cargo check
+
+  t:
+    desc: cargo test (all suites)
+    cmds:
+      - cargo test
+
+  w:
+    desc: cargo watch — auto-rebuild on changes
+    cmds:
+      - cargo watch -x check -x test
+
+  counts:
+    desc: Show test and warning counts
+    cmds:
+      - echo "Tests:" && cargo test 2>&1 | tail -1
+      - echo "Warnings:" && cargo check --lib --tests 2>&1 | grep -c "warning:" || echo 0
+
   # ── Help ───────────────────────────────────────────────────────
 
   help:

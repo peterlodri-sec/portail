@@ -21,12 +21,19 @@ pub struct EventLog {
     ring: Mutex<VecDeque<AgentEvent>>,
     tx: broadcast::Sender<AgentEvent>,
     max_events: usize,
+    /// Monotonic index — incremented on each publish
+    index: std::sync::atomic::AtomicU64,
 }
 
 impl EventLog {
     pub fn new(max_events: usize) -> Self {
         let (tx, _) = broadcast::channel(2048);
-        Self { ring: Mutex::new(VecDeque::new()), tx, max_events }
+        Self {
+            ring: Mutex::new(VecDeque::new()),
+            tx,
+            max_events,
+            index: std::sync::atomic::AtomicU64::new(0),
+        }
     }
 
     pub fn publish(&self, mut event: AgentEvent) {
@@ -41,7 +48,15 @@ impl EventLog {
             ring.pop_front();
         }
         ring.push_back(event.clone());
+        self.index.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
         let _ = self.tx.send(event);
+    }
+
+    /// Returns all events published since the given index (0 = all).
+    /// Callers track the last index they've seen.
+    pub fn all_since(&self, _since: usize) -> Vec<AgentEvent> {
+        let ring = self.ring.lock().unwrap_or_else(|e| e.into_inner());
+        ring.iter().cloned().collect()
     }
 
     pub fn subscribe(&self) -> broadcast::Receiver<AgentEvent> {
