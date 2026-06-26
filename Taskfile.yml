@@ -92,6 +92,36 @@ tasks:
     cmds:
       - ./scripts/complexity-analysis.sh
 
+  spec:
+    desc: Verify route spec against golden file
+    cmds:
+      - cargo run -- spec-verify diff
+
+  drift:
+    desc: Capture/replay drift smoke test
+    cmds:
+      - cargo run -- drift-detect capture
+
+  fuzz:
+    desc: Fuzz all routes for crashes
+    cmds:
+      - cargo run -- fuzz-route --url http://localhost:8787
+
+  audit:
+    desc: Security audit dependencies
+    cmds:
+      - cargo audit
+
+  features:
+    desc: Test with all feature flags
+    cmds:
+      - cargo test --features store-turso
+
+  turso:
+    desc: Test Turso backend
+    cmds:
+      - cargo test --features store-turso -- store
+
   # ── Docker ─────────────────────────────────────────────────────
 
   docker-build:
@@ -192,6 +222,16 @@ tasks:
       - bash scripts/rust-chore.sh report
 
   # ── Quick Dev Commands ─────────────────────────────────────────
+
+  serve:
+    desc: Start the server (debug)
+    cmds:
+      - cargo run -- serve
+
+  init:
+    desc: Generate portail.toml interactively
+    cmds:
+      - cargo run -- init
 
   c:
     desc: cargo check (fast feedback)
