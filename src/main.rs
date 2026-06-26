@@ -595,6 +595,21 @@ async fn dispatch_cli(cmd: &cli::Commands, cli: &cli::Cli) -> anyhow::Result<()>
             cli::doctor::run_doctor()?;
             Ok(())
         }
+        cli::Commands::Pit { scan } => {
+            let config = portail_agents::pit::PitConfig::default();
+            if *scan {
+                let pit = portail_agents::pit::Pit::new(config)?;
+                let n = pit.scan_and_record();
+                println!("PIT scan: {n} new processes");
+                if n > 0 {
+                    println!("  PIT:   {}", pit.pit_path().display());
+                    println!("  Log:   {}", pit.log_path().display());
+                }
+            } else {
+                portail_agents::pit::run_pit_watcher(config).await;
+            }
+            Ok(())
+        }
         cli::Commands::ReleaseAudit { dir, version, out } => {
             let out_dir = out.clone().unwrap_or_else(|| dir.join("audit"));
             portail::release_audit::run_pipeline(dir, version, &out_dir)?;

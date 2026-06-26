@@ -4026,6 +4026,7 @@ dependencies = [
  "opentelemetry-otlp",
  "opentelemetry-semantic-conventions",
  "opentelemetry_sdk",
+ "portail-agents",
  "proptest",
  "ratatui 0.29.0",
  "redis",
@@ -4058,6 +4059,7 @@ name = "portail-agents"
 version = "2.0.0"
 dependencies = [
  "chrono",
+ "dirs",
  "reqwest",
  "serde",
  "serde_json",

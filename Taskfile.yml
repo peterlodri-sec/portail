@@ -173,6 +173,43 @@ tasks:
     cmds:
       - nix build .#portail
 
+  # ── PIT (Process Interception Tracker) ──────────────────────────
+
+  pit:
+    desc: Run PIT process watcher (background daemon)
+    cmds:
+      - cargo run -- pit
+
+  pit-scan:
+    desc: One-shot /proc scan and PIT log
+    cmds:
+      - cargo run -- pit --scan
+
+  pit-log:
+    desc: Tail the PIT log file
+    cmds:
+      - tail -f ~/.local/share/portail/pit.log 2>/dev/null || echo "No PIT log yet"
+
+  # ── Mermaid Render (CI/doc pipeline) ────────────────────────────
+
+  mermaid-render:
+    desc: Render mermaid diagrams in markdown to SVG (installs merman-cli)
+    cmds:
+      - |
+        if ! command -v merman-cli &> /dev/null; then
+          cargo install merman-cli
+        fi
+        merman-cli render --markdown {{.FILE | default "README.md"}}
+
+  mermaid-render-all:
+    desc: Render mermaid in all markdown files under docs/
+    cmds:
+      - |
+        if ! command -v merman-cli &> /dev/null; then
+          cargo install merman-cli
+        fi
+        find docs/ -name '*.md' -exec merman-cli render --markdown {} \;
+
   # ── Release ────────────────────────────────────────────────────
 
   release:

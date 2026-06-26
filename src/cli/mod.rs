@@ -194,6 +194,13 @@ pub enum Commands {
     /// System compatibility check
     Doctor,
 
+    /// Process Interception Tracker — watch /proc, log all processes
+    Pit {
+        /// One-shot scan instead of continuous watch
+        #[arg(long)]
+        scan: bool,
+    },
+
     /// Release audit: verify binaries, generate SBOM + report
     ReleaseAudit {
         /// Directory containing release artifacts
