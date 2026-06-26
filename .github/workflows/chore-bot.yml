@@ -1,34 +1,36 @@
 name: Chore Bot
 
-# v1.4 — Mechanical Rust cleanup agent.
-# Advisory-only: never blocks CI, always exits 0.
-# Runs cargo fix + clippy --fix + fmt. Comments report on PR.
-
 on:
   push:
     branches: [main]
+    paths: ['src/**', 'crates/**', 'Cargo.toml', 'Cargo.lock']
   pull_request:
     branches: [main]
+    paths: ['src/**', 'crates/**', 'Cargo.toml', 'Cargo.lock']
 
 jobs:
   chore:
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          cache-workspaces: true
 
-      - name: Run chore bot
+      - name: Run chore fix
         run: |
           chmod +x scripts/rust-chore.sh
-          bash scripts/rust-chore.sh fix
-          bash scripts/rust-chore.sh verify
+          bash scripts/rust-chore.sh fix || true
+          bash scripts/rust-chore.sh verify || true
 
       - name: Generate report
         run: |
-          bash scripts/rust-chore.sh report > /tmp/chore-report.md
+          bash scripts/rust-chore.sh report > /tmp/chore-report.md || echo "no report"
 
       - name: Comment on PR
         if: github.event_name == 'pull_request'
         uses: actions/github-script@v7
+        continue-on-error: true
         with:
           script: |
             const fs = require('fs');

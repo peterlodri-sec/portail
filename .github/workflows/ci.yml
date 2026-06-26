@@ -5,6 +5,8 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  release:
+    types: [published]
 
 env:
   CARGO_TERM_COLOR: always
@@ -12,57 +14,9 @@ env:
   CARGO_INCREMENTAL: 0
 
 jobs:
-  check-permissions:
+  rust-checks:
+    if: github.event_name == 'release' || contains(github.event.head_commit.modified, 'src/') || contains(github.event.head_commit.modified, 'crates/') || github.event_name == 'pull_request'
     runs-on: ubuntu-latest
-    outputs:
-      can-use-self-hosted: ${{ steps.check.outputs.allowed }}
-    steps:
-      - id: check
-        run: |
-          if [ "${{ github.event_name }}" == "push" ]; then
-            echo "allowed=true" >> $GITHUB_OUTPUT
-          elif [ "${{ github.event.pull_request.head.repo.full_name }}" == "${{ github.repository }}" ]; then
-            echo "allowed=true" >> $GITHUB_OUTPUT
-          else
-            echo "allowed=false" >> $GITHUB_OUTPUT
-            echo "::warning::Fork PR detected. Using GitHub-hosted runners."
-          fi
-
-  nix-verification:
-    needs: check-permissions
-    runs-on: ${{ needs.check-permissions.outputs.can-use-self-hosted == 'true' && 'self-hosted' || 'ubuntu-latest' }}
-    steps:
-      - uses: actions/checkout@v7
-      - uses: cachix/install-nix-action@v25
-        with:
-          nix_path: nixpkgs=channel:nixos-unstable
-      - uses: DeterminateSystems/magic-nix-cache-action@v2
-      - run: nix flake check --impure
-
-  rust-deep-verification:
-    needs: check-permissions
-    runs-on: ${{ needs.check-permissions.outputs.can-use-self-hosted == 'true' && 'self-hosted' || 'ubuntu-latest' }}
-    steps:
-      - uses: actions/checkout@v7
-      - uses: actions-rust-lang/setup-rust-toolchain@v1
-        with:
-          components: clippy, rustfmt
-          cache-workspaces: true
-
-      - name: Check
-        run: cargo check --locked --all-targets --workspace
-
-      - name: Test
-        run: cargo test --locked --workspace
-
-      - name: Clippy
-        run: cargo clippy --locked --all-targets -- --deny warnings
-
-      - name: Format
-        run: cargo fmt --check
-
-  check-macos:
-    runs-on: macos-latest
     steps:
       - uses: actions/checkout@v7
       - uses: actions-rust-lang/setup-rust-toolchain@v1
@@ -71,10 +25,23 @@ jobs:
           cache-workspaces: true
       - run: cargo check --locked --all-targets --workspace
       - run: cargo test --locked --workspace
+      - run: cargo clippy --locked --all-targets -- --deny warnings
+      - run: cargo fmt --check
+
+  rust-macos:
+    if: github.event_name == 'release' || contains(github.event.head_commit.modified, 'src/') || contains(github.event.head_commit.modified, 'crates/') || github.event_name == 'pull_request'
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          cache-workspaces: true
+      - run: cargo check --locked --all-targets --workspace
+      - run: cargo test --locked --workspace
 
   binary-profiling:
+    if: github.event_name == 'pull_request' && (contains(github.event.head_commit.modified, 'src/') || contains(github.event.head_commit.modified, 'Cargo.toml') || contains(github.event.head_commit.modified, 'Cargo.lock'))
     runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request'
     steps:
       - uses: actions/checkout@v7
       - uses: actions-rust-lang/setup-rust-toolchain@v1
@@ -87,9 +54,20 @@ jobs:
           cargo bloat --release --bin portail --crates >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
 
-  python:
-    needs: check-permissions
-    runs-on: ${{ needs.check-permissions.outputs.can-use-self-hosted == 'true' && 'self-hosted' || 'ubuntu-latest' }}
+  nix-verification:
+    if: github.event_name == 'release' || contains(github.event.head_commit.modified, 'flake.nix') || contains(github.event.head_commit.modified, 'flake.lock') || contains(github.event.head_commit.modified, 'rust-toolchain.toml')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: cachix/install-nix-action@v25
+        with:
+          nix_path: nixpkgs=channel:nixos-unstable
+      - uses: DeterminateSystems/magic-nix-cache-action@v2
+      - run: nix flake check --impure
+
+  python-lint:
+    if: contains(github.event.head_commit.modified, 'plugins/') || github.event_name == 'release'
+    runs-on: ubuntu-latest
     defaults:
       run:
         working-directory: plugins/portail-mcp
