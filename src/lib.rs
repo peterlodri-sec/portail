@@ -15,6 +15,11 @@
 //!                   +-- /tinyurl/* -> url shortening
 //!                   +-- /traces/*  -> request tracing
 //!                   +-- /cache/*   -> redis cache
+//!
+//! Rust 2024 Edition — native async fn in traits, resolver v3, unsafe_op_in_unsafe_fn.
+
+#![deny(unsafe_op_in_unsafe_fn)]
+#![forbid(unsafe_code)]
 
 pub mod a2a;
 pub mod a2c;
