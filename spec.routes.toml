@@ -1,0 +1,214 @@
+generated_at = "2026-06-26T17:09:43.986567+00:00"
+version = "0.2.0"
+
+[[routes]]
+method = "GET"
+path = "/healthz"
+
+[[routes]]
+method = "GET"
+path = "/livez"
+
+[[routes]]
+method = "GET"
+path = "/readyz"
+
+[[routes]]
+method = "GET"
+path = "/metrics"
+
+[[routes]]
+method = "ANY"
+path = "/v1/messages"
+
+[[routes]]
+method = "ANY"
+path = "/v1/chat/completions"
+
+[[routes]]
+method = "ANY"
+path = "/v1/responses"
+
+[[routes]]
+method = "ANY"
+path = "/v1/embeddings"
+
+[[routes]]
+method = "ANY"
+path = "/v1/audio/*"
+
+[[routes]]
+method = "ANY"
+path = "/v1/images/*"
+
+[[routes]]
+method = "ANY"
+path = "/v1beta/*"
+
+[[routes]]
+method = "ANY"
+path = "/cdn/*"
+
+[[routes]]
+method = "ANY"
+path = "/mcp/*"
+
+[[routes]]
+method = "ANY"
+path = "/mcp-rest/*"
+
+[[routes]]
+method = "GET"
+path = "/stats"
+
+[[routes]]
+method = "GET"
+path = "/events"
+
+[[routes]]
+method = "POST"
+path = "/events"
+
+[[routes]]
+method = "GET"
+path = "/events/stream"
+
+[[routes]]
+method = "GET"
+path = "/hooks"
+
+[[routes]]
+method = "POST"
+path = "/hooks"
+
+[[routes]]
+method = "DELETE"
+path = "/hooks/{id}"
+
+[[routes]]
+method = "GET"
+path = "/.well-known/agent.json"
+
+[[routes]]
+method = "POST"
+path = "/a2a/tasks"
+
+[[routes]]
+method = "GET"
+path = "/a2a/tasks/{id}"
+
+[[routes]]
+method = "POST"
+path = "/a2c/chat"
+
+[[routes]]
+method = "GET"
+path = "/ci/status"
+
+[[routes]]
+method = "GET"
+path = "/ci/badge"
+
+[[routes]]
+method = "GET"
+path = "/ci/live"
+
+[[routes]]
+method = "POST"
+path = "/ci/webhook"
+
+[[routes]]
+method = "POST"
+path = "/discovery/register"
+
+[[routes]]
+method = "POST"
+path = "/discovery/heartbeat/{id}"
+
+[[routes]]
+method = "POST"
+path = "/discovery/deregister/{id}"
+
+[[routes]]
+method = "GET"
+path = "/discovery/nodes"
+
+[[routes]]
+method = "GET"
+path = "/discovery/stats"
+
+[[routes]]
+method = "GET"
+path = "/dns/query"
+
+[[routes]]
+method = "POST"
+path = "/tinyurl/shorten"
+
+[[routes]]
+method = "GET"
+path = "/tinyurl/stats"
+
+[[routes]]
+method = "GET"
+path = "/s/{id}"
+
+[[routes]]
+method = "GET"
+path = "/traces"
+
+[[routes]]
+method = "GET"
+path = "/traces/stats"
+
+[[routes]]
+method = "GET"
+path = "/traces/{id}"
+
+[[routes]]
+method = "GET"
+path = "/traces/{id}/ascii"
+
+[[routes]]
+method = "GET"
+path = "/cache/stats"
+
+[[routes]]
+method = "GET"
+path = "/cache/{key}"
+
+[[routes]]
+method = "POST"
+path = "/cache"
+
+[[routes]]
+method = "POST"
+path = "/cache/flush"
+
+[[routes]]
+method = "GET"
+path = "/godfather/status"
+
+[[routes]]
+method = "POST"
+path = "/nullclaw/heartbeat"
+
+[[routes]]
+method = "GET"
+path = "/nullclaw/agents"
+
+[[routes]]
+method = "GET"
+path = "/ebpf/stats"
+
+[[routes]]
+method = "GET"
+path = "/dpdk/stats"
+
+[[routes]]
+method = "GET"
+path = "/iouring/stats"
+
+[[routes]]
+method = "GET"
+path = "/hyper/stats"

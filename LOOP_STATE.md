@@ -4,8 +4,8 @@
 
 ```
 LOOP: plan → implement → test → review → ship → repeat
-STATE:  v0.2 shipped                  (current)
-NEXT:   v0.3 complexity bot advisory  (2026-07-01)
+STATE:  v0.4 drift-detect shipped       (current)
+NEXT:   v0.5 spec-verify CI agent        (2026-07-15)
 ```
 
 ---

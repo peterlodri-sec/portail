@@ -108,6 +108,27 @@ pub enum Commands {
         ci: bool,
     },
 
+    /// Compare route table against golden spec
+    SpecVerify {
+        #[command(subcommand)]
+        command: crate::spec_verify::SpecCommand,
+
+        /// CI mode: write report, always exit 0
+        #[arg(long)]
+        ci: bool,
+    },
+
+    /// Fuzz all routes with malformed input (crash detector)
+    FuzzRoute {
+        /// Proxy URL to fuzz
+        #[arg(long, default_value = "http://localhost:8787")]
+        url: String,
+
+        /// CI mode: write report, exit 1 on crash
+        #[arg(long)]
+        ci: bool,
+    },
+
     /// Install portail (binary, cargo, or nix)
     Install {
         /// Installation method

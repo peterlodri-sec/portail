@@ -297,6 +297,22 @@ async fn dispatch_cli(cmd: &cli::Commands, cli: &cli::Cli) -> anyhow::Result<()>
             portail::drift::run(command, *ci)?;
             Ok(())
         }
+        cli::Commands::SpecVerify { command, ci } => {
+            portail::spec_verify::run(command, *ci)?;
+            Ok(())
+        }
+        cli::Commands::FuzzRoute { url, ci } => {
+            if *ci {
+                portail::fuzz_route::ci_run(url)?;
+            } else {
+                let report = portail::fuzz_route::run(url)?;
+                println!(
+                    "fuzz-route: {} probes | {} passed | {} errors | {} crashes",
+                    report.total_probes, report.passed, report.errored, report.crashed
+                );
+            }
+            Ok(())
+        }
         cli::Commands::Install { method, dir } => {
             let install_method = match method {
                 cli::InstallMethod::Auto => cli_install::InstallMethod::Auto,
