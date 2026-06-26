@@ -32,6 +32,9 @@ mod layer_tests {
             hyper: Arc::new(hyper_engine::HyperManager::new(hyper_engine::HyperConfig::default())),
             ci_status: Arc::new(ci::CiStatusStore::new(100, None)),
             metrics_handle: global_metrics(),
+            rate_limiter: None,
+            auth_state: None,
+            event_store: None,
         }
     }
 

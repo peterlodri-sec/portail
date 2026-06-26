@@ -78,6 +78,39 @@ async fn main() -> anyhow::Result<()> {
         mcp::start_sidecar(&mcp_cfg.socket_path).await?;
     }
 
+    // ── v0.2: rate limiting ──
+    let rate_limiter = if config.rate_limit.enabled {
+        Some(portail::rate_limit::RateLimiter::new(config.rate_limit.clone()))
+    } else {
+        None
+    };
+
+    // ── v0.2: authentication ──
+    let auth_state = if config.auth.enabled {
+        Some(portail::auth::AuthState::new(config.auth.clone()))
+    } else {
+        None
+    };
+
+    // ── v0.2: persistent event store ──
+    let event_store = if config.store.enabled {
+        match portail::store::EventStore::open(config.store.clone()) {
+            Ok(store) => {
+                tracing::info!(path = %config.store.db_path, "persistent event store opened");
+                Some(store)
+            }
+            Err(e) => {
+                tracing::error!(error = %e, "failed to open event store");
+                None
+            }
+        }
+    } else {
+        None
+    };
+
+    // ── v0.2: OpenTelemetry OTLP ──
+    let _otel_guard = portail::telemetry::init(&config.telemetry);
+
     let state = Arc::new(AppState {
         config: RwLock::new(config),
         event_log: Arc::clone(&event_log),
@@ -99,7 +132,6 @@ async fn main() -> anyhow::Result<()> {
         hyper: Arc::new(portail::hyper_engine::HyperManager::new(portail::hyper_engine::HyperConfig::default())),
         ci_status: Arc::new(portail::ci::CiStatusStore::new(
             1000,
-            // Try env var first, then secret file
             std::env::var("PORTAIL_WEBHOOK_SECRET").ok()
                 .or_else(|| {
                     let secret_file = dirs::config_dir()
@@ -110,12 +142,25 @@ async fn main() -> anyhow::Result<()> {
                 }),
         )),
         metrics_handle: handle,
+        rate_limiter,
+        auth_state,
+        event_store,
     });
 
     tokio::spawn({
         let log = Arc::clone(&event_log);
         let cache = cdn_cache.clone();
         async move { portail::sentinel::run_sentinel(log, cache).await }
+    });
+
+    // ── v0.2: background agents ──
+    tokio::spawn({
+        let state = Arc::clone(&state);
+        async move { portail::godfather::run_godfather(portail::godfather::GodfatherConfig::default(), state).await }
+    });
+    tokio::spawn({
+        let state = Arc::clone(&state);
+        async move { portail::nullclaw::run_nullclaw(portail::nullclaw::NullClawConfig::default(), state).await }
     });
 
     let app = portail::proxy::build_router(Arc::clone(&state));

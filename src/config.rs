@@ -14,6 +14,16 @@ pub struct Config {
     pub ai_gateway: Option<AiGatewayConfig>,
     pub mcp: Option<McpConfig>,
     pub cdn: Option<CdnConfig>,
+
+    // ── v0.2 ──
+    #[serde(default)]
+    pub rate_limit: crate::rate_limit::RateLimitConfig,
+    #[serde(default)]
+    pub auth: crate::auth::AuthConfig,
+    #[serde(default)]
+    pub store: crate::store::StoreConfig,
+    #[serde(default)]
+    pub telemetry: crate::telemetry::TelemetryConfig,
 }
 
 fn default_listen() -> String { "0.0.0.0:8787".into() }
@@ -95,6 +105,10 @@ impl Default for Config {
             ai_gateway: None,
             mcp: None,
             cdn: None,
+            rate_limit: crate::rate_limit::RateLimitConfig::default(),
+            auth: crate::auth::AuthConfig::default(),
+            store: crate::store::StoreConfig::default(),
+            telemetry: crate::telemetry::TelemetryConfig::default(),
         }
     }
 }

@@ -18,6 +18,7 @@
 
 pub mod a2a;
 pub mod a2c;
+pub mod auth;
 pub mod cdn;
 pub mod ci;
 pub mod cli;
@@ -37,7 +38,10 @@ pub mod mcp;
 pub mod nullclaw;
 pub mod plugins;
 pub mod proxy;
+pub mod rate_limit;
 pub mod sentinel;
+pub mod store;
+pub mod telemetry;
 pub mod test_utils;
 
 pub use config::Config;
@@ -64,4 +68,8 @@ pub struct AppState {
     pub hyper: Arc<hyper_engine::HyperManager>,
     pub ci_status: Arc<ci::CiStatusStore>,
     pub metrics_handle: metrics_exporter_prometheus::PrometheusHandle,
+    // ── v0.2 ──
+    pub rate_limiter: Option<rate_limit::RateLimiter>,
+    pub auth_state: Option<auth::AuthState>,
+    pub event_store: Option<store::EventStore>,
 }
