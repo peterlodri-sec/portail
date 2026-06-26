@@ -461,7 +461,7 @@ mod tests {
             artifacts: vec![],
             metadata: {
                 let mut m = BoundedMeta::default();
-                m.insert("priority".into(), "high".into());
+                let _ = m.insert("priority".into(), "high".into());
                 m
             },
         };

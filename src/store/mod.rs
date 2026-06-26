@@ -240,7 +240,6 @@ mod tests {
         assert_eq!(cfg.provider, "nats");
     }
 
-    #[cfg(feature = "store-sqlx")]
     #[test]
     fn sqlx_config_parses() {
         let toml = "enabled = true\nprovider = \"sqlx\"\ndb_path = \":memory:\"";

@@ -3,7 +3,6 @@ mod layer_tests {
     use portail::config::Config;
     use portail::*;
     use std::sync::{Arc, RwLock};
-    use loop_state_manager::LoopStateManager;
 
     // ── Test helpers ─────────────────────────────────────────────
 

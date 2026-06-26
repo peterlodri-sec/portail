@@ -9,7 +9,6 @@ mod v0_2_integration {
     use tower::ServiceExt;
 
     use portail::*;
-    use loop_state_manager::LoopStateManager;
 
     // ── Test helpers ─────────────────────────────────────────────
 
