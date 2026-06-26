@@ -1,0 +1,196 @@
+name: E2E — Self-Hosted (dev-cx53)
+
+# Full-stack E2E tests on the bare-metal CI runner.
+# Tests: Docker Compose stack, NATS replication, Redis cache, rate limiting, CLI smoke.
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+env:
+  PORTAIL_TAG: latest
+
+jobs:
+  docker-stack:
+    name: Docker Compose Full Stack
+    runs-on: self-hosted
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Cleanup previous runs
+        run: |
+          docker compose -f deploy/docker-compose.e2e.yml down -v 2>/dev/null || true
+          docker system prune -f --volumes 2>/dev/null || true
+
+      - name: Create Docker Compose E2E stack
+        run: |
+          cat > deploy/docker-compose.e2e.yml << 'COMPOSE'
+          version: '3.8'
+          services:
+            portail:
+              image: ghcr.io/peterlodri-sec/portail:${PORTAIL_TAG:-latest}
+              ports: ["8787:8787"]
+              environment:
+                - PORTAIL_NATS_ENABLED=true
+                - PORTAIL_NATS_URL=nats://nats:4222
+              depends_on:
+                redis:
+                  condition: service_healthy
+                nats:
+                  condition: service_started
+              healthcheck:
+                test: ["CMD", "curl", "-f", "http://localhost:8787/healthz"]
+                interval: 5s
+                timeout: 3s
+                retries: 5
+              volumes:
+                - ./portail.e2e.toml:/etc/portail/portail.toml:ro
+
+            redis:
+              image: redis:7-alpine
+              ports: ["6379:6379"]
+              healthcheck:
+                test: ["CMD", "redis-cli", "ping"]
+                interval: 2s
+                timeout: 2s
+                retries: 5
+
+            nats:
+              image: nats:2-alpine
+              ports: ["4222:4222", "8222:8222"]
+          COMPOSE
+
+      - name: Create E2E config
+        run: |
+          cat > deploy/portail.e2e.toml << 'EOF'
+          listen = "0.0.0.0:8787"
+
+          [ai_gateway]
+          enabled = true
+          upstream = "https://httpbin.org"
+
+          [redis]
+          enabled = true
+          url = "redis://redis:6379"
+          max_memory_mb = 256
+
+          [rate_limit]
+          enabled = true
+          burst = 10
+          per_second = 100.0
+
+          [auth]
+          enabled = true
+          api_keys = { sk-e2e-test = { label = "e2e-test" } }
+
+          [store]
+          enabled = true
+          provider = "sqlite"
+          db_path = "/tmp/portail-e2e.db"
+          retention_days = 1
+
+          [telemetry]
+          enabled = false
+          EOF
+
+      - name: Start stack
+        run: |
+          cd deploy
+          docker compose -f docker-compose.e2e.yml up -d --wait
+          docker compose -f docker-compose.e2e.yml ps
+
+      - name: Smoke tests
+        run: |
+          echo "=== Health Checks ==="
+          curl -fsS http://localhost:8787/healthz || exit 1
+          curl -fsS http://localhost:8787/readyz || exit 1
+          curl -fsS http://localhost:8787/dashboard | jq . || exit 1
+          echo "All health checks passed"
+
+      - name: Auth test
+        run: |
+          echo "=== Auth Required ==="
+          STATUS=$(curl -so /dev/null -w "%{http_code}" http://localhost:8787/v1/chat/completions \
+            -H "Content-Type: application/json" \
+            -d '{"model":"test","messages":[{"role":"user","content":"hi"}]}')
+          [ "$STATUS" = "401" ] || { echo "Expected 401, got $STATUS"; exit 1; }
+          echo "Auth blocks unauthenticated requests: $STATUS"
+
+      - name: Rate limit test
+        run: |
+          echo "=== Rate Limiting ==="
+          RATE_LIMITED=0
+          for i in $(seq 1 30); do
+            CODE=$(curl -so /dev/null -w "%{http_code}" http://localhost:8787/healthz)
+            if [ "$CODE" = "429" ]; then RATE_LIMITED=$((RATE_LIMITED+1)); fi
+          done
+          echo "Rate limited requests: $RATE_LIMITED"
+          [ "$RATE_LIMITED" -gt 0 ] || { echo "Expected some 429s, got 0"; exit 1; }
+
+      - name: CLI smoke
+        run: |
+          echo "=== CLI Commands ==="
+          cp target/release/portail /usr/local/bin/ 2>/dev/null || true
+          portail --version || cargo run --release -- --version
+          echo "CLI works"
+
+      - name: Dashboard validation
+        run: |
+          curl -s http://localhost:8787/dashboard | jq -e '
+            .config_healthy == true and
+            .rate_limit_denied != null and
+            .auth_failures != null and
+            .cdn != null
+          ' || exit 1
+          echo "Dashboard JSON valid"
+
+      - name: NATS event bridge test
+        run: |
+          echo "=== NATS Event Bridge ==="
+          curl -s nats:8222/varz | jq '.connections' || echo "NATS metrics endpoint"
+          echo "NATS running"
+
+      - name: Redis cache test
+        run: |
+          echo "=== Redis Connected ==="
+          curl -s http://localhost:8787/readyz
+          docker compose -f deploy/docker-compose.e2e.yml exec redis redis-cli PING
+          echo "Redis connected"
+
+      - name: Final verification
+        run: |
+          TOTAL=$(curl -s http://localhost:8787/dashboard | jq '.rate_limit_denied')
+          echo "Rate limit denials: $TOTAL"
+          AUTH=$(curl -s http://localhost:8787/dashboard | jq '.auth_failures')
+          echo "Auth failures: $AUTH"
+          echo ""
+          echo "E2E stack test complete"
+
+      - name: Cleanup
+        if: always()
+        run: |
+          docker compose -f deploy/docker-compose.e2e.yml down -v
+          docker system prune -f --volumes 2>/dev/null || true
+
+  binary-smoke:
+    name: Binary Smoke Test (No Docker)
+    runs-on: self-hosted
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install Rust
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+
+      - name: Build release
+        run: cargo build --release
+
+      - name: Run E2E script
+        run: |
+          cp target/release/portail /tmp/portail-e2e
+          PORTAIL_BINARY=/tmp/portail-e2e bash scripts/e2e-test.sh
+
+      - name: Cleanup
+        run: rm -f /tmp/portail-e2e

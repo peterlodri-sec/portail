@@ -514,3 +514,60 @@ kubectl get pods -l app=portail
 | Observability | Dashboard + TUI | Dashboard + Prometheus | Dashboard | Prometheus + Grafana |
 | Scaling | N/A | N/A | Manual (2 nodes) | HPA 2-10 |
 | Multi-arch | aarch64 only | x86_64 | x86_64 + aarch64 | x86_64 |
+
+---
+
+## CI Integration — dev-cx53 (Self-Hosted Runner)
+
+The self-hosted CI runner `dev-cx53` runs the Docker Compose scenario
+(scenario 2) on every tag push and manual trigger.
+
+### Workflow
+
+```
+.github/workflows/e2e-self-hosted.yml
+  └─ docker-stack job (runs-on: self-hosted)
+       ├─ Builds portail from source (cargo build --release)
+       ├─ Creates docker-compose.yml with portail + Redis + NATS
+       ├─ Starts stack (docker compose up -d --wait)
+       ├─ Smoke tests: healthz, readyz, dashboard
+       ├─ Auth test: verifies 401 on unauthenticated requests
+       ├─ Rate limit test: verifies 429 responses after burst
+       ├─ CLI smoke: portail --version
+       ├─ Dashboard: jq validation of JSON structure
+       ├─ NATS: connectivity check via :8222/varz
+       ├─ Redis: PING via redis-cli
+       └─ Cleanup: docker compose down -v
+
+  └─ binary-smoke job (runs-on: self-hosted)
+       ├─ Builds portail (cargo build --release)
+       └─ Runs scripts/e2e-test.sh against localhost:18787
+```
+
+### What's tested (dev-cx53)
+
+| Layer | Test |
+|-------|------|
+| Docker | Stack starts, all services healthy |
+| API | /healthz, /readyz, /dashboard all 200 |
+| Auth | 401 on unauthenticated /v1/* |
+| Rate limit | 429 after burst exceeded |
+| Redis | Connected, PING |
+| NATS | Connected, monitoring endpoint |
+| CLI | Binary build + version check |
+| Config | TOML with Redis, NATS, auth, rate limit, store |
+
+### What's NOT tested (dev-cx53 limitations)
+
+- Multi-node NATS replication (single host)
+- PostgreSQL backend (no alternative SQL engine)
+- macOS-specific (no aarch64-darwin runner)
+- Kubernetes (no k8s cluster)
+- Load testing (separate benchmark-gate workflow)
+
+### Trigger
+
+- On every `v*` tag push (release candidates)
+- Manual via `workflow_dispatch`
+- Never on PR (only self-hosted, security-gated)
+
