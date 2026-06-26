@@ -801,7 +801,15 @@ fn dispatch_loop(action: &cli::LoopAction, cli: &cli::Cli) -> anyhow::Result<()>
             println!("Next task for phase {:?}", phase);
         }
         cli::LoopAction::Prompt => {
-            println!("HITL prompt — use via maki ACP session in Zed");
+            let mut engine = loopeng::LoopEngine::new(loopeng::LoopEngineConfig {
+                name: "portail".into(),
+                ..Default::default()
+            });
+            let prompt = engine.generate_next_prompt("portail");
+            let path = std::path::Path::new("_next-prompt.md");
+            prompt.write_to_file(path)?;
+            println!("Written: {}", path.display());
+            println!("{}", prompt.to_prompt());
         }
         cli::LoopAction::History { .. } => {
             println!("History — wire via loop-state-manager MCP tools");

@@ -3069,6 +3069,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "loopeng"
+version = "3.0.0"
+dependencies = [
+ "chrono",
+ "regex",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.18",
+ "tokio",
+ "tracing",
+ "uuid",
+]
+
+[[package]]
 name = "lru"
 version = "0.12.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4176,6 +4190,7 @@ dependencies = [
  "hmac 0.12.1",
  "jsonwebtoken",
  "loop-state-manager",
+ "loopeng",
  "metrics",
  "metrics-exporter-prometheus",
  "mimalloc",
