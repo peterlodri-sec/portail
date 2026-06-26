@@ -24,9 +24,12 @@
 | Version history | [`CHANGELOG.md`](CHANGELOG.md) |
 | Cheatsheets | [`docs/cheatsheets/`](docs/cheatsheets/) |
 | ADK-Rust reference | [`docs/adk-rust-cheatsheet.md`](docs/adk-rust-cheatsheet.md) |
+| gitoxide (gix) cheatsheet | [`docs/cheatsheets/gix.md`](docs/cheatsheets/gix.md) |
 | Axum server patterns | [`docs/cheatsheets/axum.md`](docs/cheatsheets/axum.md) |
 | Tokio async patterns | [`docs/cheatsheets/tokio.md`](docs/cheatsheets/tokio.md) |
 | Tower middleware | [`docs/cheatsheets/tower.md`](docs/cheatsheets/tower.md) |
+| Command intercept demo | [`docs/demos/git-intercept-demo.md`](docs/demos/git-intercept-demo.md) |
+| Release-audit v2 plan | [`docs/RELEASE_AUDIT_V2_PLAN.md`](docs/RELEASE_AUDIT_V2_PLAN.md) |
 | Dependencies + features | [`Cargo.toml`](Cargo.toml) |
 | Route spec (60+ endpoints) | [`spec.routes.toml`](spec.routes.toml) |
 | Dev commands | [`Taskfile.yml`](Taskfile.yml) |
