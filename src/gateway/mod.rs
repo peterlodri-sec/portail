@@ -106,6 +106,24 @@ pub async fn forward(upstream: &str, req: Request) -> Response {
     forward_with_body(upstream, parts, body_bytes).await
 }
 
+/// Forward a request to a specific path on the upstream with raw body bytes.
+pub async fn forward_with_url(upstream: &str, path: &str, body: &[u8]) -> Result<Response, reqwest::Error> {
+    let url = format!("{}{}", upstream.trim_end_matches('/'), path);
+    let resp = client()
+        .post(&url)
+        .header("content-type", "application/json")
+        .body(body.to_vec())
+        .send()
+        .await?;
+    counter!("a2c_requests").increment(1);
+    let status = resp.status();
+    let resp_headers = resp.headers().clone();
+    let resp_body = resp.bytes().await?;
+    let mut out_headers = strip_hop_by_hop(&resp_headers);
+    out_headers.insert("x-portail-proxy", HeaderValue::from_static("a2c"));
+    Ok((status, out_headers, resp_body).into_response())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

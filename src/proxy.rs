@@ -40,6 +40,12 @@ pub fn build_router(state: Arc<AppState>) -> Router {
         .route("/events/stream", get(crate::events::handle_stream))
         .route("/hooks", get(crate::hooks::handle_list).post(crate::hooks::handle_create))
         .route("/hooks/{id}", delete(crate::hooks::handle_delete))
+        // A2A: Agent-to-Agent protocol
+        .route("/.well-known/agent.json", get(crate::a2a::handle_agent_card))
+        .route("/a2a/tasks", axum::routing::post(crate::a2a::handle_task_create))
+        .route("/a2a/tasks/{id}", get(crate::a2a::handle_task_get))
+        // A2C: Agent-to-Consumer interface
+        .route("/a2c/chat", axum::routing::post(crate::a2c::handle_chat))
         .fallback(route_to_ai_gateway)
         .layer(middleware::from_fn(request_id_middleware))
         .layer(middleware::from_fn(metrics_middleware))
@@ -222,6 +228,7 @@ mod tests {
             event_log: Arc::new(crate::events::EventLog::new(100)),
             cdn_cache: None,
             hooks: Arc::new(crate::hooks::HookStore::new()),
+            a2a_tasks: Arc::new(crate::a2a::TaskStore::new()),
             metrics_handle: global_metrics().clone(),
         })
     }

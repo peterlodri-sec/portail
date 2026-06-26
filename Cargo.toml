@@ -39,6 +39,9 @@ metrics = "0.24"
 metrics-exporter-prometheus = "0.16"
 mimalloc = "0.1"
 rustc-hash = "2"
+ratatui = "0.29"
+crossterm = { version = "0.28", features = ["event-stream"] }
+chrono = { version = "0.4", features = ["serde"] }
 
 [profile.release]
 opt-level = 3

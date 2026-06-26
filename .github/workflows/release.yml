@@ -1,5 +1,11 @@
 name: Release
 
+# Architecture: Triggered on version tags (v*). Builds release binaries
+# for x86_64-linux (self-hosted) and aarch64-darwin (GitHub-hosted).
+# Each target: build → UPX compress → sha256sum → cosign sign → upload artifact.
+# Then: download all artifacts → verify signatures → create GitHub Release → publish to crates.io.
+# The self-hosted runner on dev-cx53 handles Linux builds with mold linker and LTO.
+
 on:
   push:
     tags: ["v*"]
@@ -12,6 +18,7 @@ env:
 jobs:
   release:
     strategy:
+      fail-fast: false
       matrix:
         include:
           - os: self-hosted
@@ -24,7 +31,7 @@ jobs:
             label: macos
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Install Rust toolchain
         uses: actions-rust-lang/setup-rust-toolchain@v1
@@ -35,7 +42,7 @@ jobs:
         run: cargo build --release --target ${{ matrix.target }} --bin portail
 
       - name: Install UPX
-        uses: crazy-max/ghaction-upx@v3
+        uses: crazy-max/ghaction-upx@v4
         with:
           install-only: true
 
@@ -51,7 +58,7 @@ jobs:
           cat portail-${{ matrix.target }}.sha256
 
       - name: Install cosign
-        uses: sigstore/cosign-installer@v3
+        uses: sigstore/cosign-installer@v4
 
       - name: Sign binary with cosign (keyless)
         run: |
@@ -67,7 +74,7 @@ jobs:
             --output-certificate portail-${{ matrix.target }}.sha256.pem \
             portail-${{ matrix.target }}.sha256
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: portail-${{ matrix.target }}
           path: |
@@ -85,13 +92,13 @@ jobs:
       contents: write
       id-token: write
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           pattern: portail-*
           merge-multiple: true
 
       - name: Verify cosign signatures
-        uses: sigstore/cosign-installer@v3
+        uses: sigstore/cosign-installer@v4
       - run: |
           for f in portail-*.sig; do
             stem="${f%.sig}"
@@ -109,7 +116,7 @@ jobs:
             SHA256SUMS
 
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           name: Portail ${{ github.ref_name }}
           body_path: CHANGELOG.md
@@ -126,7 +133,7 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions-rust-lang/setup-rust-toolchain@v1
       - name: Publish to crates.io
         run: cargo publish --token ${{ secrets.CARGO_REGISTRY_TOKEN }}

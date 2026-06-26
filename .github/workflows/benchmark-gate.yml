@@ -1,5 +1,10 @@
 name: Benchmark Gate
 
+# Architecture: Runs on PRs that touch Rust code or Cargo files.
+# Uses cargo-criterion to run benchmarks and compares against main branch.
+# If any benchmark regresses by more than 200%, it comments on the PR.
+# Runs on self-hosted runner (dev-cx53) for consistent performance measurements.
+
 on:
   pull_request:
     branches: [main]
@@ -17,22 +22,20 @@ jobs:
   bench:
     runs-on: self-hosted
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
       - uses: actions-rust-lang/setup-rust-toolchain@v1
 
-      - name: Cache cargo
-        uses: actions/cache@v4
+      - name: Cache cargo registry
+        uses: actions/cache@v6
         with:
           path: |
             ~/.cargo/registry
             ~/.cargo/git
-            target
-          key: ${{ runner.os }}-bench-${{ hashFiles('Cargo.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-bench-
+          key: bench-cargo-registry-${{ hashFiles('Cargo.lock') }}
+          restore-keys: bench-cargo-registry-
 
       - name: Install cargo-criterion
         uses: baptiste0928/cargo-install@v3

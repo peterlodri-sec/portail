@@ -1,7 +1,7 @@
 use clap::Parser;
 use mimalloc::MiMalloc;
 use portail::cdn;
-use portail::config;
+use portail::cli;
 use portail::config::Config;
 use portail::events::EventLog;
 use portail::AppState;
@@ -21,12 +21,29 @@ async fn main() -> anyhow::Result<()> {
         .json()
         .init();
 
+    let cli = cli::Cli::parse();
+
+    // CLI mode: no subcommand → interactive TUI, subcommand → dispatch
+    match &cli.command {
+        None => {
+            let mut dashboard = cli::dashboard::Dashboard::new();
+            dashboard.run_tui()?;
+            return Ok(());
+        }
+        Some(cli::Commands::Serve) => {} // fall through to server
+        Some(cmd) => {
+            dispatch_cli(cmd, &cli).await?;
+            return Ok(());
+        }
+    }
+
+    // ── Server mode ──────────────────────────────────────────────
+
     let handle = metrics_exporter_prometheus::PrometheusBuilder::new()
         .install_recorder()
         .expect("failed to install prometheus recorder");
 
-    let cli = config::Cli::parse();
-    let config = Config::load(&cli)?;
+    let config = Config::load(Some(&cli.config))?;
     let listen = config.listen.clone();
     tracing::info!(%listen, "portail starting");
 
@@ -61,10 +78,10 @@ async fn main() -> anyhow::Result<()> {
         event_log: Arc::clone(&event_log),
         cdn_cache: cdn_cache.clone(),
         hooks: Arc::new(portail::hooks::HookStore::new()),
+        a2a_tasks: Arc::new(portail::a2a::TaskStore::new()),
         metrics_handle: handle,
     });
 
-    // ── Sentinel: background watcher ──────────────────────────────────
     tokio::spawn({
         let log = Arc::clone(&event_log);
         let cache = cdn_cache.clone();
@@ -74,14 +91,14 @@ async fn main() -> anyhow::Result<()> {
     let app = portail::proxy::build_router(Arc::clone(&state));
 
     let sighup_state = Arc::clone(&state);
-    let sighup_cli = cli.clone();
+    let sighup_config_path = cli.config.clone();
     tokio::spawn(async move {
         use tokio::signal::unix::{signal, SignalKind};
         let mut sig = signal(SignalKind::hangup())
             .expect("failed to install SIGHUP handler");
         loop {
             sig.recv().await;
-            match Config::load(&sighup_cli) {
+            match Config::load(Some(&sighup_config_path)) {
                 Ok(new) => {
                     *sighup_state.config.write().unwrap() = new;
                     tracing::info!("config reloaded on SIGHUP");
@@ -99,6 +116,53 @@ async fn main() -> anyhow::Result<()> {
         .await?;
 
     Ok(())
+}
+
+async fn dispatch_cli(cmd: &cli::Commands, cli: &cli::Cli) -> anyhow::Result<()> {
+    match cmd {
+        cli::Commands::Status => {
+            println!("portail v{}", env!("CARGO_PKG_VERSION"));
+            println!("config: {}", cli.config.display());
+            Ok(())
+        }
+        cli::Commands::Events { count, stream: _ } => {
+            let n = count.unwrap_or(20);
+            println!("showing {} recent events (streaming not yet implemented in CLI)", n);
+            Ok(())
+        }
+        cli::Commands::Hooks { action } => {
+            match action {
+                cli::HookAction::List => println!("hooks: list (TODO: connect to server)"),
+                cli::HookAction::Add { hook } => println!("hooks: add {}", hook),
+                cli::HookAction::Delete { id } => println!("hooks: delete {}", id),
+                cli::HookAction::Show { id } => println!("hooks: show {}", id),
+            }
+            Ok(())
+        }
+        cli::Commands::Config { action } => {
+            match action {
+                Some(cli::ConfigAction::Show) => println!("config: show"),
+                Some(cli::ConfigAction::Validate) => println!("config: validate"),
+                Some(cli::ConfigAction::Reload) => println!("config: reload"),
+                None => println!("config: show (default)"),
+            }
+            Ok(())
+        }
+        cli::Commands::Cache { action } => {
+            match action {
+                Some(cli::CacheAction::Stats) => println!("cache: stats"),
+                Some(cli::CacheAction::Purge { prefix }) => println!("cache: purge {}", prefix),
+                Some(cli::CacheAction::Ratio) => println!("cache: ratio"),
+                None => println!("cache: stats (default)"),
+            }
+            Ok(())
+        }
+        cli::Commands::Health => {
+            println!("health: OK");
+            Ok(())
+        }
+        cli::Commands::Serve => unreachable!(),
+    }
 }
 
 async fn shutdown_signal() {

@@ -1,43 +1,4 @@
-use clap::Parser;
 use serde::{Deserialize, Serialize};
-use std::path::PathBuf;
-
-#[derive(Debug, Clone, Parser)]
-#[command(name = "portail", about = "Unified proxy/gateway: AI + MCP + CDN")]
-pub struct Cli {
-    #[arg(long, env = "PORTAIL_CONFIG")]
-    pub config: Option<PathBuf>,
-
-    #[arg(long, env = "PORTAIL_LISTEN")]
-    pub listen: Option<String>,
-
-    #[arg(long, env = "PORTAIL_MCP_SOCKET")]
-    pub mcp_socket: Option<String>,
-
-    #[arg(long, env = "PORTAIL_CACHE_DIR")]
-    pub cache_dir: Option<String>,
-
-    #[arg(long, env = "PORTAIL_CACHE_SIZE")]
-    pub cache_size: Option<String>,
-
-    #[arg(long, env = "PORTAIL_ENABLE_AI_GATEWAY")]
-    pub enable_ai_gateway: Option<bool>,
-
-    #[arg(long, env = "PORTAIL_ENABLE_MCP")]
-    pub enable_mcp: Option<bool>,
-
-    #[arg(long, env = "PORTAIL_ENABLE_CDN")]
-    pub enable_cdn: Option<bool>,
-
-    #[arg(long, env = "PORTAIL_AI_UPSTREAM")]
-    pub ai_upstream: Option<String>,
-
-    #[arg(long, env = "PORTAIL_CDN_ORIGIN")]
-    pub cdn_origin: Option<String>,
-
-    #[arg(long, env = "PORTAIL_NATS_URL")]
-    pub nats_url: Option<String>,
-}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Config {
@@ -109,8 +70,8 @@ fn default_false() -> bool { false }
 fn default_origin() -> String { "http://127.0.0.1:9000".into() }
 
 impl Config {
-    pub fn load(cli: &Cli) -> anyhow::Result<Self> {
-        let mut cfg: Config = if let Some(ref path) = cli.config {
+    pub fn load(path: Option<&std::path::Path>) -> anyhow::Result<Self> {
+        let cfg: Config = if let Some(path) = path {
             if path.exists() {
                 let raw = std::fs::read_to_string(path)?;
                 toml::from_str(&raw)?
@@ -120,41 +81,6 @@ impl Config {
         } else {
             Config::default()
         };
-
-        if let Some(v) = &cli.listen { cfg.listen = v.clone(); }
-        if let Some(v) = &cli.mcp_socket { cfg.mcp_socket = v.clone(); }
-        if let Some(v) = &cli.cache_dir { cfg.cache_dir = v.clone(); }
-        if let Some(v) = &cli.cache_size { cfg.cache_size = v.clone(); }
-        if let Some(v) = cli.enable_ai_gateway {
-            if v {
-                cfg.ai_gateway.get_or_insert_with(AiGatewayConfig::default);
-            } else if let Some(ref mut g) = cfg.ai_gateway {
-                g.enabled = false;
-            }
-        }
-        if let Some(v) = cli.enable_mcp {
-            if v {
-                cfg.mcp.get_or_insert_with(McpConfig::default);
-            } else if let Some(ref mut m) = cfg.mcp {
-                m.enabled = false;
-            }
-        }
-        if let Some(v) = cli.enable_cdn {
-            if v {
-                cfg.cdn.get_or_insert_with(CdnConfig::default);
-            } else if let Some(ref mut c) = cfg.cdn {
-                c.enabled = false;
-            }
-        }
-        if let Some(v) = &cli.ai_upstream {
-            cfg.ai_gateway.get_or_insert_with(AiGatewayConfig::default).upstream = v.clone();
-        }
-        if let Some(v) = &cli.cdn_origin {
-            cfg.cdn.get_or_insert_with(CdnConfig::default).origin = v.clone();
-        }
-        if let Some(v) = &cli.nats_url {
-            cfg.cdn.get_or_insert_with(CdnConfig::default).nats_url = Some(v.clone());
-        }
         Ok(cfg)
     }
 }

@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Portail — Unified Proxy/Gateway</title>
+    <style>
+        :root {
+            --bg: #0a0a0a;
+            --fg: #e0e0e0;
+            --accent: #00d4ff;
+            --accent2: #7c3aed;
+            --dim: #666;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'SF Mono', 'Fira Code', monospace;
+            background: var(--bg);
+            color: var(--fg);
+            line-height: 1.6;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 2rem;
+        }
+        header {
+            padding: 4rem 0;
+            text-align: center;
+            border-bottom: 1px solid #222;
+        }
+        h1 {
+            font-size: 3rem;
+            font-weight: 300;
+            letter-spacing: 0.5em;
+            margin-bottom: 1rem;
+            background: linear-gradient(135deg, var(--accent), var(--accent2));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .tagline {
+            color: var(--dim);
+            font-size: 1.1rem;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        .badges {
+            margin-top: 2rem;
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+        }
+        .badge {
+            background: #1a1a1a;
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            font-size: 0.85rem;
+            color: var(--dim);
+            text-decoration: none;
+            border: 1px solid #333;
+        }
+        .badge:hover {
+            border-color: var(--accent);
+            color: var(--accent);
+        }
+        section {
+            padding: 4rem 0;
+            border-bottom: 1px solid #111;
+        }
+        h2 {
+            font-size: 1.5rem;
+            font-weight: 400;
+            margin-bottom: 2rem;
+            color: var(--accent);
+        }
+        .features {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+        }
+        .feature {
+            background: #111;
+            padding: 2rem;
+            border-radius: 8px;
+            border: 1px solid #222;
+        }
+        .feature:hover {
+            border-color: var(--accent);
+        }
+        .feature h3 {
+            font-size: 1.1rem;
+            margin-bottom: 1rem;
+            color: var(--fg);
+        }
+        .feature p {
+            color: var(--dim);
+            font-size: 0.9rem;
+        }
+        code {
+            background: #1a1a1a;
+            padding: 0.2rem 0.5rem;
+            border-radius: 3px;
+            font-size: 0.85rem;
+        }
+        pre {
+            background: #111;
+            padding: 1.5rem;
+            border-radius: 8px;
+            overflow-x: auto;
+            border: 1px solid #222;
+            margin: 1rem 0;
+        }
+        pre code {
+            background: none;
+            padding: 0;
+        }
+        .ascii-art {
+            font-size: 0.7rem;
+            line-height: 1.2;
+            color: var(--accent);
+            white-space: pre;
+        }
+        footer {
+            padding: 2rem 0;
+            text-align: center;
+            color: var(--dim);
+            font-size: 0.85rem;
+        }
+        a {
+            color: var(--accent);
+            text-decoration: none;
+        }
+        a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="container">
+            <h1>PORTAIL</h1>
+            <p class="tagline">Unified proxy/gateway: AI Gateway + MCP Gateway + CDN cache + Agent-to-Agent protocol</p>
+            <div class="badges">
+                <a href="https://github.com/peterlodri-sec/portail/actions" class="badge">CI</a>
+                <a href="https://crates.io/crates/portail" class="badge">crates.io</a>
+                <a href="https://github.com/peterlodri-sec/portail" class="badge">GitHub</a>
+            </div>
+        </div>
+    </header>
+
+    <section>
+        <div class="container">
+            <h2>Features</h2>
+            <div class="features">
+                <div class="feature">
+                    <h3>AI Gateway</h3>
+                    <p>Stream proxy to LiteLLM/OpenAI/Anthropic with hook injection. OpenAI-compatible API on <code>/v1/chat/completions</code>.</p>
+                </div>
+                <div class="feature">
+                    <h3>MCP Gateway</h3>
+                    <p>Unix socket proxy to Python sidecar for tool execution. Zero-copy framed protocol.</p>
+                </div>
+                <div class="feature">
+                    <h3>CDN Cache</h3>
+                    <p>Two-tier cache: moka memory + blake3 filesystem. NATS invalidation. SIMD-optimized hashing.</p>
+                </div>
+                <div class="feature">
+                    <h3>A2A Protocol</h3>
+                    <p>Google Agent-to-Agent: agent cards, task lifecycle, message streaming. Self-hosted, self-managed.</p>
+                </div>
+                <div class="feature">
+                    <h3>A2C Interface</h3>
+                    <p>Agent-to-Consumer: human-facing chat API with tool use. First-class agent support.</p>
+                </div>
+                <div class="feature">
+                    <h3>TUI Dashboard</h3>
+                    <p>Live network visualization with sparklines. Keyboard navigation. Zero-alloc rendering.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section>
+        <div class="container">
+            <h2>Quick Start</h2>
+            <pre><code># Install
+cargo install portail
+
+# Run with defaults (AI gateway on :8787)
+portail serve
+
+# Launch interactive TUI dashboard
+portail</code></pre>
+        </div>
+    </section>
+
+    <section>
+        <div class="container">
+            <h2>Architecture</h2>
+            <pre class="ascii-art">┌─────────────────────────────────────────────────────────────┐
+│                      portail binary                         │
+│                                                             │
+│  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐   │
+│  │  proxy    │  │  cdn     │  │  events  │  │  hooks   │   │
+│  │  (axum)   │  │  (moka)  │  │  (ring)  │  │  (inject)│   │
+│  └─────┬─────┘  └────┬─────┘  └────┬─────┘  └────┬─────┘   │
+│        │              │              │              │         │
+│  ┌─────┴──────────────┴──────────────┴──────────────┴─────┐  │
+│  │                   AppState (shared)                    │  │
+│  └────────────────────────────────────────────────────────┘  │
+│                                                             │
+│  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐   │
+│  │ sentinel  │  │  mcp     │  │  a2a     │  │  a2c     │   │
+│  │ (health)  │  │ (sidecar)│  │ (agent)  │  │ (chat)   │   │
+│  └──────────┘  └──────────┘  └──────────┘  └──────────┘   │
+└─────────────────────────────────────────────────────────────┘</pre>
+        </div>
+    </section>
+
+    <section>
+        <div class="container">
+            <h2>Performance</h2>
+            <div class="features">
+                <div class="feature">
+                    <h3>mimalloc</h3>
+                    <p>Global allocator for 2-3x alloc throughput in proxy workloads.</p>
+                </div>
+                <div class="feature">
+                    <h3>rustc-hash</h3>
+                    <p>FxHashMap for hot paths. 2-3x faster than std HashMap for small keys.</p>
+                </div>
+                <div class="feature">
+                    <h3>blake3</h3>
+                    <p>Native SIMD (SSE2/AVX2/NEON) for cache key hashing.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <footer>
+        <div class="container">
+            <p>Portail is open source under the MIT license</p>
+            <p><a href="https://github.com/peterlodri-sec/portail">GitHub</a> · <a href="https://crates.io/crates/portail">crates.io</a></p>
+        </div>
+    </footer>
+</body>
+</html>

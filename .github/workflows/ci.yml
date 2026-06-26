@@ -1,5 +1,10 @@
 name: CI
 
+# Architecture: This workflow runs on every push to main and every PR.
+# Self-hosted runner on dev-cx53 (x86_64-linux) handles Linux jobs.
+# macOS jobs use GitHub-hosted runners (no self-hosted macOS available).
+# Tests, clippy, and format checks run in parallel across both platforms.
+
 on:
   push:
     branches: [main]
@@ -14,6 +19,7 @@ env:
 jobs:
   check:
     strategy:
+      fail-fast: false
       matrix:
         include:
           - os: self-hosted
@@ -22,13 +28,13 @@ jobs:
             label: macos
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
           components: clippy, rustfmt
 
       - name: Cache cargo registry
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: |
             ~/.cargo/registry
@@ -51,7 +57,7 @@ jobs:
   nix:
     runs-on: self-hosted
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Flake check
         run: nix flake check --impure
 
@@ -61,8 +67,8 @@ jobs:
       run:
         working-directory: plugins/portail-mcp
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
           cache: pip
