@@ -51,6 +51,7 @@ pub mod nullclaw;
 pub mod plugins;
 pub mod proxy;
 pub mod rate_limit;
+pub mod release_audit;
 pub mod sentinel;
 pub mod sessions;
 pub mod shutdown;

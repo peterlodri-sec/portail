@@ -193,6 +193,21 @@ pub enum Commands {
 
     /// System compatibility check
     Doctor,
+
+    /// Release audit: verify binaries, generate SBOM + report
+    ReleaseAudit {
+        /// Directory containing release artifacts
+        #[arg(short, long, default_value = "dist")]
+        dir: PathBuf,
+
+        /// Release version string
+        #[arg(short, long)]
+        version: String,
+
+        /// Output directory for reports
+        #[arg(short, long)]
+        out: Option<PathBuf>,
+    },
 }
 
 #[derive(Debug, Clone, clap::ValueEnum)]

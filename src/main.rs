@@ -607,6 +607,11 @@ async fn dispatch_cli(cmd: &cli::Commands, cli: &cli::Cli) -> anyhow::Result<()>
             cli::doctor::run_doctor()?;
             Ok(())
         }
+        cli::Commands::ReleaseAudit { dir, version, out } => {
+            let out_dir = out.clone().unwrap_or_else(|| dir.join("audit"));
+            portail::release_audit::run_pipeline(dir, version, &out_dir)?;
+            Ok(())
+        }
         cli::Commands::Serve => unreachable!(),
     }
 }

@@ -131,9 +131,48 @@ jobs:
             portail-aarch64-apple-darwin.sig
             portail-aarch64-apple-darwin.pem
 
+  # ── Release Audit ─────────────────────────────────────────────
+  release-audit:
+    needs: [release-linux, release-macos]
+    runs-on: self-hosted
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: portail-*
+          merge-multiple: true
+          path: dist/
+
+      - name: Install Rust toolchain
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+
+      - name: Build release-audit binary (fast, no LTO)
+        run: cargo build --release --bin portail
+        env:
+          CARGO_PROFILE_RELEASE_LTO: false
+          CARGO_PROFILE_RELEASE_CODEGEN_UNITS: 256
+          CARGO_PROFILE_RELEASE_STRIP: none
+          CARGO_PROFILE_RELEASE_DEBUG: false
+
+      - name: Run release audit
+        id: audit
+        run: |
+          VERSION="${{ needs.verify-tag.outputs.version }}"
+          ./target/release/portail release-audit \
+            --dir dist/ \
+            --version "$VERSION" \
+            --out audit/
+
+      - name: Upload audit artifacts
+        uses: actions/upload-artifact@v7
+        with:
+          name: release-audit
+          path: audit/
+
   # ── GitHub Release ────────────────────────────────────────────
   github-release:
-    needs: [release-linux, release-macos]
+    needs: [release-linux, release-macos, release-audit]
     runs-on: self-hosted
     permissions:
       contents: write
@@ -143,6 +182,11 @@ jobs:
         with:
           pattern: portail-*
           merge-multiple: true
+
+      - uses: actions/download-artifact@v8
+        with:
+          name: release-audit
+          path: audit/
 
       - name: Verify cosign signatures
         uses: sigstore/cosign-installer@v4
@@ -172,6 +216,7 @@ jobs:
             SHA256SUMS
             SHA256SUMS.sig
             SHA256SUMS.pem
+            audit/*
           generate_release_notes: true
 
   # ── Publish to crates.io ──────────────────────────────────────
