@@ -1,46 +1,47 @@
 # Changelog
 
-## v0.2.0 (unreleased)
+All notable changes to this project will be documented in this file.
 
-### Features
-- **A2A Protocol** — Google Agent-to-Agent: agent cards, task lifecycle, message streaming
-- **A2C Interface** — Agent-to-Consumer: human-facing chat API with tool use
-- **TUI Dashboard** — Live network visualization with sparklines, keyboard navigation
-- **CLI Subcommands** — `portail status/events/hooks/config/cache/health`
-- **First-class agent support** — Inbox/outbox patterns for agent communication
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-### Infrastructure
-- Self-hosted runners on dev-cx53 (x86_64-linux)
-- Updated all GitHub Actions to latest versions
-- Added DESIGN.md with architecture documentation
+## [Unreleased]
 
-### Improvements
-- Simplified Config loading (path-based instead of CLI args)
-- Fixed layer violations between modules
-- Added Default implementations for all public types
-- Clippy clean with `-D warnings`
+### Added
+- WebGL demo page (docs/demo.html)
+- .editorconfig for consistent coding styles
+- .gitattributes for line ending normalization
+- CODE_OF_CONDUCT.md
+- Enhanced .gitignore
 
-## v0.1.0 (2026-06-26)
+## [0.1.0] - 2026-06-26
 
-### Features
-- AI Gateway — streaming proxy to LiteLLM upstream
-- MCP Gateway — Unix-socket framed protocol to Python sidecar
-- CDN Cache — two-tier moka in-memory + blake3-filesystem
-- Prometheus metrics — http_requests_total, per-subsystem counters
-- Structured access logs — JSON output via TraceLayer
-- Request ID middleware — x-request-id injection
-- SIGHUP config reload — zero-downtime upstream swaps
-- Agent event log — ring buffer + broadcast channel, SSE streaming
-- Sentinel watcher — 30s health checks and CDN scrub monitoring
-- Hook injection — per-message prompt prepend/append and per-event metadata injection
-
-### Infrastructure
-- Binary: `release.yml` — 3 targets, UPX compressed, cosign signed
-- Container: `docker.yml` — multi-arch, ghcr.io, cosign signed, SBOM
-- Package: `crates.io` — cargo publish
-- Nix: flake-parts + rust-overlay, nixosModules, hardened systemd
-
-### Hardware
-- mimalloc global allocator
-- rustc-hash FxHashMap for hot paths
-- blake3 with native SIMD
+### Added
+- AI Gateway (OpenAI/Anthropic/LiteLLM proxy)
+- MCP Gateway (Unix socket sidecar)
+- CDN Cache (Moka + blake3 filesystem)
+- A2A Protocol (Agent-to-Agent)
+- A2C Interface (Agent-to-Consumer)
+- Hook Injection (per-message/per-event)
+- Event Log (ring buffer + SSE)
+- Sentinel (health monitoring)
+- NullClaw (network-native agent)
+- Godfather (service monitor)
+- Discovery (self-service network discovery)
+- CI Status Webhook (live badge)
+- TUI Dashboard (network visualization)
+- DNS (DoH + network isolation)
+- TinyURL (auto URL shortening)
+- Tracer (request/response E2E)
+- Redis Cache (app-level)
+- eBPF Observability
+- io_uring Async I/O
+- DPDK Kernel Bypass
+- Hyper Low-Level HTTP
+- Self-hosted runners on dev-cx53
+- GitHub Actions with fork detection
+- Cosign-signed releases
+- Docker multi-arch builds
+- NixOS module with hardening
+- HSTS + security headers
+- 107 tests passing

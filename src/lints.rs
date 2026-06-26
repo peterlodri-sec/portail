@@ -1,0 +1,38 @@
+#![forbid(unsafe_code)]
+#![deny(
+    clippy::all,
+    clippy::pedantic,
+    clippy::nursery,
+    clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::panic,
+    clippy::todo,
+    clippy::unimplemented,
+    clippy::unreachable,
+    clippy::manual_assert,
+    clippy::map_err_ignore,
+    clippy::missing_const_for_fn,
+    clippy::needless_pass_by_value,
+    clippy::option_if_let_else,
+    clippy::redundant_pub_crate,
+    clippy::semicolon_if_nothing_returned,
+    clippy::trait_duplication_in_bounds,
+    clippy::unnested_or_patterns,
+    clippy::unreadable_literal,
+    clippy::unseparated_literal_suffix,
+    clippy::unused_async,
+    clippy::used_underscore_binding,
+    dead_code,
+    unused_imports,
+    unused_variables,
+    unused_mut,
+    unreachable_code,
+    unreachable_patterns
+)]
+#![warn(
+    clippy::doc_markdown,
+    clippy::items_after_statements,
+    clippy::module_name_repetitions,
+    clippy::must_use_candidate,
+    clippy::similar_names
+)]

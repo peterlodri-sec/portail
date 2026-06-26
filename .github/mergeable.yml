@@ -1,0 +1,8 @@
+version = 2
+
+[pr]
+	autobase = always
+	autosquash = true
+
+[checks]
+	style = require

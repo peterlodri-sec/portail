@@ -1,0 +1,67 @@
+# Auto detect text files and perform LF normalization
+* text=auto
+
+# Rust
+*.rs text diff=rust
+*.toml text
+
+# Nix
+*.nix text
+
+# Python
+*.py text diff=python
+
+# Shell
+*.sh text eol=lf
+*.bash text eol=lf
+
+# Amber
+*.ab text eol=lf
+
+# Web
+*.html text diff=html
+*.css text diff=css
+*.js text diff=javascript
+*.json text
+
+# Markdown
+*.md text diff=markdown
+
+# Config
+*.yml text
+*.yaml text
+*.toml text
+*.ini text
+*.cfg text
+
+# Binary
+*.png binary
+*.jpg binary
+*.gif binary
+*.ico binary
+*.svg text
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.eot binary
+
+# Archives
+*.gz binary
+*.tar binary
+*.zip binary
+*.bz2 binary
+*.xz binary
+
+# Compiled
+*.o binary
+*.so binary
+*.dylib binary
+*.dll binary
+*.exe binary
+*.pdb binary
+
+# Lock files
+Cargo.lock -diff
+package-lock.json -diff
+yarn.lock -diff
+pnpm-lock.yaml -diff

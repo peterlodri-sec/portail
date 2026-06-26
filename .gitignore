@@ -1,9 +1,68 @@
+# Rust
 /target/
-/.direnv/
-.env
+**/*.rs.bk
+*.pdb
+
+# Nix
+result
+result-*
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+dist/
+build/
+.eggs/
+*.egg
+
+# IDE
+.idea/
+.vscode/
 *.swp
 *.swo
-__pycache__/
-*.pyc
-.venv/
-dist/
+*~
+.DS_Store
+Thumbs.db
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Docker
+docker-compose.override.yml
+
+# Test/Coverage
+coverage/
+lcov.info
+*.profraw
+*.profdata
+
+# Benchmarks
+criterion/
+target/criterion/
+
+# Node (if any)
+node_modules/
+package-lock.json
+
+# Logs
+*.log
+logs/
+
+# Secrets
+*.pem
+*.key
+*.cert
+!tests/fixtures/
+
+# OS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db

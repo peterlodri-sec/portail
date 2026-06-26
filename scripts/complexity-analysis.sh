@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Loop CI Agent: Analyze time complexity (Big O notation) across the repo
-# Scans all Rust source files for O(n) annotations and generates a report
+# Scans all source files for O(n) annotations and generates a report
 
 set -euo pipefail
 
@@ -17,13 +17,15 @@ echo "" >> "$REPORT_FILE"
 # Function to extract complexity annotations
 extract_complexity() {
     local file="$1"
-    grep -n "O(" "$file" 2>/dev/null | while IFS=: read -r line_num content; do
+    local result=""
+    while IFS=: read -r line_num content; do
         # Extract O(...) pattern
         complexity=$(echo "$content" | grep -oE "O\([^)]+\)" | head -1)
         if [ -n "$complexity" ]; then
-            echo "| $file | $line_num | $complexity |"
+            result="${result}| $file | $line_num | $complexity |\n"
         fi
-    done
+    done < <(grep -n "O(" "$file" 2>/dev/null || true)
+    echo -e "$result"
 }
 
 # Function to analyze function signatures
@@ -44,7 +46,7 @@ echo "| File | Line | Complexity |" >> "$REPORT_FILE"
 echo "|------|------|------------|" >> "$REPORT_FILE"
 
 total_annotations=0
-for file in $(find "$SRC_DIR" -name "*.rs" -type f); do
+for file in $(find "$SRC_DIR" \( -name "*.rs" -o -name "*.md" \) -type f); do
     annotations=$(extract_complexity "$file")
     if [ -n "$annotations" ]; then
         echo "$annotations" >> "$REPORT_FILE"
@@ -79,7 +81,7 @@ echo "" >> "$REPORT_FILE"
 # Summary
 echo "## Summary" >> "$REPORT_FILE"
 echo "" >> "$REPORT_FILE"
-echo "- **Total files scanned:** $(find "$SRC_DIR" -name "*.rs" -type f | wc -l)" >> "$REPORT_FILE"
+echo "- **Total files scanned:** $(find "$SRC_DIR" \( -name "*.rs" -o -name "*.md" \) -type f | wc -l)" >> "$REPORT_FILE"
 echo "- **Total functions:** $total_functions" >> "$REPORT_FILE"
 echo "- **Complexity annotations:** $total_annotations" >> "$REPORT_FILE"
 echo "" >> "$REPORT_FILE"
