@@ -4,8 +4,9 @@
 
 ```
 LOOP: plan → implement → test → review → ship → repeat
-STATE:  v2.0-rc tagged — 174 tests, dead code removed, benchmarks, doctor, TTL eviction
-NEXT:   v2.0.0 release (cargo audit, TLS, deploy guide, docs)
+STATE:  v2.0.0 released — 175 tests, 7 CI agents, production-stable
+NEXT:   v2.1 bulletproof CLI (daemon mode, completions, CLI tests)
+THEN:   v2.2 Nix shell + nushell + OSS release + blog post
 OPEN:   #24 integration matrix, #25 chore stuff, #1 super devnote (HUMAN ONLY)
 ```
 
