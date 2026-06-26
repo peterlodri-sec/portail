@@ -4,6 +4,27 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Portail — Unified Proxy/Gateway</title>
+    
+    <!-- Note: HSTS is set via HTTP header in proxy.rs, not via meta tag -->
+    <!-- The meta tag below is a fallback for static hosting -->
+    <meta http-equiv="Strict-Transport-Security" content="max-age=31536000; includeSubDomains; preload">
+    
+    <!-- Security headers -->
+    <meta http-equiv="X-Content-Type-Options" content="nosniff">
+    <meta http-equiv="X-Frame-Options" content="DENY">
+    <meta http-equiv="X-XSS-Protection" content="1; mode=block">
+    <meta http-equiv="Referrer-Policy" content="strict-origin-when-cross-origin">
+    <meta http-equiv="Permissions-Policy" content="camera=(), microphone=(), geolocation=()">
+    
+    <!-- Open Graph -->
+    <meta property="og:title" content="Portail — Unified Proxy/Gateway">
+    <meta property="og:description" content="AI Gateway + MCP Gateway + CDN cache + Agent-to-Agent protocol">
+    <meta property="og:url" content="https://portail.vaked.dev">
+    <meta property="og:type" content="website">
+    
+    <!-- Canonical URL -->
+    <link rel="canonical" href="https://portail.vaked.dev">
+    
     <style>
         :root {
             --bg: #0a0a0a;
@@ -11,6 +32,9 @@
             --accent: #00d4ff;
             --accent2: #7c3aed;
             --dim: #666;
+            --success: #44cc11;
+            --error: #e05d44;
+            --warning: #dfb317;
         }
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
@@ -49,6 +73,7 @@
             display: flex;
             gap: 1rem;
             justify-content: center;
+            flex-wrap: wrap;
         }
         .badge {
             background: #1a1a1a;
@@ -58,10 +83,46 @@
             color: var(--dim);
             text-decoration: none;
             border: 1px solid #333;
+            transition: all 0.2s ease;
         }
         .badge:hover {
             border-color: var(--accent);
             color: var(--accent);
+        }
+        .ci-status {
+            margin-top: 2rem;
+            padding: 1rem;
+            background: #111;
+            border-radius: 8px;
+            border: 1px solid #222;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.75rem;
+            font-size: 0.95rem;
+        }
+        .ci-indicator {
+            font-size: 1.2rem;
+            animation: pulse 2s infinite;
+        }
+        .ci-passing { color: var(--success); }
+        .ci-failing { color: var(--error); }
+        .ci-progress { color: var(--warning); }
+        .ci-unknown { color: var(--dim); }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        .ci-details {
+            font-size: 0.8rem;
+            color: var(--dim);
+        }
+        .ci-link {
+            color: var(--accent);
+            text-decoration: none;
+            font-size: 0.85rem;
+        }
+        .ci-link:hover {
+            text-decoration: underline;
         }
         section {
             padding: 4rem 0;
@@ -83,6 +144,7 @@
             padding: 2rem;
             border-radius: 8px;
             border: 1px solid #222;
+            transition: border-color 0.2s ease;
         }
         .feature:hover {
             border-color: var(--accent);
@@ -133,6 +195,37 @@
         a:hover {
             text-decoration: underline;
         }
+        .endpoint-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1rem 0;
+        }
+        .endpoint-table th,
+        .endpoint-table td {
+            padding: 0.75rem 1rem;
+            text-align: left;
+            border-bottom: 1px solid #222;
+        }
+        .endpoint-table th {
+            color: var(--accent);
+            font-weight: 500;
+        }
+        .endpoint-table code {
+            font-size: 0.85rem;
+        }
+        .method {
+            display: inline-block;
+            padding: 0.2rem 0.5rem;
+            border-radius: 3px;
+            font-size: 0.75rem;
+            font-weight: bold;
+            min-width: 50px;
+            text-align: center;
+        }
+        .method-get { background: #1a472a; color: #44cc11; }
+        .method-post { background: #4a2a1a; color: #e05d44; }
+        .method-delete { background: #4a1a1a; color: #e05d44; }
+        .method-put { background: #4a4a1a; color: #dfb317; }
     </style>
 </head>
 <body>
@@ -144,68 +237,80 @@
                 <a href="https://github.com/peterlodri-sec/portail/actions" class="badge">CI</a>
                 <a href="https://crates.io/crates/portail" class="badge">crates.io</a>
                 <a href="https://github.com/peterlodri-sec/portail" class="badge">GitHub</a>
+                <a href="https://docs.rs/portail" class="badge">docs.rs</a>
             </div>
             <div id="ci-status" class="ci-status">
-                <span class="ci-indicator ci-unknown">●</span>
-                <span class="ci-text">Loading CI status...</span>
+                <span id="ci-indicator" class="ci-indicator ci-unknown">●</span>
+                <div>
+                    <span id="ci-text" class="ci-text">Loading CI status...</span>
+                    <div id="ci-details" class="ci-details"></div>
+                </div>
+                <a href="https://github.com/peterlodri-sec/portail/actions" class="ci-link" target="_blank">View runs →</a>
             </div>
         </div>
     </header>
 
     <script>
         // Live CI status from portail webhook
+        const API_BASE = 'https://portail.vaked.dev';
+        
         async function updateCIStatus() {
             try {
-                const resp = await fetch('/ci/status');
+                const resp = await fetch(`${API_BASE}/ci/status`, {
+                    headers: { 'Accept': 'application/json' }
+                });
                 if (resp.ok) {
                     const data = await resp.json();
-                    const el = document.getElementById('ci-status');
-                    const indicator = el.querySelector('.ci-indicator');
-                    const text = el.querySelector('.ci-text');
+                    const indicator = document.getElementById('ci-indicator');
+                    const text = document.getElementById('ci-text');
+                    const details = document.getElementById('ci-details');
                     
                     const statusMap = {
-                        'passing': { class: 'ci-passing', text: 'CI: Passing' },
-                        'failing': { class: 'ci-failing', text: 'CI: Failing' },
-                        'in_progress': { class: 'ci-progress', text: 'CI: In Progress' },
-                        'unknown': { class: 'ci-unknown', text: 'CI: Unknown' }
+                        'passing': { class: 'ci-passing', text: 'CI: Passing', icon: '✓' },
+                        'failing': { class: 'ci-failing', text: 'CI: Failing', icon: '✗' },
+                        'in_progress': { class: 'ci-progress', text: 'CI: In Progress', icon: '⟳' },
+                        'unknown': { class: 'ci-unknown', text: 'CI: Unknown', icon: '?' }
                     };
                     
                     const status = statusMap[data.overall] || statusMap.unknown;
                     indicator.className = 'ci-indicator ' + status.class;
-                    text.textContent = status.text + ' (' + data.success_rate.toFixed(0) + '% success)';
+                    indicator.textContent = status.icon;
+                    text.textContent = status.text;
+                    
+                    if (data.total_runs > 0) {
+                        details.textContent = `${data.success_rate.toFixed(0)}% success rate • ${data.total_runs} runs`;
+                    }
+                    
+                    // Update page title with status
+                    document.title = `[${status.icon}] Portail — Unified Proxy/Gateway`;
                 }
             } catch (e) {
-                // Portail not running, use static badge
+                // Portail not running, show offline status
+                document.getElementById('ci-indicator').textContent = '○';
+                document.getElementById('ci-text').textContent = 'CI: Offline';
+                document.getElementById('ci-details').textContent = 'Portail not running';
             }
         }
         
-        // Update every 30 seconds
+        // Update on load and every 30 seconds
         updateCIStatus();
         setInterval(updateCIStatus, 30000);
         
         // SSE for live updates
         if (window.EventSource) {
-            const source = new EventSource('/ci/live');
+            const source = new EventSource(`${API_BASE}/ci/live`);
             source.addEventListener('ci', function(e) {
                 updateCIStatus();
             });
+            source.onerror = function() {
+                // Reconnect after 5 seconds
+                setTimeout(() => {
+                    source.close();
+                    new EventSource(`${API_BASE}/ci/live`);
+                }, 5000);
+            };
         }
     </script>
-    
-    <style>
-        .ci-status {
-            margin-top: 1.5rem;
-            font-size: 0.95rem;
-        }
-        .ci-indicator {
-            font-size: 1.2rem;
-            margin-right: 0.5rem;
-        }
-        .ci-passing { color: #44cc11; }
-        .ci-failing { color: #e05d44; }
-        .ci-progress { color: #dfb317; }
-        .ci-unknown { color: #9f9f9f; }
-    </style>
 
     <section>
         <div class="container">
@@ -241,6 +346,83 @@
 
     <section>
         <div class="container">
+            <h2>API Endpoints</h2>
+            <table class="endpoint-table">
+                <thead>
+                    <tr>
+                        <th>Endpoint</th>
+                        <th>Method</th>
+                        <th>Description</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><code>/healthz</code></td>
+                        <td><span class="method method-get">GET</span></td>
+                        <td>Health check</td>
+                    </tr>
+                    <tr>
+                        <td><code>/v1/chat/completions</code></td>
+                        <td><span class="method method-post">POST</span></td>
+                        <td>OpenAI-compatible chat</td>
+                    </tr>
+                    <tr>
+                        <td><code>/a2c/chat</code></td>
+                        <td><span class="method method-post">POST</span></td>
+                        <td>Agent-to-Consumer chat</td>
+                    </tr>
+                    <tr>
+                        <td><code>/.well-known/agent.json</code></td>
+                        <td><span class="method method-get">GET</span></td>
+                        <td>A2A agent card</td>
+                    </tr>
+                    <tr>
+                        <td><code>/a2a/tasks</code></td>
+                        <td><span class="method method-post">POST</span></td>
+                        <td>Create A2A task</td>
+                    </tr>
+                    <tr>
+                        <td><code>/events</code></td>
+                        <td><span class="method method-get">GET</span></td>
+                        <td>Recent events</td>
+                    </tr>
+                    <tr>
+                        <td><code>/events/stream</code></td>
+                        <td><span class="method method-get">GET</span></td>
+                        <td>SSE event stream</td>
+                    </tr>
+                    <tr>
+                        <td><code>/hooks</code></td>
+                        <td><span class="method method-get">GET</span></td>
+                        <td>List hooks</td>
+                    </tr>
+                    <tr>
+                        <td><code>/ci/status</code></td>
+                        <td><span class="method method-get">GET</span></td>
+                        <td>CI status JSON</td>
+                    </tr>
+                    <tr>
+                        <td><code>/ci/badge</code></td>
+                        <td><span class="method method-get">GET</span></td>
+                        <td>SVG badge</td>
+                    </tr>
+                    <tr>
+                        <td><code>/ci/webhook</code></td>
+                        <td><span class="method method-post">POST</span></td>
+                        <td>GitHub webhook</td>
+                    </tr>
+                    <tr>
+                        <td><code>/metrics</code></td>
+                        <td><span class="method method-get">GET</span></td>
+                        <td>Prometheus metrics</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <section>
+        <div class="container">
             <h2>Quick Start</h2>
             <pre><code># Install
 cargo install portail
@@ -249,50 +431,13 @@ cargo install portail
 portail serve
 
 # Launch interactive TUI dashboard
-portail</code></pre>
-        </div>
-    </section>
+portail
 
-    <section>
-        <div class="container">
-            <h2>Architecture</h2>
-            <pre class="ascii-art">┌─────────────────────────────────────────────────────────────┐
-│                      portail binary                         │
-│                                                             │
-│  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐   │
-│  │  proxy    │  │  cdn     │  │  events  │  │  hooks   │   │
-│  │  (axum)   │  │  (moka)  │  │  (ring)  │  │  (inject)│   │
-│  └─────┬─────┘  └────┬─────┘  └────┬─────┘  └────┬─────┘   │
-│        │              │              │              │         │
-│  ┌─────┴──────────────┴──────────────┴──────────────┴─────┐  │
-│  │                   AppState (shared)                    │  │
-│  └────────────────────────────────────────────────────────┘  │
-│                                                             │
-│  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐   │
-│  │ sentinel  │  │  mcp     │  │  a2a     │  │  a2c     │   │
-│  │ (health)  │  │ (sidecar)│  │ (agent)  │  │ (chat)   │   │
-│  └──────────┘  └──────────┘  └──────────┘  └──────────┘   │
-└─────────────────────────────────────────────────────────────┘</pre>
-        </div>
-    </section>
+# Check CI status
+curl https://portail.vaked.dev/ci/status
 
-    <section>
-        <div class="container">
-            <h2>Performance</h2>
-            <div class="features">
-                <div class="feature">
-                    <h3>mimalloc</h3>
-                    <p>Global allocator for 2-3x alloc throughput in proxy workloads.</p>
-                </div>
-                <div class="feature">
-                    <h3>rustc-hash</h3>
-                    <p>FxHashMap for hot paths. 2-3x faster than std HashMap for small keys.</p>
-                </div>
-                <div class="feature">
-                    <h3>blake3</h3>
-                    <p>Native SIMD (SSE2/AVX2/NEON) for cache key hashing.</p>
-                </div>
-            </div>
+# Get CI badge
+curl https://portail.vaked.dev/ci/badge > badge.svg</code></pre>
         </div>
     </section>
 
@@ -320,10 +465,41 @@ portail</code></pre>
         </div>
     </section>
 
+    <section>
+        <div class="container">
+            <h2>Architecture</h2>
+            <pre class="ascii-art">┌─────────────────────────────────────────────────────────────┐
+│                      portail binary                         │
+│                                                             │
+│  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐   │
+│  │  proxy    │  │  cdn     │  │  events  │  │  hooks   │   │
+│  │  (axum)   │  │  (moka)  │  │  (ring)  │  │  (inject)│   │
+│  └─────┬─────┘  └────┬─────┘  └────┬─────┘  └────┬─────┘   │
+│        │              │              │              │         │
+│  ┌─────┴──────────────┴──────────────┴──────────────┴─────┐  │
+│  │                   AppState (shared)                    │  │
+│  └────────────────────────────────────────────────────────┘  │
+│                                                             │
+│  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐   │
+│  │ sentinel  │  │  mcp     │  │  a2a     │  │  a2c     │   │
+│  │ (health)  │  │ (sidecar)│  │ (agent)  │  │ (chat)   │   │
+│  └──────────┘  └──────────┘  └──────────┘  └──────────┘   │
+│                                                             │
+│  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐   │
+│  │  ci      │  │  nullclaw│  │ godfather│  │ discovery│   │
+│  │ (webhook)│  │ (heartbeat│  │ (monitor)│  │ (network)│   │
+│  └──────────┘  └──────────┘  └──────────┘  └──────────┘   │
+└─────────────────────────────────────────────────────────────┘</pre>
+        </div>
+    </section>
+
     <footer>
         <div class="container">
             <p>Portail is open source under the MIT license</p>
-            <p><a href="https://github.com/peterlodri-sec/portail">GitHub</a> · <a href="https://crates.io/crates/portail">crates.io</a></p>
+            <p><a href="https://github.com/peterlodri-sec/portail">GitHub</a> · <a href="https://crates.io/crates/portail">crates.io</a> · <a href="https://docs.rs/portail">docs.rs</a></p>
+            <p style="margin-top: 1rem; font-size: 0.75rem; color: #444;">
+                Served by portail on portail.vaked.dev • HSTS enabled • HTTPS only
+            </p>
         </div>
     </footer>
 </body>

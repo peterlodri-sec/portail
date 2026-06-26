@@ -7,6 +7,8 @@ set -euo pipefail
 REPORT_FILE="target/complexity-report.md"
 SRC_DIR="src"
 
+mkdir -p target
+
 echo "# Time Complexity Analysis" > "$REPORT_FILE"
 echo "" >> "$REPORT_FILE"
 echo "Generated: $(date -u '+%Y-%m-%d %H:%M:%S UTC')" >> "$REPORT_FILE"

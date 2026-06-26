@@ -50,6 +50,7 @@ pub fn build_router(state: Arc<AppState>) -> Router {
         // A2C: Agent-to-Consumer interface
         .route("/a2c/chat", axum::routing::post(crate::a2c::handle_chat))
         .fallback(route_to_ai_gateway)
+        .layer(middleware::from_fn(security_headers_middleware))
         .layer(middleware::from_fn(request_id_middleware))
         .layer(middleware::from_fn(metrics_middleware))
         .layer(RequestBodyLimitLayer::new(MAX_BODY_BYTES))
@@ -100,6 +101,41 @@ async fn metrics_middleware(req: Request, next: Next) -> Response {
     let status_s = status.to_string();
     counter!("http_requests_total", "method" => method, "path" => path.clone(), "status" => status_s).increment(1);
     histogram!("http_request_duration_seconds", "path" => path).record(latency);
+    resp
+}
+
+async fn security_headers_middleware(req: Request, next: Next) -> Response {
+    let mut resp = next.run(req).await;
+    let headers = resp.headers_mut();
+    
+    // HSTS: Force HTTPS for 1 year
+    headers.insert(
+        "strict-transport-security",
+        axum::http::HeaderValue::from_static("max-age=31536000; includeSubDomains; preload"),
+    );
+    
+    // Security headers
+    headers.insert(
+        "x-content-type-options",
+        axum::http::HeaderValue::from_static("nosniff"),
+    );
+    headers.insert(
+        "x-frame-options",
+        axum::http::HeaderValue::from_static("DENY"),
+    );
+    headers.insert(
+        "x-xss-protection",
+        axum::http::HeaderValue::from_static("1; mode=block"),
+    );
+    headers.insert(
+        "referrer-policy",
+        axum::http::HeaderValue::from_static("strict-origin-when-cross-origin"),
+    );
+    headers.insert(
+        "permissions-policy",
+        axum::http::HeaderValue::from_static("camera=(), microphone=(), geolocation=()"),
+    );
+    
     resp
 }
 
