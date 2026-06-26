@@ -4,7 +4,7 @@ members = [".", "creative_tui"]
 
 [package]
 name = "portail"
-version = "2.0.0-rc"
+version = "2.0.0"
 edition = "2024"
 rust-version = "1.85"
 description = "Unified proxy/gateway: AI Gateway + MCP Gateway + CDN cache"
