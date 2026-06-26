@@ -9,6 +9,7 @@ mod v0_2_integration {
     use tower::ServiceExt;
 
     use portail::*;
+    use loop_state_manager::LoopStateManager;
 
     // ── Test helpers ─────────────────────────────────────────────
 
@@ -50,6 +51,9 @@ mod v0_2_integration {
             )),
             plugin_registry: portail::plugin_hooks::init_plugin_registry(
                 &std::path::Path::new("vaked"),
+            ),
+            loop_manager: std::sync::Arc::new(
+                loop_state_manager::LoopStateManager::new("3.0.0"),
             ),
         }
     }

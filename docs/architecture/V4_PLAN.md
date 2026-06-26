@@ -197,7 +197,52 @@ impl CapabilityGraph {
 
 ---
 
-## 5. Modern CLI Layer — No Legacy Tools
+## 5. DYAD Replaced by ACP + maki + Zed
+
+The DYAD outer-loop layer (originally planned as a custom bidirectional
+HITL surface) is replaced by the **ACP ecosystem**:
+
+```
+  Zed (editor) ←──→ ACP ←──→ maki (agent) ←──→ Portail (backend)
+  (human surface)   (protocol)  (orchestrator)   (MCP, targets, infra)
+```
+
+### Components
+
+| Component | Role | Why |
+|-----------|------|-----|
+| **Zed** | Human interface (editor, TUI) | Native ACP support, great UX |
+| **ACP** | Protocol between editor & agent | Standardized JSON-RPC, tool use, permissions |
+| **maki** | Orchestrator agent | ACP mode built-in, efficient, Lua plugins |
+| **Portail** | Backend infra | MCP servers, target routing, PIT, loop state |
+
+### Integration
+
+```json
+// Zed settings.json
+{
+  "agent_servers": {
+    "Portail": {
+      "type": "custom",
+      "command": "maki",
+      "args": ["acp"],
+      "env": {}
+    }
+  }
+}
+```
+
+Portail exposes its services as MCP servers that maki discovers and uses.
+The loop-state-manager tracks state; maki queries it via MCP tools.
+
+### What this means for our code
+
+- **No custom DYAD TUI needed** — maki's 60 FPS ratatui is the surface
+- **No custom protocol** — ACP is the standardized wire format
+- **loop-state-manager stays** — Portail backend state, exposed as MCP tools
+- **Portail acp command** — wraps `maki acp` with Portail's config context
+
+## 6. Modern CLI Layer — No Legacy Tools
 
 The `portail` CLI and all dev shell environments MUST use only modern,
 actively maintained tools. Legacy tools (grep, awk, sed, cat, ls, find)

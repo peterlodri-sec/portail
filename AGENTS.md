@@ -19,6 +19,9 @@
 | Contribute | [`docs/contributors/CONTRIBUTING.md`](docs/contributors/CONTRIBUTING.md) |
 | Release process | [`docs/contributors/RELEASE.md`](docs/contributors/RELEASE.md) |
 | CI agent design | [`docs/contributors/CHORE_BOT_DESIGN.md`](docs/contributors/CHORE_BOT_DESIGN.md) |
+| V4 plan (ACP + maki + Zed) | [`docs/architecture/V4_PLAN.md`](docs/architecture/V4_PLAN.md) |
+| V3 roadmap | [`docs/architecture/V3_ROADMAP.md`](docs/architecture/V3_ROADMAP.md) |
+| Abstraction review | [`docs/architecture/ABSTRACTION_REVIEW.md`](docs/architecture/ABSTRACTION_REVIEW.md) |
 | Report security issue | [`SECURITY.md`](SECURITY.md) |
 | Code of conduct | [`docs/contributors/CODE_OF_CONDUCT.md`](docs/contributors/CODE_OF_CONDUCT.md) |
 | Version history | [`CHANGELOG.md`](CHANGELOG.md) |

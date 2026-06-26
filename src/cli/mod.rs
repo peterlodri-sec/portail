@@ -219,6 +219,12 @@ pub enum Commands {
         action: VakedAction,
     },
 
+    /// Loop state — query, update, HITL decisions
+    Loop {
+        #[command(subcommand)]
+        action: LoopAction,
+    },
+
     /// Process Interception Tracker — watch /proc, log all processes
     Pit {
         /// One-shot scan instead of continuous watch
@@ -353,6 +359,26 @@ pub enum McpAction {
     Config { name: String },
     /// List built-in MCP server templates
     Builtins,
+}
+
+#[derive(Subcommand, Debug, Clone)]
+pub enum LoopAction {
+    /// Show current loop state
+    Status,
+    /// List backlog tasks
+    Backlog,
+    /// Add a task to the backlog
+    Add { phase: String, description: String },
+    /// Approve a HITL-pending task
+    Approve { task_id: String, reason: Option<String> },
+    /// Reject a HITL-pending task
+    Reject { task_id: String, reason: String },
+    /// Get next task for a phase
+    Next { phase: Option<String> },
+    /// Get the oneshot prompt for HITL
+    Prompt,
+    /// Show task history
+    History { phase: Option<String> },
 }
 
 #[derive(Subcommand, Debug, Clone)]

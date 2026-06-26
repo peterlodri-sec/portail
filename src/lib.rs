@@ -58,6 +58,7 @@ pub mod test_utils;
 pub mod types;
 
 pub use config::Config;
+use loop_state_manager::LoopStateManager;
 use portail_vaked::PluginRegistry;
 
 use std::path::PathBuf;
@@ -87,4 +88,5 @@ pub struct AppState {
     pub file_cache: file_cache::FileCache,
     pub supervisor: Arc<supervisor::Supervisor>,
     pub plugin_registry: Arc<std::sync::Mutex<PluginRegistry>>,
+    pub loop_manager: Arc<LoopStateManager>,
 }

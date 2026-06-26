@@ -171,6 +171,9 @@ async fn main() -> anyhow::Result<()> {
         plugin_registry: portail::plugin_hooks::init_plugin_registry(
             &std::path::Path::new("vaked"),
         ),
+        loop_manager: std::sync::Arc::new(
+            loop_state_manager::LoopStateManager::new(env!("CARGO_PKG_VERSION")),
+        ),
     });
 
     // ── v2.0: session TTL eviction (1h) ──
@@ -768,8 +771,43 @@ async fn dispatch_cli(cmd: &cli::Commands, cli: &cli::Cli) -> anyhow::Result<()>
             cli::dev::run_dev(action)?;
             Ok(())
         }
+        cli::Commands::Loop { action } => dispatch_loop(action, &cli),
         cli::Commands::Serve => unreachable!(),
     }
+}
+
+fn dispatch_loop(action: &cli::LoopAction, cli: &cli::Cli) -> anyhow::Result<()> {
+    // For CLI-only commands, load config to get state file path
+    // The loop state is managed at runtime by the server, but CLI
+    // commands can interact with it via the MCP tools or directly.
+    match action {
+        cli::LoopAction::Status => {
+            println!("Loop state — use 'portail serve' for live state, or query via MCP");
+            println!("See: docs/architecture/V4_PLAN.md (ACP + maki + Zed integration)");
+        }
+        cli::LoopAction::Backlog => {
+            println!("Backlog — wire via loop-state-manager MCP tools in follow-up");
+        }
+        cli::LoopAction::Add { phase, description } => {
+            println!("Added task [{phase}]: {description} (stub — wire via MCP)");
+        }
+        cli::LoopAction::Approve { task_id, reason } => {
+            println!("Approved {task_id} (reason: {:?}) — stub", reason);
+        }
+        cli::LoopAction::Reject { task_id, reason } => {
+            println!("Rejected {task_id}: {reason} — stub");
+        }
+        cli::LoopAction::Next { phase } => {
+            println!("Next task for phase {:?}", phase);
+        }
+        cli::LoopAction::Prompt => {
+            println!("HITL prompt — use via maki ACP session in Zed");
+        }
+        cli::LoopAction::History { .. } => {
+            println!("History — wire via loop-state-manager MCP tools");
+        }
+    }
+    Ok(())
 }
 
 async fn shutdown_signal() {

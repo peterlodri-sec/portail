@@ -3055,6 +3055,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "loop-state-manager"
+version = "3.0.0"
+dependencies = [
+ "async-trait",
+ "chrono",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.18",
+ "tokio",
+ "tracing",
+ "uuid",
+]
+
+[[package]]
 name = "lru"
 version = "0.12.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4161,6 +4175,7 @@ dependencies = [
  "hex",
  "hmac 0.12.1",
  "jsonwebtoken",
+ "loop-state-manager",
  "metrics",
  "metrics-exporter-prometheus",
  "mimalloc",

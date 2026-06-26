@@ -560,6 +560,9 @@ mod tests {
             plugin_registry: crate::plugin_hooks::init_plugin_registry(
                 &std::path::Path::new("vaked"),
             ),
+            loop_manager: std::sync::Arc::new(
+                loop_state_manager::LoopStateManager::new("3.0.0"),
+            ),
         })
     }
 
