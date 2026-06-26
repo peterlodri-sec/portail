@@ -121,11 +121,6 @@ pub async fn handle_chat(
 
 // ── Module-level router ──────────────────────────────────────────
 
-pub fn router() -> axum::Router<Arc<crate::AppState>> {
-    axum::Router::new()
-        .route("/a2c/chat", axum::routing::post(handle_chat))
-}
-
 // ── Tests ────────────────────────────────────────────────────────
 
 #[cfg(test)]

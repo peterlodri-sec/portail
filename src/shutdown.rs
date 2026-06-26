@@ -30,15 +30,6 @@ pub fn install_panic_hook() {
     }));
 }
 
-/// Graceful shutdown: drain connections, close stores, flush logs.
-/// Called on SIGTERM/SIGINT.
-pub async fn graceful_shutdown() {
-    tracing::info!("portail shutting down gracefully");
-    // Give in-flight requests 30 seconds to complete
-    tokio::time::sleep(Duration::from_secs(30)).await;
-    tracing::info!("portail shut down complete");
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;

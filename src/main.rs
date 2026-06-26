@@ -156,6 +156,9 @@ async fn main() -> anyhow::Result<()> {
         supervisor: Arc::new(portail::supervisor::Supervisor::new(Arc::clone(&event_log))),
     });
 
+    // ── v2.0: session TTL eviction (1h) ──
+    state.session_store.clone().spawn_eviction(3600);
+
     tokio::spawn({
         let log = Arc::clone(&event_log);
         let cache = cdn_cache.clone();
@@ -518,6 +521,10 @@ async fn dispatch_cli(cmd: &cli::Commands, cli: &cli::Cli) -> anyhow::Result<()>
         }
         cli::Commands::Init => {
             cli::init::run_init()?;
+            Ok(())
+        }
+        cli::Commands::Doctor => {
+            cli::doctor::run_doctor()?;
             Ok(())
         }
         cli::Commands::Serve => unreachable!(),

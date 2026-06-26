@@ -4,10 +4,10 @@
 //! Each session accumulates: request count, total tokens, cache-hit tokens,
 //! response times, portail overhead, and hook injection counts.
 //!
-//! # Endpoints
+//! # v2.0 — TTL Eviction
 //!
-//! - `GET /sessions` — list recent sessions
-//! - `GET /sessions/{id}` — detailed session breakdown
+//! Sessions inactive for longer than `ttl_secs` (default 3600 = 1h) are
+//! periodically purged to prevent unbounded memory growth.
 
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
@@ -78,6 +78,35 @@ impl SessionStore {
                 recent_traces: std::sync::RwLock::new(Vec::new()),
                 max_traces_per_session: max_traces,
             }),
+        }
+    }
+
+    /// v2.0: Spawn a TTL eviction background task. Call once after creation
+    /// in a tokio runtime context. Not called from tests.
+    pub fn spawn_eviction(self, ttl_secs: u64) {
+        tokio::spawn(async move {
+            let mut interval = tokio::time::interval(Duration::from_secs(600));
+            loop {
+                interval.tick().await;
+                self.evict_expired(ttl_secs);
+            }
+        });
+    }
+
+    fn evict_expired(&self, ttl_secs: u64) {
+        let now = chrono::Utc::now().timestamp();
+        let mut sessions = self.inner.sessions.write().unwrap_or_else(|e| e.into_inner());
+        let before = sessions.len();
+        sessions.retain(|_, s| {
+            if let Ok(ts) = chrono::DateTime::parse_from_rfc3339(&s.last_request_at) {
+                (now - ts.timestamp()) < ttl_secs as i64
+            } else {
+                true // keep if timestamp unreadable
+            }
+        });
+        let after = sessions.len();
+        if before > after {
+            tracing::info!(evicted = before - after, remaining = after, "session TTL eviction");
         }
     }
 

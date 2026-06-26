@@ -1,6 +1,7 @@
 pub mod amberify;
 pub mod complexity;
 pub mod dashboard;
+pub mod doctor;
 pub mod guide;
 pub mod init;
 pub mod install;
@@ -189,6 +190,9 @@ pub enum Commands {
 
     /// Interactive configuration generator (wizard)
     Init,
+
+    /// System compatibility check
+    Doctor,
 }
 
 #[derive(Debug, Clone, clap::ValueEnum)]

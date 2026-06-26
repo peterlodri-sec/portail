@@ -369,16 +369,6 @@ async fn handle_ws_command(
     }
 }
 
-// ── Module-level router ──────────────────────────────────────────
-
-pub fn router() -> axum::Router<Arc<crate::AppState>> {
-    axum::Router::new()
-        .route("/.well-known/agent.json", axum::routing::get(handle_agent_card))
-        .route("/a2a/tasks", axum::routing::post(handle_task_create))
-        .route("/a2a/tasks/{id}", axum::routing::get(handle_task_get))
-        .route("/a2a/ws", axum::routing::get(handle_ws))
-}
-
 // ── Tests ────────────────────────────────────────────────────────
 
 #[cfg(test)]

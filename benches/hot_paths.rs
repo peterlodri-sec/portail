@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
 
-criterion_group!(benches, bench_mcp_encode, bench_cache_ops, bench_header_strip);
+criterion_group!(benches, bench_mcp_encode, bench_cache_ops, bench_header_strip, bench_config_parse, bench_rate_limit, bench_bounded_meta);
 criterion_main!(benches);
 
 fn bench_mcp_encode(c: &mut Criterion) {
@@ -74,6 +74,69 @@ fn bench_header_strip(c: &mut Criterion) {
     c.bench_function("gateway_strip_hop_by_hop", |b| {
         b.iter(|| {
             black_box(portail::gateway::strip_hop_by_hop(black_box(&headers)))
+        })
+    });
+}
+
+// ── v2.0 benchmarks ──────────────────────────────────────────────
+
+fn bench_config_parse(c: &mut Criterion) {
+    let toml_str = r#"
+listen = "0.0.0.0:8787"
+[rate_limit]
+enabled = true
+burst = 30
+per_second = 10.0
+[auth]
+enabled = false
+[store]
+enabled = true
+provider = "sqlite"
+db_path = "/var/lib/portail/events.db"
+retention_days = 30
+[telemetry]
+enabled = false
+"#;
+    c.bench_function("config_parse", |b| {
+        b.iter(|| {
+            let _: portail::config::Config = toml::from_str(black_box(toml_str)).unwrap();
+        })
+    });
+}
+
+fn bench_rate_limit(c: &mut Criterion) {
+    let limiter = portail::rate_limit::RateLimiter::new(portail::rate_limit::RateLimitConfig {
+        enabled: true,
+        burst: 30,
+        per_second: 1000.0,
+        ..Default::default()
+    });
+    c.bench_function("rate_limit_check", |b| {
+        b.iter(|| {
+            let _ = limiter.check(black_box("api-key-123"), black_box("/v1/chat/completions"));
+        })
+    });
+}
+
+fn bench_bounded_meta(c: &mut Criterion) {
+    c.bench_function("bounded_meta_insert_16", |b| {
+        b.iter(|| {
+            let mut m = portail::types::BoundedMeta::new();
+            for i in 0..16 {
+                let _ = m.insert(format!("key{}", i), "value".into());
+            }
+            black_box(m)
+        })
+    });
+
+    c.bench_function("bounded_meta_json_roundtrip", |b| {
+        let mut m = portail::types::BoundedMeta::new();
+        for i in 0..8 {
+            let _ = m.insert(format!("key{}", i), "value".into());
+        }
+        let json = serde_json::to_string(&m).unwrap();
+        b.iter(|| {
+            let _: portail::types::BoundedMeta = serde_json::from_str(black_box(&json)).unwrap();
         })
     });
 }

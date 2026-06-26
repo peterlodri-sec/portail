@@ -116,12 +116,6 @@ async fn handle_stats(
     Json(cache.stats().await)
 }
 
-fn _router() -> axum::Router<FileCache> {
-    axum::Router::new()
-        .route("/file-cache/{key}", axum::routing::put(handle_put).get(handle_get).delete(handle_delete))
-        .route("/file-cache/stats", axum::routing::get(handle_stats))
-}
-
 pub fn router_with_state() -> axum::Router<Arc<crate::AppState>> {
     axum::Router::new()
         .route("/file-cache/{key}", axum::routing::put(handle_put_app).get(handle_get_app).delete(handle_delete_app))
