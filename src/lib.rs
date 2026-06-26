@@ -23,6 +23,7 @@ pub mod cdn;
 pub mod ci;
 pub mod cli;
 pub mod config;
+pub mod config_watcher;
 pub mod constants;
 pub mod discovery;
 pub mod dns;
@@ -50,6 +51,7 @@ pub mod store;
 pub mod supervisor;
 pub mod telemetry;
 pub mod test_utils;
+pub mod types;
 
 pub use config::Config;
 
@@ -58,6 +60,7 @@ use std::sync::RwLock;
 
 pub struct AppState {
     pub config: RwLock<Config>,
+    pub config_watcher: Arc<config_watcher::ConfigWatcher>,
     pub event_log: Arc<events::EventLog>,
     pub cdn_cache: Option<Arc<cdn::CacheManager>>,
     pub hooks: Arc<hooks::HookStore>,

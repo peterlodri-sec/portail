@@ -11,6 +11,7 @@
 
 use std::collections::HashMap;
 use std::num::NonZeroU32;
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -101,6 +102,8 @@ struct RateLimiterInner {
     key_limiters: HashMap<String, Limiter>,
     /// Per-endpoint-prefix limiters
     endpoint_limiters: HashMap<String, Limiter>,
+    /// Count of denied requests (v1.2)
+    denied_count: AtomicU64,
 }
 
 impl RateLimiter {
@@ -131,6 +134,7 @@ impl RateLimiter {
                 default_limiter,
                 key_limiters,
                 endpoint_limiters,
+                denied_count: AtomicU64::new(0),
             }),
         }
     }
@@ -161,12 +165,18 @@ impl RateLimiter {
         match limiter.check() {
             Ok(_) => Ok(()),
             Err(negative) => {
+                inner.denied_count.fetch_add(1, Ordering::Relaxed);
                 let wait = negative.wait_time_from(governor::clock::Clock::now(
                     &governor::clock::DefaultClock::default(),
                 ));
                 Err(wait)
             }
         }
+    }
+
+    /// Returns the total number of denied requests (v1.2).
+    pub fn denied_count(&self) -> u64 {
+        self.inner.denied_count.load(Ordering::Relaxed)
     }
 }
 

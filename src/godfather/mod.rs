@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::Instant;
-use rustc_hash::FxHashMap;
+use crate::types::BoundedMeta;
 
 // ── Helpers ──────────────────────────────────────────────────────
 
@@ -256,7 +256,7 @@ pub async fn run_godfather(config: GodfatherConfig, state: Arc<crate::AppState>)
     state.event_log.publish(crate::events::AgentEvent {
         agent_id: "godfather".into(), event_type: "started".into(),
         severity: "info".into(), timestamp: 0,
-        metadata: FxHashMap::from_iter([
+        metadata: BoundedMeta::from_iter([
             ("version".into(), env!("CARGO_PKG_VERSION").into()),
             ("pid".into(), std::process::id().to_string()),
             ("interval".into(), config.heartbeat_interval_secs.to_string()),
@@ -288,7 +288,7 @@ pub async fn run_godfather(config: GodfatherConfig, state: Arc<crate::AppState>)
                 alerts.push(format!("memory {:.1}% > {}%", resources.memory_usage_pct, thresholds.memory_usage_pct));
             }
 
-            let mut meta = FxHashMap::from_iter([
+            let mut meta = BoundedMeta::from_iter([
                 ("memory_pct".into(), format!("{:.1}", resources.memory_usage_pct)),
                 ("cpu_pct".into(), format!("{:.1}", resources.cpu_usage_pct)),
                 ("disk_pct".into(), format!("{:.1}", resources.disk_usage_pct)),
@@ -332,7 +332,7 @@ pub async fn run_godfather(config: GodfatherConfig, state: Arc<crate::AppState>)
             state.event_log.publish(crate::events::AgentEvent {
                 agent_id: "godfather".into(), event_type: "heartbeat".into(),
                 severity: "info".into(), timestamp: 0,
-                metadata: FxHashMap::from_iter([
+                metadata: BoundedMeta::from_iter([
                     ("tick".into(), tick.to_string()),
                     ("uptime".into(), godfather.started_at.elapsed().as_secs().to_string()),
                     ("services".into(), services.len().to_string()),
@@ -345,7 +345,7 @@ pub async fn run_godfather(config: GodfatherConfig, state: Arc<crate::AppState>)
             state.event_log.publish(crate::events::AgentEvent {
                 agent_id: "godfather".into(), event_type: "network".into(),
                 severity: "info".into(), timestamp: 0,
-                metadata: FxHashMap::from_iter([
+                metadata: BoundedMeta::from_iter([
                     ("total_requests".into(), network.total_requests.to_string()),
                     ("total_errors".into(), network.total_errors.to_string()),
                 ]),

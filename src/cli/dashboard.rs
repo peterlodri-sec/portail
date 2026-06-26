@@ -116,6 +116,9 @@ pub struct HealthStatus {
     pub mcp: bool,
     pub events: bool,
     pub uptime_secs: u64,
+    pub config_healthy: bool,
+    pub config_error: Option<String>,
+    pub alerts: Vec<String>,
 }
 
 // ── Dashboard: singleton, owns all state ─────────────────────────
@@ -142,6 +145,11 @@ pub struct Dashboard {
     hooks: Vec<HookEntry>,
     cache: CacheStats,
     health: HealthStatus,
+
+    // ── v1.1: config health ──
+    pub config_healthy: bool,
+    pub config_error: Option<String>,
+    pub alerts: Vec<String>,
 
     // Timing
     last_tick: Instant,
@@ -171,7 +179,10 @@ impl Dashboard {
             events: Vec::new(),
             hooks: Vec::new(),
             cache: CacheStats { hits: 0, misses: 0, entries: 0, size_bytes: 0 },
-            health: HealthStatus { proxy: true, cdn: false, mcp: false, events: true, uptime_secs: 0 },
+            health: HealthStatus { proxy: true, cdn: false, mcp: false, events: true, uptime_secs: 0, config_healthy: true, config_error: None, alerts: Vec::new() },
+            config_healthy: true,
+            config_error: None,
+            alerts: Vec::new(),
             last_tick: Instant::now(),
             last_refresh: Instant::now(),
             uptime_start: Instant::now(),
@@ -256,6 +267,7 @@ impl Dashboard {
                             KeyCode::Char('4') => self.tab = Tab::Cache,
                             KeyCode::Char('5') => self.tab = Tab::Health,
                             KeyCode::Char('r') => self.last_refresh = Instant::now(),
+                            KeyCode::Char('c') => { self.alerts.clear(); self.config_error = None; },
                             _ => {}
                         }
                     }
@@ -291,7 +303,7 @@ impl Dashboard {
                 Constraint::Length(3),   // tabs
                 Constraint::Length(12),  // network sparklines (always visible)
                 Constraint::Min(0),      // tab content
-                Constraint::Length(3),   // controls
+                Constraint::Length(4),   // controls + status
             ])
             .split(f.area());
 
@@ -496,6 +508,29 @@ impl Dashboard {
 
     fn draw_controls(&self, f: &mut Frame, area: Rect) {
         let elapsed = self.last_refresh.elapsed().as_secs_f64();
+
+        // Config health dot
+        let health_span = if self.config_healthy {
+            Span::styled(" ● healthy ", Style::default().fg(Color::Green).add_modifier(Modifier::BOLD))
+        } else {
+            Span::styled(" ● broken ", Style::default().fg(Color::Red).add_modifier(Modifier::BOLD))
+        };
+
+        // Alerts
+        let mut spans = vec![health_span];
+        if let Some(ref err) = self.config_error {
+            spans.push(Span::styled(format!(" | config: {}", err), Style::default().fg(Color::Red)));
+        }
+        for alert in &self.alerts {
+            spans.push(Span::styled(format!(" | {}", alert), Style::default().fg(Color::Yellow)));
+        }
+
+        let status_line = Line::from(spans);
+        f.render_widget(
+            Paragraph::new(status_line),
+            Rect { y: area.y, x: area.x, width: area.width, height: 1 },
+        );
+
         let line = Line::from(vec![
             Span::styled(" q", Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)),
             Span::raw(" quit  "),
@@ -505,13 +540,15 @@ impl Dashboard {
             Span::raw(" jump  "),
             Span::styled("r", Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)),
             Span::raw(" refresh  "),
-            Span::raw(format!("  {:.1}s ago", elapsed)),
+            Span::styled("c", Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)),
+            Span::raw(" clear alerts  "),
+            Span::raw(format!("{:.1}s ago", elapsed)),
         ]);
         f.render_widget(
             Paragraph::new(line)
                 .block(Block::default().borders(Borders::ALL).title(" Controls "))
                 .style(Style::default().fg(Color::DarkGray)),
-            area,
+            Rect { y: area.y + 1, x: area.x, width: area.width, height: area.height.saturating_sub(1) },
         );
     }
 }

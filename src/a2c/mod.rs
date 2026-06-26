@@ -1,6 +1,7 @@
 use axum::response::IntoResponse;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
+use crate::types::BoundedMeta;
 
 // ── Consumer-facing types ────────────────────────────────────────
 
@@ -101,7 +102,7 @@ pub async fn handle_chat(
         event_type: "chat_request".into(),
         severity: "info".into(),
         timestamp: 0,
-        metadata: rustc_hash::FxHashMap::from_iter([
+        metadata: BoundedMeta::from_iter([
             ("model".into(), req.model.clone().unwrap_or_default()),
             ("stream".into(), req.stream.to_string()),
             ("messages".into(), req.messages.len().to_string()),

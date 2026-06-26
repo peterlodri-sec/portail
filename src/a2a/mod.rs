@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
-use std::sync::Arc;
-use rustc_hash::FxHashMap;
+use std::collections::HashMap;
+use std::sync::{Arc, RwLock};
+use crate::types::BoundedMeta;
 
 // ── Agent Card: capability advertisement ─────────────────────────
 
@@ -57,7 +58,7 @@ pub struct Task {
     #[serde(default)]
     pub artifacts: Vec<Artifact>,
     #[serde(default)]
-    pub metadata: FxHashMap<String, String>,
+    pub metadata: BoundedMeta,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -76,7 +77,7 @@ pub struct Message {
     pub role: String,
     pub parts: Vec<Part>,
     #[serde(default)]
-    pub metadata: FxHashMap<String, String>,
+    pub metadata: BoundedMeta,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -115,7 +116,7 @@ pub struct Artifact {
 // ── Task Store: in-memory task state ─────────────────────────────
 
 pub struct TaskStore {
-    tasks: std::sync::RwLock<FxHashMap<String, Task>>,
+    tasks: RwLock<HashMap<String, Task>>,
 }
 
 impl Default for TaskStore {
@@ -126,7 +127,7 @@ impl Default for TaskStore {
 
 impl TaskStore {
     pub fn new() -> Self {
-        Self { tasks: std::sync::RwLock::new(FxHashMap::default()) }
+        Self { tasks: std::sync::RwLock::new(HashMap::new()) }
     }
 
     pub fn create(&self, id: String) -> Task {
@@ -135,7 +136,7 @@ impl TaskStore {
             status: TaskStatus::Submitted,
             messages: Vec::new(),
             artifacts: Vec::new(),
-            metadata: FxHashMap::default(),
+            metadata: BoundedMeta::default(),
         };
         self.tasks.write().unwrap().insert(id, task.clone());
         task
@@ -223,7 +224,7 @@ pub async fn handle_task_create(
         event_type: "task_created".into(),
         severity: "info".into(),
         timestamp: 0,
-        metadata: rustc_hash::FxHashMap::from_iter([
+        metadata: BoundedMeta::from_iter([
             ("task_id".into(), task.id.clone()),
         ]),
     });
@@ -323,7 +324,7 @@ async fn handle_ws_command(
                 event_type: "task_created".into(),
                 severity: "info".into(),
                 timestamp: 0,
-                metadata: rustc_hash::FxHashMap::from_iter([
+                metadata: BoundedMeta::from_iter([
                     ("task_id".into(), id),
                 ]),
             });
@@ -353,7 +354,7 @@ async fn handle_ws_command(
                         event_type: "task_updated".into(),
                         severity: "info".into(),
                         timestamp: 0,
-                        metadata: rustc_hash::FxHashMap::from_iter([
+                        metadata: BoundedMeta::from_iter([
                             ("task_id".into(), task.id.clone()),
                             ("status".into(), format!("{:?}", task.status)),
                         ]),
@@ -383,7 +384,6 @@ pub fn router() -> axum::Router<Arc<crate::AppState>> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use serde_json::json;
 
     #[test]
     fn task_lifecycle() {
@@ -397,7 +397,7 @@ mod tests {
         let task = store.add_message("t1", Message {
             role: "user".into(),
             parts: vec![Part::Text { text: "hello".into() }],
-            metadata: FxHashMap::default(),
+            metadata: BoundedMeta::default(),
         }).unwrap();
         assert_eq!(task.messages.len(), 1);
 
@@ -451,11 +451,11 @@ mod tests {
             messages: vec![Message {
                 role: "user".into(),
                 parts: vec![Part::Text { text: "hello".into() }],
-                metadata: FxHashMap::default(),
+                metadata: BoundedMeta::default(),
             }],
             artifacts: vec![],
             metadata: {
-                let mut m = FxHashMap::default();
+                let mut m = BoundedMeta::default();
                 m.insert("priority".into(), "high".into());
                 m
             },

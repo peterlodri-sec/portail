@@ -52,6 +52,7 @@ use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::Instant;
+use crate::types::BoundedMeta;
 
 // ── Configuration ────────────────────────────────────────────────
 
@@ -248,7 +249,7 @@ pub async fn run_nullclaw(
         event_type: "started".into(),
         severity: "info".into(),
         timestamp: 0,
-        metadata: rustc_hash::FxHashMap::from_iter([
+        metadata: BoundedMeta::from_iter([
             ("version".into(), env!("CARGO_PKG_VERSION").into()),
             ("interval".into(), config.heartbeat_interval_secs.to_string()),
         ]),
@@ -272,7 +273,7 @@ pub async fn run_nullclaw(
                 event_type: "heartbeat".into(),
                 severity: "info".into(),
                 timestamp: 0,
-                metadata: rustc_hash::FxHashMap::from_iter([
+                metadata: BoundedMeta::from_iter([
                     ("uptime".into(), heartbeat.uptime_secs.to_string()),
                     ("agents_seen".into(), heartbeat.agents_seen.to_string()),
                     ("requests".into(), heartbeat.requests_processed.to_string()),
@@ -289,7 +290,7 @@ pub async fn run_nullclaw(
                 event_type: "topology".into(),
                 severity: "info".into(),
                 timestamp: 0,
-                metadata: rustc_hash::FxHashMap::from_iter([
+                metadata: BoundedMeta::from_iter([
                     ("nodes".into(), heartbeat.topology.nodes.len().to_string()),
                     ("edges".into(), heartbeat.topology.edges.len().to_string()),
                     ("node_list".into(), heartbeat.topology.nodes.join(",")),
@@ -419,6 +420,7 @@ mod tests {
             event_store: None,
             session_store: crate::sessions::SessionStore::new(20),
             file_cache: crate::file_cache::FileCache::new(&crate::file_cache::FileCacheConfig { path: "/tmp/portail-test-cache".into(), ..Default::default() }),
+            config_watcher: crate::config_watcher::ConfigWatcher::new(std::path::PathBuf::from("portail.toml")),
         }
     }
 }

@@ -1,4 +1,5 @@
 use crate::hooks::Hook;
+use crate::types::BoundedMeta;
 use rustc_hash::FxHashMap;
 use std::collections::VecDeque;
 use std::sync::Mutex;
@@ -13,7 +14,7 @@ pub struct AgentEvent {
     #[serde(default)]
     pub timestamp: u64,
     #[serde(default)]
-    pub metadata: FxHashMap<String, String>,
+    pub metadata: BoundedMeta,
 }
 
 pub struct EventLog {
@@ -60,11 +61,9 @@ impl EventLog {
 /// Inject hook content into an event's metadata under `_hook` key.
 fn apply_event_hooks(event: &mut AgentEvent, hooks: &[Hook]) {
     for hook in hooks {
-        event
-            .metadata
-            .entry("_hook".into())
-            .or_default()
-            .push_str(&hook.content);
+        let current = event.metadata.get("_hook").cloned().unwrap_or_default();
+        let new = format!("{}{}", current, hook.content);
+        let _ = event.metadata.insert("_hook".into(), new);
     }
 }
 
@@ -117,7 +116,7 @@ mod tests {
             event_type: "ping".into(),
             severity: "info".into(),
             timestamp: i,
-            metadata: FxHashMap::default(),
+            metadata: BoundedMeta::default(),
         }
     }
 
@@ -147,7 +146,7 @@ mod tests {
             event_type: "start".into(),
             severity: "info".into(),
             timestamp: 0,
-            metadata: FxHashMap::default(),
+            metadata: BoundedMeta::default(),
         });
         let recent = log.recent(1);
         assert!(recent[0].timestamp > 0);
@@ -162,7 +161,7 @@ mod tests {
             event_type: "test".into(),
             severity: "info".into(),
             timestamp: 1,
-            metadata: FxHashMap::default(),
+            metadata: BoundedMeta::default(),
         });
         let ev = rx.recv().await.unwrap();
         assert_eq!(ev.event_type, "test");

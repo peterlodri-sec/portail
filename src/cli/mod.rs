@@ -222,6 +222,13 @@ pub enum ConfigAction {
     Validate,
     /// Reload configuration (SIGHUP)
     Reload,
+    /// Rollback to a previous config version
+    Rollback {
+        /// Version number (1-indexed, from 'config history')
+        version: u64,
+    },
+    /// Show config version history
+    History,
 }
 
 #[derive(Subcommand, Debug, Clone)]

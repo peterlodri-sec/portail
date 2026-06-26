@@ -36,7 +36,7 @@
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use std::time::Instant;
-use rustc_hash::FxHashMap;
+use crate::types::BoundedMeta;
 
 // ── Types ────────────────────────────────────────────────────────
 
@@ -49,7 +49,7 @@ pub struct Trace {
     pub status: u16,
     pub total_duration_us: u64,
     pub spans: Vec<Span>,
-    pub metadata: FxHashMap<String, String>,
+    pub metadata: BoundedMeta,
     pub started_at: u64,
 }
 
@@ -60,7 +60,7 @@ pub struct Span {
     pub name: String,
     pub duration_us: u64,
     pub status: SpanStatus,
-    pub attributes: FxHashMap<String, String>,
+    pub attributes: BoundedMeta,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -81,7 +81,7 @@ pub struct TraceBuilder {
     spans: Vec<Span>,
     span_stack: Vec<ActiveSpan>,
     started_at: Instant,
-    metadata: FxHashMap<String, String>,
+    metadata: BoundedMeta,
 }
 
 struct ActiveSpan {
@@ -89,7 +89,7 @@ struct ActiveSpan {
     parent_id: Option<String>,
     name: String,
     started_at: Instant,
-    attributes: FxHashMap<String, String>,
+    attributes: BoundedMeta,
 }
 
 impl TraceBuilder {
@@ -102,7 +102,7 @@ impl TraceBuilder {
             spans: Vec::new(),
             span_stack: Vec::new(),
             started_at: Instant::now(),
-            metadata: FxHashMap::default(),
+            metadata: BoundedMeta::default(),
         }
     }
 
@@ -115,7 +115,7 @@ impl TraceBuilder {
             parent_id,
             name: name.to_string(),
             started_at: Instant::now(),
-            attributes: FxHashMap::default(),
+            attributes: BoundedMeta::default(),
         });
         
         span_id
@@ -408,7 +408,7 @@ mod tests {
         let store = TraceStore::new(100);
         
         for i in 0..5 {
-            let mut builder = TraceBuilder::new(
+            let builder = TraceBuilder::new(
                 format!("req-{}", i),
                 "GET".into(),
                 "/test".into(),
@@ -449,14 +449,14 @@ mod tests {
     fn trace_stats() {
         let store = TraceStore::new(100);
         
-        let mut builder = TraceBuilder::new(
+        let builder = TraceBuilder::new(
             "req-1".into(),
             "GET".into(),
             "/test".into(),
         );
         store.record(builder.finish(200));
         
-        let mut builder = TraceBuilder::new(
+        let builder = TraceBuilder::new(
             "req-2".into(),
             "GET".into(),
             "/test".into(),

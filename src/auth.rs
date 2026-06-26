@@ -10,6 +10,7 @@
 //! Configure additional bypass paths in `AuthConfig::bypass_paths`.
 
 use std::collections::HashMap;
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
 
 use axum::{
@@ -105,6 +106,8 @@ struct AuthInner {
     /// Cached Validation settings
     jwt_validation: Option<Validation>,
     _algorithms: Vec<Algorithm>,
+    /// Count of failed authentication attempts (v1.2)
+    failure_count: AtomicU64,
 }
 
 impl AuthState {
@@ -160,6 +163,7 @@ impl AuthState {
                 jwk_map,
                 jwt_validation,
                 _algorithms: algorithms,
+                failure_count: AtomicU64::new(0),
             }),
         }
     }
@@ -205,6 +209,11 @@ impl AuthState {
             .iter()
             .any(|bp| path == bp.as_str())
     }
+
+    /// Returns the total number of failed authentication attempts (v1.2).
+    pub fn failure_count(&self) -> u64 {
+        self.inner.failure_count.load(Ordering::Relaxed)
+    }
 }
 
 // ─── axum middleware ──────────────────────────────────────────────
@@ -225,15 +234,18 @@ pub async fn auth_middleware(
 
     match auth.authenticate(&req) {
         Some(_principal) => Ok(next.run(req).await),
-        None => Ok((
-            StatusCode::UNAUTHORIZED,
-            [("www-authenticate", "Bearer")],
-            axum::Json(serde_json::json!({
-                "error": "unauthorized",
-                "message": "Valid API key or JWT required"
-            })),
-        )
-            .into_response()),
+        None => {
+            auth.inner.failure_count.fetch_add(1, Ordering::Relaxed);
+            Ok((
+                StatusCode::UNAUTHORIZED,
+                [("www-authenticate", "Bearer")],
+                axum::Json(serde_json::json!({
+                    "error": "unauthorized",
+                    "message": "Valid API key or JWT required"
+                })),
+            )
+                .into_response())
+        }
     }
 }
 

@@ -37,6 +37,7 @@ mod layer_tests {
             event_store: None,
             session_store: portail::sessions::SessionStore::new(20),
             file_cache: portail::file_cache::FileCache::new(&portail::file_cache::FileCacheConfig { path: "/tmp/portail-test-cache".into(), ..Default::default() }),
+            config_watcher: portail::config_watcher::ConfigWatcher::new(std::path::PathBuf::from("portail.toml")),
         }
     }
 
@@ -50,7 +51,7 @@ mod layer_tests {
             event_type: "ping".into(),
             severity: "info".into(),
             timestamp: 0,
-            metadata: rustc_hash::FxHashMap::default(),
+            metadata: portail::types::BoundedMeta::default(),
         });
         assert_eq!(log.recent(1).len(), 1);
     }
@@ -101,7 +102,7 @@ mod layer_tests {
             event_type: "ping".into(),
             severity: "info".into(),
             timestamp: 0,
-            metadata: rustc_hash::FxHashMap::default(),
+            metadata: portail::types::BoundedMeta::default(),
         });
         
         let rx = log.subscribe();
@@ -167,7 +168,7 @@ mod layer_tests {
             event_type: "ping".into(),
             severity: "info".into(),
             timestamp: 0,
-            metadata: rustc_hash::FxHashMap::default(),
+            metadata: portail::types::BoundedMeta::default(),
         });
         assert_eq!(state.event_log.recent(1).len(), 1);
         

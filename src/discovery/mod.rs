@@ -40,6 +40,7 @@
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use rustc_hash::FxHashMap;
+use crate::types::BoundedMeta;
 
 // ── Types ────────────────────────────────────────────────────────
 
@@ -51,7 +52,7 @@ pub struct NetworkNode {
     pub address: String,
     pub port: u16,
     pub protocol: Protocol,
-    pub metadata: FxHashMap<String, String>,
+    pub metadata: BoundedMeta,
     pub registered_at: u64,
     pub last_heartbeat: u64,
     pub status: NodeStatus,
@@ -228,7 +229,7 @@ pub async fn run_discovery(
         event_type: "started".into(),
         severity: "info".into(),
         timestamp: 0,
-        metadata: rustc_hash::FxHashMap::from_iter([
+        metadata: BoundedMeta::from_iter([
             ("mdns_enabled".into(), config.mdns_enabled.to_string()),
             ("dns_sd_enabled".into(), config.dns_sd_enabled.to_string()),
         ]),
@@ -245,7 +246,7 @@ pub async fn run_discovery(
                 event_type: "nodes_expired".into(),
                 severity: "info".into(),
                 timestamp: 0,
-                metadata: rustc_hash::FxHashMap::from_iter([
+                metadata: BoundedMeta::from_iter([
                     ("expired".into(), expired.to_string()),
                 ]),
             });
@@ -258,7 +259,7 @@ pub async fn run_discovery(
             event_type: "heartbeat".into(),
             severity: "info".into(),
             timestamp: 0,
-            metadata: rustc_hash::FxHashMap::from_iter([
+            metadata: BoundedMeta::from_iter([
                 ("total_nodes".into(), stats.total_nodes.to_string()),
                 ("online_nodes".into(), stats.online_nodes.to_string()),
                 ("offline_nodes".into(), stats.offline_nodes.to_string()),
@@ -354,7 +355,7 @@ mod tests {
             address: "127.0.0.1".into(),
             port: 8787,
             protocol: Protocol::Http,
-            metadata: FxHashMap::default(),
+            metadata: BoundedMeta::default(),
             registered_at: 0,
             last_heartbeat: 0,
             status: NodeStatus::Unknown,

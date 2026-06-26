@@ -3,6 +3,7 @@ use crate::gateway;
 use crate::hooks;
 use crate::mcp;
 use crate::AppState;
+use crate::types::BoundedMeta;
 
 pub use cdn::CacheManager;
 use axum::body::Body;
@@ -48,6 +49,8 @@ pub fn build_router(state: Arc<AppState>) -> Router {
         .route("/a2a/tasks/{id}", get(crate::a2a::handle_task_get))
         .route("/a2a/ws", axum::routing::get(crate::a2a::handle_ws))
         .route("/a2c/chat", axum::routing::post(crate::a2c::handle_chat))
+        // ── v1.2: dashboard health snapshot ──
+        .route("/dashboard", get(dashboard_handler))
         // ── v0.2: plugin & diagnostics routers ──
         .merge(crate::ci::router())
         .merge(crate::discovery::router())
@@ -316,7 +319,7 @@ async fn route_to_ai_gateway(
         event_type: "injected".into(),
         severity: "info".into(),
         timestamp: 0,
-        metadata: rustc_hash::FxHashMap::from_iter([
+        metadata: BoundedMeta::from_iter([
             ("path".into(), path),
             ("count".into(), matching_hooks.len().to_string()),
         ]),
@@ -369,6 +372,30 @@ async fn stats_handler(State(state): State<Arc<AppState>>) -> Json<serde_json::V
     json!({ "cdn": cdn_stats, "version": env!("CARGO_PKG_VERSION") }).into()
 }
 
+// ── v1.2: dashboard health snapshot ────────────────────────────────
+
+async fn dashboard_handler(State(state): State<Arc<AppState>>) -> Json<serde_json::Value> {
+    let rate_denied = state.rate_limiter.as_ref().map(|r| r.denied_count()).unwrap_or(0);
+    let auth_failures = state.auth_state.as_ref().map(|a| a.failure_count()).unwrap_or(0);
+    let config_healthy = state.config_watcher.is_healthy();
+    let config_error = state.config_watcher.last_error.read().await.clone();
+
+    let cdn_stats: serde_json::Value = state
+        .cdn_cache
+        .as_ref()
+        .map(|c| serde_json::to_value(c.stats()).unwrap_or_default())
+        .unwrap_or_default();
+
+    json!({
+        "version": env!("CARGO_PKG_VERSION"),
+        "config_healthy": config_healthy,
+        "config_error": config_error,
+        "rate_limit_denied": rate_denied,
+        "auth_failures": auth_failures,
+        "cdn": cdn_stats,
+    }).into()
+}
+
 // ── Session handlers ──────────────────────────────────────────────
 
 async fn sessions_handler(
@@ -418,6 +445,7 @@ mod tests {
             event_store: None,
             session_store: crate::sessions::SessionStore::new(20),
             file_cache: crate::file_cache::FileCache::new(&crate::file_cache::FileCacheConfig { path: "/tmp/portail-test-cache".into(), ..Default::default() }),
+            config_watcher: crate::config_watcher::ConfigWatcher::new(std::path::PathBuf::from("portail.toml")),
         })
     }
 
@@ -573,7 +601,7 @@ mod tests {
             event_type: "ping".into(),
             severity: "info".into(),
             timestamp: 1,
-            metadata: rustc_hash::FxHashMap::default(),
+            metadata: BoundedMeta::default(),
         });
         let app = build_router(state);
         let req = Request::builder().uri("/events").body(Body::empty()).unwrap();

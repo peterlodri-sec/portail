@@ -48,7 +48,9 @@ async fn main() -> anyhow::Result<()> {
         .install_recorder()
         .expect("failed to install prometheus recorder");
 
-    let config = Config::load(Some(&cli.config))?;
+    // ── v1.1: self-healing config watcher ──
+    let config_watcher = portail::config_watcher::ConfigWatcher::new(cli.config.clone());
+    let config = config_watcher.init().await?;
     let listen = config.listen.clone();
     tracing::info!(%listen, "portail starting");
 
@@ -112,7 +114,7 @@ async fn main() -> anyhow::Result<()> {
     let _otel_guard = portail::telemetry::init(&config.telemetry);
 
     let state = Arc::new(AppState {
-        config: RwLock::new(config),
+        config: RwLock::new(config.clone()),
         event_log: Arc::clone(&event_log),
         cdn_cache: cdn_cache.clone(),
         hooks: Arc::new(portail::hooks::HookStore::new()),
@@ -147,6 +149,7 @@ async fn main() -> anyhow::Result<()> {
         event_store,
         session_store: portail::sessions::SessionStore::new(100),
         file_cache: portail::file_cache::FileCache::new(&portail::file_cache::FileCacheConfig::default()),
+        config_watcher: config_watcher.clone(),
     });
 
     tokio::spawn({
@@ -165,25 +168,35 @@ async fn main() -> anyhow::Result<()> {
         async move { portail::nullclaw::run_nullclaw(portail::nullclaw::NullClawConfig::default(), state).await }
     });
 
-    let app = portail::proxy::build_router(Arc::clone(&state));
+    // ── v1.1: self-healing config (file watcher replaces SIGHUP) ──
+    portail::config_watcher::spawn_watcher(config_watcher, Arc::clone(&state)).await;
 
-    let sighup_state = Arc::clone(&state);
-    let sighup_config_path = cli.config.clone();
-    tokio::spawn(async move {
-        use tokio::signal::unix::{signal, SignalKind};
-        let mut sig = signal(SignalKind::hangup())
-            .expect("failed to install SIGHUP handler");
-        loop {
-            sig.recv().await;
-            match Config::load(Some(&sighup_config_path)) {
-                Ok(new) => {
-                    *sighup_state.config.write().unwrap() = new;
-                    tracing::info!("config reloaded on SIGHUP");
+    // Keep SIGHUP as fallback for manual reload signals
+    {
+        let sighup_state = Arc::clone(&state);
+        let sighup_config_path = cli.config.clone();
+        tokio::spawn(async move {
+            use tokio::signal::unix::{signal, SignalKind};
+            let mut sig = signal(SignalKind::hangup())
+                .expect("failed to install SIGHUP handler");
+            loop {
+                sig.recv().await;
+                match Config::load(Some(&sighup_config_path)) {
+                    Ok(new) => {
+                        *sighup_state.config.write().unwrap() = new;
+                        sighup_state.config_watcher.health.store(true, std::sync::atomic::Ordering::Release);
+                        tracing::info!("config reloaded on SIGHUP");
+                    }
+                    Err(e) => {
+                        sighup_state.config_watcher.health.store(false, std::sync::atomic::Ordering::Release);
+                        tracing::error!(error = %e, "config reload failed");
+                    }
                 }
-                Err(e) => tracing::error!(error = %e, "config reload failed"),
             }
-        }
-    });
+        });
+    }
+
+    let app = portail::proxy::build_router(Arc::clone(&state));
 
     let listener = tokio::net::TcpListener::bind(&listen).await?;
     tracing::info!("listening on {}", listener.local_addr()?);
@@ -218,10 +231,54 @@ async fn dispatch_cli(cmd: &cli::Commands, cli: &cli::Cli) -> anyhow::Result<()>
         }
         cli::Commands::Config { action } => {
             match action {
-                Some(cli::ConfigAction::Show) => println!("config: show"),
-                Some(cli::ConfigAction::Validate) => println!("config: validate"),
-                Some(cli::ConfigAction::Reload) => println!("config: reload"),
-                None => println!("config: show (default)"),
+                Some(cli::ConfigAction::Show) => {
+                    let cfg = Config::load(Some(&cli.config))?;
+                    println!("{}", toml::to_string_pretty(&cfg)?);
+                }
+                Some(cli::ConfigAction::Validate) => {
+                    match Config::load(Some(&cli.config)) {
+                        Ok(cfg) => {
+                            println!("valid: {} ports, rate_limit={}, auth={}",
+                                cfg.listen, cfg.rate_limit.enabled, cfg.auth.enabled);
+                        }
+                        Err(e) => {
+                            eprintln!("invalid: {}", e);
+                            anyhow::bail!("config validation failed");
+                        }
+                    }
+                }
+                Some(cli::ConfigAction::Reload) => println!("config reload: send SIGHUP or modify the file (auto-reload enabled)"),
+                Some(cli::ConfigAction::Rollback { version }) => {
+                    use portail::config_watcher::PersistedHistory;
+                    if let Some(hist) = PersistedHistory::load(&cli.config) {
+                        if let Some(entry) = hist.versions.iter().find(|v| v.version == *version) {
+                            std::fs::write(&cli.config, &entry.config_json)?;
+                            println!("rolled back to version {} (from {})", version, entry.loaded_at);
+                        } else {
+                            println!("version {} not found. Available versions:", version);
+                            for v in &hist.versions {
+                                println!("  v{} — {}", v.version, v.loaded_at);
+                            }
+                        }
+                    } else {
+                        println!("no config history found (file will be created on first auto-reload)");
+                    }
+                }
+                Some(cli::ConfigAction::History) => {
+                    use portail::config_watcher::PersistedHistory;
+                    if let Some(hist) = PersistedHistory::load(&cli.config) {
+                        println!("Config version history (last {} entries):", hist.versions.len());
+                        for v in &hist.versions {
+                            println!("  v{} — {}", v.version, v.loaded_at);
+                        }
+                    } else {
+                        println!("no config history yet");
+                    }
+                }
+                None => {
+                    let cfg = Config::load(Some(&cli.config))?;
+                    println!("{}", toml::to_string_pretty(&cfg)?);
+                }
             }
             Ok(())
         }

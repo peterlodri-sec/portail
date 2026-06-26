@@ -59,7 +59,7 @@ pub struct MutationRoot;
 impl MutationRoot {
     async fn publish_event(&self, ctx: &Context<'_>, agent_id: String, event_type: String, severity: Option<String>, metadata_json: Option<String>) -> async_graphql::Result<bool> {
         let state = ctx.data_unchecked::<Arc<crate::AppState>>();
-        let meta: rustc_hash::FxHashMap<String, String> = metadata_json.and_then(|s| serde_json::from_str(&s).ok()).unwrap_or_default();
+        let meta: crate::types::BoundedMeta = metadata_json.and_then(|s| serde_json::from_str(&s).ok()).unwrap_or_default();
         state.event_log.publish(crate::events::AgentEvent { agent_id, event_type, severity: severity.unwrap_or_else(|| "info".into()), timestamp: 0, metadata: meta });
         Ok(true)
     }

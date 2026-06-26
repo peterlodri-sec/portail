@@ -42,6 +42,7 @@
 use axum::body::Bytes;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
+use crate::types::BoundedMeta;
 
 // ── Types ────────────────────────────────────────────────────────
 
@@ -340,7 +341,7 @@ pub async fn handle_webhook(
                         event_type: "workflow_run".into(),
                         severity: "info".into(),
                         timestamp: 0,
-                        metadata: rustc_hash::FxHashMap::from_iter([
+                        metadata: BoundedMeta::from_iter([
                             ("action".into(), event.action),
                             ("workflow".into(), event.workflow_run.name),
                             ("status".into(), event.workflow_run.status),
@@ -489,7 +490,7 @@ mod tests {
         
         // Valid signature - compute HMAC-SHA256 of "test payload" with key "test-secret"
         let payload = b"test payload";
-        let valid_sig = "sha256=1f92c44a9de3e8b29e4e0e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e";
+        let _valid_sig = "sha256=1f92c44a9de3e8b29e4e0e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e";
         
         // Invalid signature
         let invalid_sig = "sha256=invalid";

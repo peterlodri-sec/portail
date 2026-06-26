@@ -149,7 +149,7 @@ pub fn analyze_and_report(dir: &Path, output_path: Option<&Path>) -> Result<Stri
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::path::PathBuf;
+    
     
     #[test]
     fn test_complexity_regex() {

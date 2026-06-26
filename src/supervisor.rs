@@ -11,7 +11,7 @@
 
 use std::sync::Arc;
 use std::time::Duration;
-
+use crate::types::BoundedMeta;
 use serde::Serialize;
 use tokio::sync::watch;
 
@@ -99,7 +99,7 @@ impl Supervisor {
                             event_type: "task_stopped".into(),
                             severity: "info".into(),
                             timestamp: 0,
-                            metadata: rustc_hash::FxHashMap::from_iter([
+                            metadata: BoundedMeta::from_iter([
                                 ("task".into(), name_clone),
                             ]),
                         });
@@ -134,7 +134,7 @@ impl Supervisor {
                             event_type: (if should_restart { "task_restarting" } else { "task_crashed" }).into(),
                             severity: severity.into(),
                             timestamp: 0,
-                            metadata: rustc_hash::FxHashMap::from_iter([
+                            metadata: BoundedMeta::from_iter([
                                 ("task".into(), name.clone()),
                                 ("error".into(), err_str),
                                 ("restarts".into(), restarts.to_string()),
