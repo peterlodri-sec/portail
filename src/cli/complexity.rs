@@ -2,8 +2,9 @@ use anyhow::Result;
 use std::path::Path;
 use std::fs;
 use regex::Regex;
+use serde::Serialize;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct ComplexityReport {
     pub files_scanned: usize,
     pub total_functions: usize,
@@ -13,14 +14,14 @@ pub struct ComplexityReport {
     pub distribution: Vec<(String, usize)>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct ComplexityAnnotation {
     pub file: String,
     pub line: usize,
     pub complexity: String,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct FunctionInfo {
     pub file: String,
     pub line: usize,

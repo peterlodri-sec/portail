@@ -236,14 +236,60 @@ async fn dispatch_cli(cmd: &cli::Commands, cli: &cli::Cli) -> anyhow::Result<()>
             println!("health: OK");
             Ok(())
         }
-        cli::Commands::Complexity { format, output } => {
+        cli::Commands::Complexity { format, output, ci, ci_report_path } => {
+            let ci = *ci;
             let dir = std::path::Path::new("src");
-            let output_path = output.as_deref();
-            let report = complexity::analyze_and_report(dir, output_path)?;
+            let report = match complexity::analyze_directory(dir) {
+                Ok(r) => r,
+                Err(e) => {
+                    if ci {
+                        // CI mode: write error report to file, always exit 0
+                        let err_report = format!("error: {}", e);
+                        std::fs::write(&ci_report_path, &err_report).ok();
+                        println!("{}", err_report);
+                        return Ok(());
+                    }
+                    return Err(e.into());
+                }
+            };
+            let report_text = complexity::generate_report(&report);
+
+            // CI mode: write TOML report to file, always exit 0
+            // Daily-only: skip if report is from today
+            if ci {
+                let today = chrono::Utc::now().format("%Y-%m-%d").to_string();
+                if ci_report_path.exists() {
+                    if let Ok(meta) = std::fs::metadata(&ci_report_path) {
+                        if let Ok(modified) = meta.modified() {
+                            let modified_date = chrono::DateTime::<chrono::Utc>::from(modified)
+                                .format("%Y-%m-%d")
+                                .to_string();
+                            if modified_date == today {
+                                println!("complexity-ci: report already generated today ({}) — skipping", today);
+                                return Ok(());
+                            }
+                        }
+                    }
+                }
+                let toml_report = toml::to_string_pretty(&report).unwrap_or_default();
+                std::fs::write(&ci_report_path, format!("# generated: {}\n{}", today, toml_report)).ok();
+                // Print summary to stdout for CI log
+                println!("complexity-ci: wrote report to {}", ci_report_path.display());
+                println!("  files: {} | functions: {} | annotations: {}",
+                    report.files_scanned, report.total_functions, report.total_annotations);
+                for (c, n) in &report.distribution {
+                    println!("  {}: {}", c, n);
+                }
+                return Ok(());
+            }
+
+            if let Some(path) = output.as_deref() {
+                std::fs::write(path, &report_text)?;
+            }
             if format == "json" {
                 println!("{}", serde_json::to_string_pretty(&report)?);
             } else {
-                println!("{}", report);
+                println!("{}", report_text);
             }
             Ok(())
         }

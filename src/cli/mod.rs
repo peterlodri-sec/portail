@@ -88,6 +88,14 @@ pub enum Commands {
         /// Save report to file
         #[arg(short, long)]
         output: Option<PathBuf>,
+
+        /// CI mode: write report to file, always exit 0, never fail
+        #[arg(long)]
+        ci: bool,
+
+        /// CI report path (default: complexity-report.toml)
+        #[arg(long, default_value = "complexity-report.toml")]
+        ci_report_path: PathBuf,
     },
 
     /// Install portail (binary, cargo, or nix)
