@@ -116,7 +116,7 @@ async fn handle_stats(
     Json(cache.stats().await)
 }
 
-fn router() -> axum::Router<FileCache> {
+fn _router() -> axum::Router<FileCache> {
     axum::Router::new()
         .route("/file-cache/{key}", axum::routing::put(handle_put).get(handle_get).delete(handle_delete))
         .route("/file-cache/stats", axum::routing::get(handle_stats))

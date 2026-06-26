@@ -2,6 +2,7 @@ pub mod amberify;
 pub mod complexity;
 pub mod dashboard;
 pub mod guide;
+pub mod init;
 pub mod install;
 pub mod learn;
 pub mod setup;
@@ -185,6 +186,9 @@ pub enum Commands {
         #[arg(short, long)]
         output: Option<PathBuf>,
     },
+
+    /// Interactive configuration generator (wizard)
+    Init,
 }
 
 #[derive(Debug, Clone, clap::ValueEnum)]

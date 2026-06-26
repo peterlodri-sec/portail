@@ -1,8 +1,9 @@
 use anyhow::Result;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::fs;
 
 /// Convert a shell script to Amber language
+#[allow(unused_assignments)]
 pub fn amberify(input: &Path) -> Result<String> {
     let content = fs::read_to_string(input)?;
     let mut output = String::new();
@@ -18,10 +19,12 @@ pub fn amberify(input: &Path) -> Result<String> {
     // Convert shell constructs to Amber
     let lines: Vec<&str> = content.lines().collect();
     let mut in_function = false;
+    #[allow(unused_variables)]
     let mut in_loop = false;
+    #[allow(unused_variables)]
     let mut in_if = false;
     
-    for (i, line) in lines.iter().enumerate() {
+    for (_i, line) in lines.iter().enumerate() {
         let trimmed = line.trim();
         
         // Skip shebang

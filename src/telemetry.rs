@@ -5,8 +5,7 @@
 use std::time::Duration;
 
 use opentelemetry::KeyValue;
-use opentelemetry_otlp::{SpanExporter, WithExportConfig, WithTonicConfig};
-use opentelemetry_sdk::trace::TracerProvider;
+use opentelemetry_otlp::{SpanExporter, WithExportConfig};
 use opentelemetry_sdk::Resource;
 use serde::{Deserialize, Serialize};
 

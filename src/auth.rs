@@ -9,7 +9,7 @@
 //! Health, readiness, and metrics endpoints bypass authentication.
 //! Configure additional bypass paths in `AuthConfig::bypass_paths`.
 
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::sync::Arc;
 
 use axum::{
@@ -19,7 +19,7 @@ use axum::{
     middleware::Next,
     response::{IntoResponse, Response},
 };
-use jsonwebtoken::{decode, decode_header, Algorithm, DecodingKey, Validation};
+use jsonwebtoken::{decode, Algorithm, DecodingKey, Validation};
 use serde::{Deserialize, Serialize};
 
 // ─── config ───────────────────────────────────────────────────────
@@ -104,7 +104,7 @@ struct AuthInner {
     jwk_map: HashMap<String, DecodingKey>,
     /// Cached Validation settings
     jwt_validation: Option<Validation>,
-    algorithms: Vec<Algorithm>,
+    _algorithms: Vec<Algorithm>,
 }
 
 impl AuthState {
@@ -159,7 +159,7 @@ impl AuthState {
                 config,
                 jwk_map,
                 jwt_validation,
-                algorithms,
+                _algorithms: algorithms,
             }),
         }
     }
@@ -185,7 +185,7 @@ impl AuthState {
         if let Some(ref validation) = inner.jwt_validation {
             // Try each key
             for (kid, key) in &inner.jwk_map {
-                let mut v = validation.clone();
+                let v = validation.clone();
                 if let Ok(data) = decode::<serde_json::Value>(token, key, &v) {
                     return data.claims.get("sub").and_then(|s| s.as_str()).map(String::from);
                 }

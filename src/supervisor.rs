@@ -65,7 +65,7 @@ impl Supervisor {
         let name = name.to_string();
         let event_log = Arc::clone(&self.event_log);
         let tasks = Arc::clone(&self.tasks);
-        let (shutdown_tx, shutdown_rx) = watch::channel(());
+        let (_shutdown_tx, shutdown_rx) = watch::channel(());
 
         // Register task
         {

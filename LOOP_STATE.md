@@ -4,8 +4,8 @@
 
 ```
 LOOP: plan → implement → test → review → ship → repeat
-STATE:  v0.6 shipped (godfather+sysinfo, sessions, supervisor, file-cache)
-NEXT:   v1.0 one-command Nix gateway           (2026-08-01)
+STATE:  v1.0 one-command Nix gateway (sensible defaults, init wizard)
+NEXT:   v1.1 self-healing config
 OPEN:   #24 integration matrix, #1 super devnote (HUMAN ONLY)
 ```
 
@@ -22,7 +22,7 @@ OPEN:   #24 integration matrix, #1 super devnote (HUMAN ONLY)
 
 ---
 
-## v0.3 — Complexity Bot (advisory only)        🚧 PLANNED
+## v0.3 — Complexity Bot (advisory only)        ✅ SHIPPED
 **Target:** 2026-07-01  **Effort:** 1 day
 
 - Refactor `cli/complexity.rs`: never exit with non-zero
@@ -32,7 +32,7 @@ OPEN:   #24 integration matrix, #1 super devnote (HUMAN ONLY)
 - Integration: GitHub Actions step that posts comment on PR
 - **Rule:** `complexity-enforcer` is a reporter, not a gate
 
-## v0.4 — Drift Detect (CI agent 1)            🚧 PLANNED
+## v0.4 — Drift Detect (CI agent 1)            ✅ SHIPPED
 **Target:** 2026-07-08  **Effort:** 3 days
 
 - `portail drift-detect` CLI subcommand
@@ -42,7 +42,7 @@ OPEN:   #24 integration matrix, #1 super devnote (HUMAN ONLY)
 - CI integration: `gh pr comment` with drift report
 - **Rule:** advisory only — posts report, never fails CI
 
-## v0.5 — Spec Verify (CI agent 2)              🚧 PLANNED
+## v0.5 — Spec Verify (CI agent 2)              ✅ SHIPPED
 **Target:** 2026-07-15  **Effort:** 3 days
 
 - `portail spec-verify` CLI subcommand
@@ -52,7 +52,7 @@ OPEN:   #24 integration matrix, #1 super devnote (HUMAN ONLY)
 - CI integration: `gh pr comment` with spec diff
 - **Rule:** advisory only — posts diff, never fails CI
 
-## v0.6 — Fuzz Route (CI agent 3)               🚧 PLANNED
+## v0.6 — Fuzz Route (CI agent 3)               ✅ SHIPPED
 **Target:** 2026-07-22  **Effort:** 3 days
 
 - `portail fuzz-route` CLI subcommand
@@ -64,8 +64,8 @@ OPEN:   #24 integration matrix, #1 super devnote (HUMAN ONLY)
 
 ---
 
-## v1.0 — One-Command Gateway (DX)              🚧 PLANNED
-**Target:** 2026-08-01  **Effort:** 3 days
+## v1.0 — One-Command Gateway (DX)              ✅ SHIPPED
+**Target:** 2026-06-26  **Effort:** 1 day
 
 - `nix run github:peterlodri-sec/portail -- serve` is production-ready
 - Sensible defaults: rate limiting (30 burst), auth disabled, OTLP off
@@ -132,13 +132,13 @@ OPEN:   #24 integration matrix, #1 super devnote (HUMAN ONLY)
 
 ```
 v0.2  [SHIPPED]  2026-06-26  rate-limit, auth, store, otlp
-v0.3  [NEXT]     2026-07-01  complexity advisory
-v0.4             2026-07-08  drift-detect
-v0.5             2026-07-15  spec-verify
-v0.6             2026-07-22  fuzz-route
-v1.0             2026-08-01  one-command gateway
-v1.1             2026-08-08  self-healing config
-v1.2             2026-08-15  progressive TUI
-v1.3             2026-08-22  polish + docs
-v1.4             2026-09-01  release
+v0.3  [SHIPPED]  2026-06-26  complexity advisory
+v0.4  [SHIPPED]  2026-06-26  drift-detect
+v0.5  [SHIPPED]  2026-06-26  spec-verify
+v0.6  [SHIPPED]  2026-06-26  fuzz-route, WebSocket, GraphQL
+v1.0  [SHIPPED]  2026-06-26  one-command Nix gateway
+v1.1  [NEXT]     2026-07-01  self-healing config
+v1.2             2026-07-08  progressive TUI
+v1.3             2026-07-15  polish + docs
+v1.4             2026-07-22  release
 ```

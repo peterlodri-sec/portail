@@ -135,14 +135,14 @@ pub struct IoUringStats {
 // ── io_uring Manager ─────────────────────────────────────────────
 
 pub struct IoUringManager {
-    config: IoUringConfig,
+    _config: IoUringConfig,
     stats: std::sync::RwLock<IoUringStats>,
 }
 
 impl IoUringManager {
     pub fn new(config: IoUringConfig) -> Self {
         Self {
-            config,
+            _config: config,
             stats: std::sync::RwLock::new(IoUringStats {
                 operations_submitted: 0,
                 operations_completed: 0,

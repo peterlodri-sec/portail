@@ -98,14 +98,14 @@ pub struct HyperStats {
 // ── Hyper Manager ────────────────────────────────────────────────
 
 pub struct HyperManager {
-    config: HyperConfig,
+    _config: HyperConfig,
     stats: std::sync::RwLock<HyperStats>,
 }
 
 impl HyperManager {
     pub fn new(config: HyperConfig) -> Self {
         Self {
-            config,
+            _config: config,
             stats: std::sync::RwLock::new(HyperStats {
                 active_connections: 0,
                 total_connections: 0,

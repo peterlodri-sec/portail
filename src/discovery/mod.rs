@@ -39,7 +39,6 @@
 
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
-use std::time::Instant;
 use rustc_hash::FxHashMap;
 
 // ── Types ────────────────────────────────────────────────────────
@@ -199,7 +198,7 @@ pub struct DiscoveryStats {
 
 // ── mDNS/SD Helpers ──────────────────────────────────────────────
 
-pub fn mdns_service_name(config: &DiscoveryConfig) -> String {
+pub fn mdns_service_name(_config: &DiscoveryConfig) -> String {
     format!("_portail._tcp.local.")
 }
 

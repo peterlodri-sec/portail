@@ -138,14 +138,14 @@ pub struct EbpfStats {
 // ── eBPF Manager ─────────────────────────────────────────────────
 
 pub struct EbpfManager {
-    config: EbpfConfig,
+    _config: EbpfConfig,
     stats: std::sync::RwLock<EbpfStats>,
 }
 
 impl EbpfManager {
     pub fn new(config: EbpfConfig) -> Self {
         Self {
-            config,
+            _config: config,
             stats: std::sync::RwLock::new(EbpfStats {
                 events_processed: 0,
                 syscalls_traced: 0,
@@ -193,14 +193,14 @@ impl EbpfManager {
 // ── eBPF Program Loader (stub) ───────────────────────────────────
 
 pub struct EbpfProgram {
-    name: String,
+    _name: String,
     loaded: bool,
 }
 
 impl EbpfProgram {
     pub fn new(name: &str) -> Self {
         Self {
-            name: name.to_string(),
+            _name: name.to_string(),
             loaded: false,
         }
     }

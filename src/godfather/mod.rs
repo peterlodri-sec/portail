@@ -127,7 +127,7 @@ pub struct NetworkStats {
 // ── Godfather Core ───────────────────────────────────────────────
 
 pub struct Godfather {
-    config: GodfatherConfig,
+    _config: GodfatherConfig,
     started_at: Instant,
     tick_count: AtomicU64,
     services: std::sync::RwLock<Vec<ServiceStatus>>,
@@ -136,7 +136,7 @@ pub struct Godfather {
 impl Godfather {
     pub fn new(config: GodfatherConfig) -> Self {
         Self {
-            config,
+            _config: config,
             started_at: Instant::now(),
             tick_count: AtomicU64::new(0),
             services: std::sync::RwLock::new(Vec::new()),

@@ -156,7 +156,7 @@ async fn metrics_middleware(req: Request, next: Next) -> Response {
 
 async fn session_middleware(
     State(state): State<Arc<AppState>>,
-    mut req: Request,
+    req: Request,
     next: Next,
 ) -> Response {
     let session_id = req.headers()

@@ -52,7 +52,7 @@ pub struct RateLimitConfig {
 impl Default for RateLimitConfig {
     fn default() -> Self {
         Self {
-            enabled: false,
+            enabled: true,
             burst: default_burst(),
             per_second: default_per_second(),
             endpoints: HashMap::new(),
@@ -74,7 +74,7 @@ pub struct ApiKeyLimit {
 }
 
 fn default_true() -> bool {
-    false
+    true
 }
 fn default_burst() -> u32 {
     30

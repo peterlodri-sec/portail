@@ -95,7 +95,7 @@ pub struct DpdkStats {
 // ── DPDK Manager ─────────────────────────────────────────────────
 
 pub struct DpdkManager {
-    config: DpdkConfig,
+    _config: DpdkConfig,
     stats: std::sync::RwLock<DpdkStats>,
     initialized: bool,
 }
@@ -103,7 +103,7 @@ pub struct DpdkManager {
 impl DpdkManager {
     pub fn new(config: DpdkConfig) -> Self {
         Self {
-            config,
+            _config: config,
             stats: std::sync::RwLock::new(DpdkStats {
                 packets_received: 0,
                 packets_sent: 0,

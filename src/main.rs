@@ -363,6 +363,10 @@ async fn dispatch_cli(cmd: &cli::Commands, cli: &cli::Cli) -> anyhow::Result<()>
             cli::amberify::process_path(input, output.as_deref())?;
             Ok(())
         }
+        cli::Commands::Init => {
+            cli::init::run_init()?;
+            Ok(())
+        }
         cli::Commands::Serve => unreachable!(),
     }
 }

@@ -91,7 +91,7 @@ pub fn capture(url: &str) -> Result<DriftSession> {
         probe_json(&client, url, "POST", "/v1/chat/completions", r#"{"model":"test","messages":[{"role":"user","content":"hi"}]}"#)?,
     ];
 
-    let now = SystemTime::now()
+    let _now = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .unwrap()
         .as_secs();

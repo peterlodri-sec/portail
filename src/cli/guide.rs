@@ -231,7 +231,7 @@ pub fn run_guide() -> io::Result<()> {
                     println!("\n⚠ Enter a number.\n");
                 }
             }
-            "l" | "list" => {
+            "list" => {
                 println!("\nBlocks:");
                 for (i, (title, _)) in BLOCKS.iter().enumerate() {
                     let marker = if i == current { "▶" } else { " " };

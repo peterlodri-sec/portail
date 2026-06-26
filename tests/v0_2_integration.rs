@@ -504,6 +504,7 @@ sampling_ratio = 0.5
     fn config_roundtrip_disabled_defaults() {
         let toml_str = r#"
 [rate_limit]
+enabled = false
 burst = 5
 
 [auth]
@@ -516,7 +517,7 @@ burst = 5
         let cfg: config::Config =
             toml::from_str(toml_str).expect("parse minimal v0.2 TOML");
 
-        // All should default to disabled
+        // Rate limit defaults to enabled (v1.0); explicit disable tested here
         assert!(!cfg.rate_limit.enabled);
         assert!(!cfg.auth.enabled);
         assert!(!cfg.store.enabled);

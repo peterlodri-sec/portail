@@ -4,7 +4,7 @@
 
 let
   pname = "portail";
-  version = "0.1.0";
+  version = "0.6.0";
 in
 rustPlatform.buildRustPackage {
   inherit pname version;
@@ -44,7 +44,7 @@ rustPlatform.buildRustPackage {
     description = "Unified proxy/gateway: AI Gateway + MCP Gateway + CDN cache";
     homepage = "https://github.com/peterlodri-sec/portail";
     license = lib.licenses.mit;
-    platforms = lib.platforms.linux;
+    platforms = lib.platforms.linux ++ lib.platforms.darwin;
     maintainers = [ ];
     mainProgram = "portail";
   };

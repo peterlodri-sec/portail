@@ -11,7 +11,7 @@
 
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
 use rustc_hash::FxHashMap;
 
