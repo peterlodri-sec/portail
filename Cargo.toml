@@ -49,6 +49,7 @@ redis = { version = "0.27", features = ["tokio-comp", "connection-manager"] }
 hmac = "0.12"
 sha2 = "0.10"
 hex = "0.4"
+dirs = "5"
 
 [profile.release]
 opt-level = 3

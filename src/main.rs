@@ -99,7 +99,15 @@ async fn main() -> anyhow::Result<()> {
         hyper: Arc::new(portail::hyper_engine::HyperManager::new(portail::hyper_engine::HyperConfig::default())),
         ci_status: Arc::new(portail::ci::CiStatusStore::new(
             1000,
-            std::env::var("PORTAIL_WEBHOOK_SECRET").ok(),
+            // Try env var first, then secret file
+            std::env::var("PORTAIL_WEBHOOK_SECRET").ok()
+                .or_else(|| {
+                    let secret_file = dirs::config_dir()
+                        .unwrap_or_else(|| std::path::PathBuf::from("."))
+                        .join("portail")
+                        .join("webhook-secret");
+                    std::fs::read_to_string(secret_file).ok()
+                }),
         )),
         metrics_handle: handle,
     });
