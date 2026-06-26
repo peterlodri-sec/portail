@@ -145,8 +145,67 @@
                 <a href="https://crates.io/crates/portail" class="badge">crates.io</a>
                 <a href="https://github.com/peterlodri-sec/portail" class="badge">GitHub</a>
             </div>
+            <div id="ci-status" class="ci-status">
+                <span class="ci-indicator ci-unknown">●</span>
+                <span class="ci-text">Loading CI status...</span>
+            </div>
         </div>
     </header>
+
+    <script>
+        // Live CI status from portail webhook
+        async function updateCIStatus() {
+            try {
+                const resp = await fetch('/ci/status');
+                if (resp.ok) {
+                    const data = await resp.json();
+                    const el = document.getElementById('ci-status');
+                    const indicator = el.querySelector('.ci-indicator');
+                    const text = el.querySelector('.ci-text');
+                    
+                    const statusMap = {
+                        'passing': { class: 'ci-passing', text: 'CI: Passing' },
+                        'failing': { class: 'ci-failing', text: 'CI: Failing' },
+                        'in_progress': { class: 'ci-progress', text: 'CI: In Progress' },
+                        'unknown': { class: 'ci-unknown', text: 'CI: Unknown' }
+                    };
+                    
+                    const status = statusMap[data.overall] || statusMap.unknown;
+                    indicator.className = 'ci-indicator ' + status.class;
+                    text.textContent = status.text + ' (' + data.success_rate.toFixed(0) + '% success)';
+                }
+            } catch (e) {
+                // Portail not running, use static badge
+            }
+        }
+        
+        // Update every 30 seconds
+        updateCIStatus();
+        setInterval(updateCIStatus, 30000);
+        
+        // SSE for live updates
+        if (window.EventSource) {
+            const source = new EventSource('/ci/live');
+            source.addEventListener('ci', function(e) {
+                updateCIStatus();
+            });
+        }
+    </script>
+    
+    <style>
+        .ci-status {
+            margin-top: 1.5rem;
+            font-size: 0.95rem;
+        }
+        .ci-indicator {
+            font-size: 1.2rem;
+            margin-right: 0.5rem;
+        }
+        .ci-passing { color: #44cc11; }
+        .ci-failing { color: #e05d44; }
+        .ci-progress { color: #dfb317; }
+        .ci-unknown { color: #9f9f9f; }
+    </style>
 
     <section>
         <div class="container">

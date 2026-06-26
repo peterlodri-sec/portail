@@ -413,6 +413,7 @@ mod tests {
             iouring: Arc::new(crate::iouring::IoUringManager::new(crate::iouring::IoUringConfig::default())),
             dpdk: Arc::new(crate::dpdk::DpdkManager::new(crate::dpdk::DpdkConfig::default())),
             hyper: Arc::new(crate::hyper_engine::HyperManager::new(crate::hyper_engine::HyperConfig::default())),
+            ci_status: Arc::new(crate::ci::CiStatusStore::new(100, None)),
             metrics_handle: crate::test_utils::global_metrics().clone(),
         }
     }

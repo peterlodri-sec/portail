@@ -30,6 +30,7 @@ mod layer_tests {
             iouring: Arc::new(iouring::IoUringManager::new(iouring::IoUringConfig::default())),
             dpdk: Arc::new(dpdk::DpdkManager::new(dpdk::DpdkConfig::default())),
             hyper: Arc::new(hyper_engine::HyperManager::new(hyper_engine::HyperConfig::default())),
+            ci_status: Arc::new(ci::CiStatusStore::new(100, None)),
             metrics_handle: global_metrics(),
         }
     }

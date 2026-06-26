@@ -19,6 +19,7 @@
 pub mod a2a;
 pub mod a2c;
 pub mod cdn;
+pub mod ci;
 pub mod cli;
 pub mod config;
 pub mod constants;
@@ -61,5 +62,6 @@ pub struct AppState {
     pub iouring: Arc<iouring::IoUringManager>,
     pub dpdk: Arc<dpdk::DpdkManager>,
     pub hyper: Arc<hyper_engine::HyperManager>,
+    pub ci_status: Arc<ci::CiStatusStore>,
     pub metrics_handle: metrics_exporter_prometheus::PrometheusHandle,
 }

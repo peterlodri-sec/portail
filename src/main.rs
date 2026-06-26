@@ -97,6 +97,7 @@ async fn main() -> anyhow::Result<()> {
         iouring: Arc::new(portail::iouring::IoUringManager::new(portail::iouring::IoUringConfig::default())),
         dpdk: Arc::new(portail::dpdk::DpdkManager::new(portail::dpdk::DpdkConfig::default())),
         hyper: Arc::new(portail::hyper_engine::HyperManager::new(portail::hyper_engine::HyperConfig::default())),
+        ci_status: Arc::new(portail::ci::CiStatusStore::new(1000, None)),
         metrics_handle: handle,
     });
 
