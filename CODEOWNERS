@@ -1,0 +1,11 @@
+# Default owners for everything
+* @peterlodri-sec
+
+# CI/CD workflows
+.github/ @peterlodri-sec
+
+# Nix configuration
+nix/ @peterlodri-sec
+
+# Security-sensitive files
+SECURITY.md @peterlodri-sec
