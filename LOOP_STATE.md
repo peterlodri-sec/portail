@@ -4,9 +4,9 @@
 
 ```
 LOOP: plan → implement → test → review → ship → repeat
-STATE:  v2.0 wire-in audit complete (11 stub CLIs fixed, dead modules wired, +7 tests) — 174 tests
-NEXT:   v2.0 final (TLS, TUI live data, benchmarks, DX, release)
-OPEN:   #24 integration matrix, #1 super devnote (HUMAN ONLY)
+STATE:  v2.0-rc tagged — 174 tests, dead code removed, benchmarks, doctor, TTL eviction
+NEXT:   v2.0.0 release (cargo audit, TLS, deploy guide, docs)
+OPEN:   #24 integration matrix, #25 chore stuff, #1 super devnote (HUMAN ONLY)
 ```
 
 ---
