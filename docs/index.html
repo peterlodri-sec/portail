@@ -231,6 +231,7 @@
 <body>
     <header>
         <div class="container">
+            <img src="logo.svg" width="120" height="120" alt="Portail Logo" style="margin-bottom: 1rem;">
             <h1>PORTAIL</h1>
             <p class="tagline">Unified proxy/gateway: AI Gateway + MCP Gateway + CDN cache + Agent-to-Agent protocol</p>
             <div class="badges">
@@ -238,6 +239,14 @@
                 <a href="https://crates.io/crates/portail" class="badge">crates.io</a>
                 <a href="https://github.com/peterlodri-sec/portail" class="badge">GitHub</a>
                 <a href="https://docs.rs/portail" class="badge">docs.rs</a>
+            </div>
+            <div class="social-links" style="margin-top: 1.5rem; display: flex; gap: 1.5rem; justify-content: center; flex-wrap: wrap;">
+                <a href="https://pocoo.vaked.dev" style="color: var(--dim); text-decoration: none;">📝 Blog</a>
+                <a href="https://github.com/peterlodri-sec" style="color: var(--dim); text-decoration: none;">🐙 GitHub</a>
+                <a href="https://x.com/0xp3t3rl" style="color: var(--dim); text-decoration: none;">𝕏 Twitter</a>
+                <a href="https://patreon.com/vaked" style="color: var(--dim); text-decoration: none;">☕ Patreon</a>
+                <a href="https://chat.vaked.dev" style="color: var(--dim); text-decoration: none;">💬 Chat</a>
+                <a href="https://music.vaked.dev" style="color: var(--dim); text-decoration: none;">🎵 Music</a>
             </div>
             <div id="ci-status" class="ci-status">
                 <span id="ci-indicator" class="ci-indicator ci-unknown">●</span>
@@ -496,7 +505,18 @@ curl https://portail.vaked.dev/ci/badge > badge.svg</code></pre>
     <footer>
         <div class="container">
             <p>Portail is open source under the MIT license</p>
-            <p><a href="https://github.com/peterlodri-sec/portail">GitHub</a> · <a href="https://crates.io/crates/portail">crates.io</a> · <a href="https://docs.rs/portail">docs.rs</a></p>
+            <p style="margin-top: 1rem;">
+                <a href="https://github.com/peterlodri-sec/portail">GitHub</a> · 
+                <a href="https://crates.io/crates/portail">crates.io</a> · 
+                <a href="https://docs.rs/portail">docs.rs</a> · 
+                <a href="https://portail.vaked.dev">Live Demo</a>
+            </p>
+            <p style="margin-top: 1rem; font-size: 0.85rem;">
+                <a href="https://pocoo.vaked.dev">pocoo.vaked.dev</a> · 
+                <a href="https://x.com/0xp3t3rl">@0xp3t3rl</a> · 
+                <a href="https://patreon.com/vaked">Patreon</a> · 
+                <a href="https://chat.vaked.dev">Chat</a>
+            </p>
             <p style="margin-top: 1rem; font-size: 0.75rem; color: #444;">
                 Served by portail on portail.vaked.dev • HSTS enabled • HTTPS only
             </p>
