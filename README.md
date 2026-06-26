@@ -1,11 +1,21 @@
+<p align="center">
+  <img src="docs/logo.svg" width="200" alt="Portail Logo">
+</p>
+
 # Portail
 
 **Unified proxy/gateway: AI Gateway + MCP Gateway + CDN cache + Agent-to-Agent protocol**
 
-![CI Status](https://portail.vaked.dev/ci/badge)
-[![GitHub CI](https://github.com/peterlodri-sec/portail/actions/workflows/ci.yml/badge.svg)](https://github.com/peterlodri-sec/portail/actions/workflows/ci.yml)
-[![Crates.io](https://img.shields.io/crates/v/portail)](https://crates.io/crates/portail)
-[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+<p align="center">
+  <a href="https://portail.vaked.dev"><img src="https://portail.vaked.dev/ci/badge" alt="CI Status"></a>
+  <a href="https://github.com/peterlodri-sec/portail/actions"><img src="https://github.com/peterlodri-sec/portail/actions/workflows/ci.yml/badge.svg" alt="GitHub CI"></a>
+  <a href="https://crates.io/crates/portail"><img src="https://img.shields.io/crates/v/portail" alt="Crates.io"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License: MIT"></a>
+</p>
+
+<p align="center">
+  <a href="https://pocoo.vaked.dev">Blog</a> · <a href="https://github.com/peterlodri-sec">GitHub</a> · <a href="https://x.com/0xp3t3rl">X/Twitter</a> · <a href="https://patreon.com/vaked">Patreon</a> · <a href="https://chat.vaked.dev">Chat</a> · <a href="https://music.vaked.dev">Music</a>
+</p>
 
 > **Live CI status** from portail.vaked.dev — updates automatically on every build.
 
