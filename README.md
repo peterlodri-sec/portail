@@ -2,9 +2,12 @@
 
 **Unified proxy/gateway: AI Gateway + MCP Gateway + CDN cache + Agent-to-Agent protocol**
 
-[![CI](https://github.com/peterlodri-sec/portail/actions/workflows/ci.yml/badge.svg)](https://github.com/peterlodri-sec/portail/actions/workflows/ci.yml)
+![CI Status](https://portail.vaked.dev/ci/badge)
+[![GitHub CI](https://github.com/peterlodri-sec/portail/actions/workflows/ci.yml/badge.svg)](https://github.com/peterlodri-sec/portail/actions/workflows/ci.yml)
 [![Crates.io](https://img.shields.io/crates/v/portail)](https://crates.io/crates/portail)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+
+> **Live CI status** from portail.vaked.dev — updates automatically on every build.
 
 Portail is a high-performance, self-hosted proxy and gateway for AI services, MCP tools, and CDN caching. Built in Rust with zero-copy I/O, SIMD-optimized hashing, and a live TUI dashboard.
 
@@ -155,6 +158,36 @@ cache_dir = "/var/cache/portail"
 - **rustc-hash** — FxHashMap for hot paths
 - **blake3** — Native SIMD (SSE2/AVX2/NEON) for cache keys
 - **LTO + UPX** — Release binary: fat-LTO + UPX compressed
+
+## CI/Webhook
+
+Portail has a built-in CI status webhook that shows live build status on the landing page.
+
+### Setup (one-time)
+
+```bash
+./scripts/setup-webhook.sh
+```
+
+This will:
+1. Generate a secure webhook secret
+2. Store it in `~/.config/portail/webhook-secret`
+3. Auto-configure GitHub webhook (if `gh` CLI available)
+
+### Endpoints
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/ci/status` | GET | JSON with workflow statuses |
+| `/ci/badge` | GET | SVG badge for README |
+| `/ci/live` | GET | SSE stream for live updates |
+| `/ci/webhook` | POST | GitHub webhook receiver |
+
+### Badge
+
+```markdown
+![CI](https://portail.vaked.dev/ci/badge)
+```
 
 ## Development
 
