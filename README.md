@@ -20,6 +20,45 @@ Portail is a high-performance, self-hosted proxy and gateway for AI services, MC
 - **Sentinel** — Background health watcher with auto-recovery
 - **TUI Dashboard** — Live network visualization, sparklines, keyboard navigation
 
+## Installation
+
+### Quick Install (Linux/macOS)
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/peterlodri-sec/portail/main/scripts/install.sh | bash
+```
+
+### Cargo Install
+
+```bash
+cargo install portail
+```
+
+### Nix/NixOS
+
+```bash
+# As a flake input
+nix profile install github:peterlodri-sec/portail
+
+# Or add to your flake.nix
+inputs.portail.url = "github:peterlodri-sec/portail";
+```
+
+### Docker
+
+```bash
+docker run -p 8787:8787 ghcr.io/peterlodri-sec/portail:latest
+```
+
+### From Source
+
+```bash
+git clone https://github.com/peterlodri-sec/portail.git
+cd portail
+cargo build --release
+sudo cp target/release/portail /usr/local/bin/
+```
+
 ## Quick Start
 
 ```bash
