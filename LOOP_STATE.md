@@ -4,9 +4,9 @@
 
 ```
 LOOP: plan → implement → test → review → ship → repeat
-STATE:  v1.4 chore-bot shipped (NATS bridge, type hardening, style guide)
-NEXT:   release
-OPEN:   #24 integration matrix (Turso pending), #1 super devnote (HUMAN ONLY)
+STATE:  v1.4.0 released (tagged, CI running) — 156 tests, 7 CI agents
+NEXT:   v2.0 first production-stable (4-week plan in docs/V2_0_PLAN.md)
+OPEN:   #24 integration matrix, #1 super devnote (HUMAN ONLY)
 ```
 
 ---
@@ -156,6 +156,7 @@ v1.0  [SHIPPED]  2026-06-26  one-command Nix gateway
 v1.1  [SHIPPED]  2026-06-26  self-healing config
 v1.2  [SHIPPED]  2026-06-26  dashboard endpoint, rate/auth counters
 v1.3  [SHIPPED]  2026-06-26  type hardening, BoundedMeta
-v1.4  [SHIPPED]  2026-06-26  chore-bot, NATS bridge, style guide
-v1.4r [NEXT]     2026-07-01  release (crates.io, homebrew, docker)
+v1.4  [SHIPPED]  2026-06-26  chore-bot, NATS bridge
+v1.4r [SHIPPED]  2026-06-26  release v1.4.0 (crates.io, homebrew, docker)
+v2.0  [NEXT]     2026-07-01  first production-stable (4-week plan)
 ```
