@@ -4,15 +4,12 @@
 
 ```
 LOOP: plan → implement → test → review → ship → repeat
-STATE:  v2.x shipped — 174 tests, Nix-first, 10 CI agents, 5 SOTA abstractions
-NEXT:   v2.1 contributor DX (guide, e2e env, package research) — #32
-THEN:   v2.2 documentation + OSS release (crates.io, Homebrew, blog) — #33
-THEN:   v2.3 stability + benchmarks (80% coverage, 200+ tests) — #34
+STATE:  v2.x shipped — 219 tests, Nix SOTA flake, 6 workspace crates, loopeng engine
+NEXT:   v2.2 contributor DX + shell completions (docs, crates.io, Homebrew) — #33
+THEN:   v2.3 stability + benchmarks (80% coverage, 250+ tests) — #34
 THEN:   v3.0 AI-native hybrid architecture — #30 + #31
 FREEZE: no new features until v3.0. Bug fixes and stability only.
-OPEN:   #27, #28, #29, #30, #31, #32, #33, #34, #1 super devnote (HUMAN ONLY)
-```
-OPEN:   #27, #28, #29, #30, #1 super devnote (HUMAN ONLY)
+OPEN:   #27, #28, #29, #30, #31, #33, #34, #35, #1 super devnote (HUMAN ONLY)
 ```
 
 ---

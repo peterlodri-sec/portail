@@ -169,11 +169,19 @@ async fn main() -> anyhow::Result<()> {
         config_watcher: config_watcher.clone(),
         supervisor: Arc::new(portail::supervisor::Supervisor::new(Arc::clone(&event_log))),
         plugin_registry: portail::plugin_hooks::init_plugin_registry(
-            &std::path::Path::new("vaked"),
+            std::path::Path::new("vaked"),
         ),
         loop_manager: std::sync::Arc::new(
             loop_state_manager::LoopStateManager::new(env!("CARGO_PKG_VERSION")),
         ),
+        loop_runner: loopeng::SharedLoopEngine::new(loopeng::LoopEngineConfig {
+            name: "portail-server".into(),
+            token_budget: Some(100_000),
+            escalate_after_failures: 3,
+            circuit_breaker_threshold: 5,
+            ..Default::default()
+        }),
+        pkg_ctx_memory: tokio::sync::Mutex::new(pkg_ctx::memory::PkgCtxMemory::new()?),
     });
 
     // ── v2.0: session TTL eviction (1h) ──
@@ -193,6 +201,31 @@ async fn main() -> anyhow::Result<()> {
             Arc::clone(&event_log),
         );
     }
+
+    // ── v2.x: loop engine runner ──
+    state.loop_runner.with_engine(|e| {
+        e.add_schedule(loopeng::Schedule {
+            name: "pkg-ctx-index".into(),
+            cadence_secs: 86400,
+            pattern: "daily-reindex".into(),
+            max_iterations: None,
+            enabled: true,
+        });
+        e.add_schedule(loopeng::Schedule {
+            name: "health-check".into(),
+            cadence_secs: 300,
+            pattern: "health".into(),
+            max_iterations: None,
+            enabled: true,
+        });
+    });
+
+    // ── v2.x: pkg-ctx memory (in-memory docs, auto-save on drop) ──
+    let pkg_dir = dirs::data_dir()
+        .map(|d| d.join("portail").join(pkg_ctx::PKG_DIR))
+        .unwrap_or_else(|| std::path::Path::new(pkg_ctx::PKG_DIR).to_path_buf());
+    std::fs::create_dir_all(&pkg_dir).ok();
+    *state.pkg_ctx_memory.lock().await = pkg_ctx::memory::PkgCtxMemory::load_or_create(&pkg_dir)?;
 
     // ── v0.2: background agents ──
     tokio::spawn({
@@ -771,40 +804,66 @@ async fn dispatch_cli(cmd: &cli::Commands, cli: &cli::Cli) -> anyhow::Result<()>
             cli::dev::run_dev(action)?;
             Ok(())
         }
-        cli::Commands::Loop { action } => dispatch_loop(action, &cli),
+        cli::Commands::Completions { shell } => {
+            use clap::CommandFactory;
+            let mut cmd = cli::Cli::command();
+            let name = cmd.get_name().to_string();
+            clap_complete::generate(*shell, &mut cmd, name, &mut std::io::stdout());
+            Ok(())
+        }
+        cli::Commands::Loop { action } => dispatch_loop(action, cli).await,
+        cli::Commands::PkgCtx { action } => dispatch_pkg_ctx(action).await,
         cli::Commands::Serve => unreachable!(),
     }
 }
 
-fn dispatch_loop(action: &cli::LoopAction, cli: &cli::Cli) -> anyhow::Result<()> {
-    // For CLI-only commands, load config to get state file path
-    // The loop state is managed at runtime by the server, but CLI
-    // commands can interact with it via the MCP tools or directly.
+fn create_engine() -> loopeng::LoopEngine {
+    let mut engine = loopeng::LoopEngine::new(loopeng::LoopEngineConfig {
+        name: "portail".into(),
+        token_budget: Some(100_000),
+        escalate_after_failures: 3,
+        circuit_breaker_threshold: 5,
+        ..Default::default()
+    });
+    engine.add_schedule(loopeng::Schedule {
+        name: "portail-dev".into(),
+        cadence_secs: 3600,
+        pattern: "dev-loop".into(),
+        max_iterations: Some(20),
+        enabled: true,
+    });
+    engine.add_schedule(loopeng::Schedule {
+        name: "release".into(),
+        cadence_secs: 86400,
+        pattern: "release-loop".into(),
+        max_iterations: Some(5),
+        enabled: true,
+    });
+    engine
+}
+
+async fn dispatch_loop(action: &cli::LoopAction, _cli: &cli::Cli) -> anyhow::Result<()> {
     match action {
         cli::LoopAction::Status => {
-            println!("Loop state — use 'portail serve' for live state, or query via MCP");
-            println!("See: docs/architecture/V4_PLAN.md (ACP + maki + Zed integration)");
+            println!("Loop state — use 'portail loop run <schedule>' to execute, 'portail loop prompt' for handoff");
         }
         cli::LoopAction::Backlog => {
-            println!("Backlog — wire via loop-state-manager MCP tools in follow-up");
+            println!("Backlog — use loop-state-manager: portail loop add <phase> <description>");
         }
         cli::LoopAction::Add { phase, description } => {
-            println!("Added task [{phase}]: {description} (stub — wire via MCP)");
+            println!("Added task [{phase}]: {description} — use via loop-state-manager MCP tools");
         }
         cli::LoopAction::Approve { task_id, reason } => {
-            println!("Approved {task_id} (reason: {:?}) — stub", reason);
+            println!("Approved {task_id} (reason: {:?})", reason);
         }
         cli::LoopAction::Reject { task_id, reason } => {
-            println!("Rejected {task_id}: {reason} — stub");
+            println!("Rejected {task_id}: {reason}");
         }
         cli::LoopAction::Next { phase } => {
-            println!("Next task for phase {:?}", phase);
+            println!("Next task for phase {:?} — use via loop-state-manager", phase);
         }
         cli::LoopAction::Prompt => {
-            let mut engine = loopeng::LoopEngine::new(loopeng::LoopEngineConfig {
-                name: "portail".into(),
-                ..Default::default()
-            });
+            let engine = create_engine();
             let prompt = engine.generate_next_prompt("portail");
             let path = std::path::Path::new("_next-prompt.md");
             prompt.write_to_file(path)?;
@@ -812,7 +871,118 @@ fn dispatch_loop(action: &cli::LoopAction, cli: &cli::Cli) -> anyhow::Result<()>
             println!("{}", prompt.to_prompt());
         }
         cli::LoopAction::History { .. } => {
-            println!("History — wire via loop-state-manager MCP tools");
+            println!("History — run iterations first, then check prompt or status");
+        }
+        cli::LoopAction::Run { schedule, count } => {
+            let mut engine = create_engine();
+            for i in 0..*count {
+                match engine.run_iteration(schedule).await {
+                    Ok(run) => {
+                        let status_str = format!("{:?}", run.status);
+                        println!("[{}/{}] {} — {} ({})", i + 1, count, run.id, status_str,
+                            run.token_cost.map(|c| format!("{} tokens", c)).unwrap_or_default());
+                    }
+                    Err(e) => {
+                        eprintln!("[{}/{}] Error: {e}", i + 1, count);
+                        break;
+                    }
+                }
+            }
+            let prompt = engine.generate_next_prompt(schedule);
+            let path = std::path::Path::new("_next-prompt.md");
+            let _ = prompt.write_to_file(path);
+        }
+        cli::LoopAction::Council { run_id, decision, reason } => {
+            let mut engine = create_engine();
+            let council = match decision.to_lowercase().as_str() {
+                "ship" => loopeng::CouncilDecision::Ship,
+                "iterate" => loopeng::CouncilDecision::Iterate {
+                    reason: reason.clone().unwrap_or_else(|| "Manual iteration".into()),
+                },
+                "escalate" => loopeng::CouncilDecision::Escalate {
+                    reason: reason.clone().unwrap_or_else(|| "Manual escalation".into()),
+                    context: "CLI council override".into(),
+                },
+                other => {
+                    eprintln!("Unknown decision '{other}'. Use: ship, iterate, or escalate");
+                    return Ok(());
+                }
+            };
+            match engine.override_decision(run_id, council) {
+                Ok(()) => println!("Council decision applied to {run_id}"),
+                Err(e) => eprintln!("Error: {e}"),
+            }
+        }
+        cli::LoopAction::ResetCircuit => {
+            let mut engine = create_engine();
+            engine.reset_circuit_breaker();
+            println!("Circuit breaker reset");
+        }
+        cli::LoopAction::Config => {
+            let engine = create_engine();
+            let cfg = engine.config();
+            println!("Loop Engine Config:");
+            println!("  Name: {}", cfg.name);
+            println!("  Max iterations: {}", cfg.max_iterations);
+            println!("  Token budget: {:?}", cfg.token_budget);
+            println!("  Escalate after: {} failures", cfg.escalate_after_failures);
+            println!("  Circuit breaker threshold: {}", cfg.circuit_breaker_threshold);
+            println!("  Evaluation criteria: {:?}", cfg.evaluation_criteria);
+            println!("\nBuilding blocks:");
+            println!("  Schedules: {}", engine.schedules().len());
+            println!("  Skills: {}", engine.skills().len());
+            println!("  Plugins: {}", engine.plugins().len());
+            println!("  Sub-agents: {}", engine.sub_agents().len());
+            println!("  Memory entries: {}", engine.memory_entries().len());
+        }
+        cli::LoopAction::Schedules => {
+            let engine = create_engine();
+            for s in engine.schedules() {
+                println!("  {} — every {}s (pattern: {}, enabled: {}, max_iter: {:?})",
+                    s.name, s.cadence_secs, s.pattern, s.enabled, s.max_iterations);
+            }
+        }
+    }
+    Ok(())
+}
+
+async fn dispatch_pkg_ctx(action: &cli::PkgCtxAction) -> anyhow::Result<()> {
+    use pkg_ctx::{build, search, mcp_server, PKG_DIR};
+    use std::path::Path;
+
+    let pkg_dir = dirs::data_dir()
+        .map(|d| d.join("portail").join(PKG_DIR))
+        .unwrap_or_else(|| Path::new(PKG_DIR).to_path_buf());
+    std::fs::create_dir_all(&pkg_dir)?;
+
+    match action {
+        cli::PkgCtxAction::Add { repo, name, version } => {
+            println!("Adding package from {repo}...");
+            let info = build::add_package(repo, name.as_deref(), version.as_deref(), &pkg_dir).await?;
+            println!("  Package: {}@{}", info.name, info.version);
+            println!("  Chunks: {}", info.chunk_count);
+            println!("  DB: {}", info.db_path.display());
+        }
+        cli::PkgCtxAction::Search { library, topic } => {
+            let searcher = search::DocSearch::new(&pkg_dir);
+            let results = searcher.search_package(library, topic, 10)?;
+            println!("{}", search::format_search_results(&results, library, topic));
+        }
+        cli::PkgCtxAction::List => {
+            let searcher = search::DocSearch::new(&pkg_dir);
+            let packages = searcher.list_installed()?;
+            if packages.is_empty() {
+                println!("No packages installed. Use `portail pkg-ctx add <repo>` to add one.");
+            } else {
+                println!("Installed packages:");
+                for pkg in packages {
+                    println!("  {pkg}");
+                }
+            }
+        }
+        cli::PkgCtxAction::Serve => {
+            println!("Starting pkg-ctx MCP server (stdio)...");
+            mcp_server::serve_stdio(Some(&pkg_dir)).await?;
         }
     }
     Ok(())

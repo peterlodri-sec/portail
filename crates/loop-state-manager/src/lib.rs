@@ -23,7 +23,7 @@
 use chrono::Utc;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use std::sync::{Arc, Mutex};
+use std::sync::Mutex;
 use tokio::sync::oneshot;
 use uuid::Uuid;
 
@@ -138,7 +138,7 @@ impl HitlChannel {
     pub fn send_decision(&self, decision: HumanDecision) -> Result<(), HumanDecision> {
         let tx = self.tx.lock().unwrap().take();
         match tx {
-            Some(tx) => tx.send(decision).map_err(|d| d),
+            Some(tx) => tx.send(decision),
             None => Err(decision),
         }
     }

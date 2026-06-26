@@ -24,6 +24,17 @@ All PRs require:
 - Force pushes are disabled
 - Status checks must pass
 
+### Workspace Crates
+
+| Crate | Purpose | Tests |
+|---|---|---|
+| `loopeng` | Loop engineering — plan/execute/evaluate/decide engine + 5 building blocks + circuit breaker | 19 |
+| `pkg-ctx` | Local-first docs MCP server — git clone, index, FTS5 search, in-memory cache | 18 |
+| `loop-state-manager` | HITL loop state management — tasks, phases, human decisions | 6 |
+| `portail-agents` | CI agents (nullclaw, drift-detect, spec-verify, fuzz-route, chore-bot) | — |
+| `portail-plugin-sdk` | `.vaked` plugin SDK | — |
+| `portail-vaked` | Plugin registry, CLI, Nix lowering | — |
+
 ## For AI Agents
 
 ### Supported Agents

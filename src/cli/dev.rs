@@ -30,7 +30,7 @@ pub fn run_dev(action: &super::DevAction) -> Result<()> {
             Ok(())
         }
         super::DevAction::Build { max } => {
-            let mut args = vec!["build", "--release", "-p", "portail"];
+            let _args = ["build", "--release", "-p", "portail"];
             if *max {
                 cmd("cargo", &["build", "--release", "-p", "portail",
                     "--config", "profile.release.lto=\"fat\"",

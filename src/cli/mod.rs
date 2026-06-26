@@ -232,6 +232,18 @@ pub enum Commands {
         scan: bool,
     },
 
+    /// Generate shell completions
+    Completions {
+        /// Shell type (bash, zsh, fish, powershell, elvish)
+        shell: clap_complete::Shell,
+    },
+
+    /// Manage documentation packages (pkg-ctx)
+    PkgCtx {
+        #[command(subcommand)]
+        action: PkgCtxAction,
+    },
+
     /// Release audit: verify binaries, generate SBOM + report
     ReleaseAudit {
         /// Directory containing release artifacts
@@ -379,6 +391,30 @@ pub enum LoopAction {
     Prompt,
     /// Show task history
     History { phase: Option<String> },
+    /// Run a loop iteration for a schedule
+    Run {
+        /// Schedule name to run
+        schedule: String,
+        /// Number of iterations to run (default: 1)
+        #[arg(short = 'n', long, default_value = "1")]
+        count: usize,
+    },
+    /// Override a loop run's decision (council vote)
+    Council {
+        /// Run ID to override
+        run_id: String,
+        /// Decision: ship, iterate, or escalate
+        decision: String,
+        /// Reason for the decision
+        #[arg(short, long)]
+        reason: Option<String>,
+    },
+    /// Reset the circuit breaker
+    ResetCircuit,
+    /// Show loop engine config and building blocks
+    Config,
+    /// List registered schedules
+    Schedules,
 }
 
 #[derive(Subcommand, Debug, Clone)]
@@ -391,4 +427,30 @@ pub enum VakedAction {
     Lower { path: PathBuf },
     /// Build a .vaked plugin to WASM
     Build { path: PathBuf },
+}
+
+#[derive(Subcommand, Debug, Clone)]
+pub enum PkgCtxAction {
+    /// Add a documentation package from a git repo
+    Add {
+        /// Git repository URL
+        repo: String,
+        /// Package name (default: inferred from URL)
+        #[arg(short, long)]
+        name: Option<String>,
+        /// Version tag (default: latest)
+        #[arg(short, long)]
+        version: Option<String>,
+    },
+    /// Search installed documentation packages
+    Search {
+        /// Package name (with optional @version)
+        library: String,
+        /// Search query
+        topic: String,
+    },
+    /// List installed documentation packages
+    List,
+    /// Start the MCP stdio server for AI agent integration
+    Serve,
 }

@@ -8,7 +8,9 @@ criterion_group!(
     bench_header_strip,
     bench_config_parse,
     bench_rate_limit,
-    bench_bounded_meta
+    bench_bounded_meta,
+    bench_loopeng_run,
+    bench_pkg_ctx_memory
 );
 criterion_main!(benches);
 
@@ -123,6 +125,60 @@ fn bench_rate_limit(c: &mut Criterion) {
     c.bench_function("rate_limit_check", |b| {
         b.iter(|| {
             let _ = limiter.check(black_box("api-key-123"), black_box("/v1/chat/completions"));
+        })
+    });
+}
+
+fn bench_loopeng_run(c: &mut Criterion) {
+    use loopeng::{LoopEngine, LoopEngineConfig, Schedule, SubAgent};
+    let rt = tokio::runtime::Runtime::new().unwrap();
+    c.bench_function("loopeng_run", |b| {
+        b.to_async(&rt).iter(|| {
+            let mut engine = LoopEngine::new(LoopEngineConfig {
+                name: "bench".into(),
+                max_iterations: 100,
+                token_budget: Some(100000),
+                escalate_after_failures: 3,
+                circuit_breaker_threshold: 10,
+                ..Default::default()
+            });
+            engine.add_schedule(Schedule {
+                name: "bench".into(),
+                cadence_secs: 60,
+                pattern: "bench".into(),
+                max_iterations: Some(100),
+                enabled: true,
+            });
+            engine.add_sub_agent(SubAgent {
+                id: "maker-b".into(),
+                role: "maker".into(),
+                model: "sonnet-4".into(),
+                instruction: "Build".into(),
+                max_turns: 2,
+            });
+            async move { engine.run_iteration("bench").await }
+        })
+    });
+}
+
+fn bench_pkg_ctx_memory(c: &mut Criterion) {
+    use pkg_ctx::memory::PkgCtxMemory;
+    use pkg_ctx::storage::DocChunk;
+    let mut mem = PkgCtxMemory::new().unwrap();
+    for i in 0..100 {
+        mem.insert_sync(DocChunk {
+            id: 0,
+            doc_path: format!("doc{i}.md"),
+            doc_title: "Doc".into(),
+            section_title: "Section".into(),
+            content: format!("document {i} about authentication and middleware"),
+            tokens: 10,
+            has_code: false,
+        }).ok();
+    }
+    c.bench_function("pkg_ctx_search", |b| {
+        b.iter(|| {
+            let _ = mem.search_sync("authentication", 10);
         })
     });
 }

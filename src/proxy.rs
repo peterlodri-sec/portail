@@ -76,6 +76,11 @@ pub fn build_router(state: Arc<AppState>) -> Router {
         .route("/supervisor/status", axum::routing::get(supervisor_handler))
         .route("/sessions", axum::routing::get(sessions_handler))
         .route("/sessions/{id}", axum::routing::get(session_detail_handler))
+        .route("/api-docs/openapi.json", get(openapi_json))
+        .route("/v1/loop/status", get(loop_status_handler))
+        .route("/v1/loop/run/{schedule}", axum::routing::post(loop_run_handler))
+        .route("/v1/pkg-ctx/search", axum::routing::post(pkg_ctx_search_handler))
+        .route("/v1/pkg-ctx/list", get(pkg_ctx_list_handler))
         .fallback(route_to_ai_gateway)
         // Decorating middleware (inner → outer)
         .layer(middleware::from_fn_with_state(
@@ -563,6 +568,10 @@ mod tests {
             loop_manager: std::sync::Arc::new(
                 loop_state_manager::LoopStateManager::new("3.0.0"),
             ),
+            loop_runner: loopeng::SharedLoopEngine::new(loopeng::LoopEngineConfig::default()),
+            pkg_ctx_memory: tokio::sync::Mutex::new(
+                pkg_ctx::memory::PkgCtxMemory::new().unwrap()
+            ),
         })
     }
 
@@ -827,3 +836,99 @@ mod tests {
         assert_eq!(resp.status(), StatusCode::NOT_FOUND);
     }
 }
+
+// ── Loop handlers ────────────────────────────────────────────────
+
+async fn loop_status_handler(State(state): State<Arc<AppState>>) -> Json<serde_json::Value> {
+    let status = state.loop_runner.with_engine(|e| {
+        serde_json::json!({
+            "schedules": e.schedules().len(),
+            "runs": e.runs().len(),
+            "circuit_open": e.is_circuit_open(),
+            "consecutive_failures": e.consecutive_failures(),
+            "memory_entries": e.memory_entries().len(),
+            "sub_agents": e.sub_agents().len(),
+            "skills": e.skills().len(),
+        })
+    });
+    Json(status)
+}
+
+async fn loop_run_handler(
+    State(state): State<Arc<AppState>>,
+    axum::extract::Path(schedule): axum::extract::Path<String>,
+) -> Response {
+    let result = state.loop_runner.run_iteration(&schedule).await;
+    match result {
+        Ok(run) => Json(serde_json::json!({
+            "id": run.id,
+            "status": format!("{:?}", run.status),
+            "phase": run.phase.to_string(),
+            "token_cost": run.token_cost,
+            "artifacts": run.artifacts,
+        }))
+        .into_response(),
+        Err(e) => (StatusCode::BAD_REQUEST, e.to_string()).into_response(),
+    }
+}
+
+// ── pkg-ctx handlers ─────────────────────────────────────────────
+
+async fn pkg_ctx_search_handler(
+    State(state): State<Arc<AppState>>,
+    Json(body): Json<serde_json::Value>,
+) -> Response {
+    let library = body.get("library").and_then(|v| v.as_str()).unwrap_or("");
+    let topic = body.get("topic").and_then(|v| v.as_str()).unwrap_or("");
+    if library.is_empty() || topic.is_empty() {
+        return (StatusCode::BAD_REQUEST, "missing library or topic").into_response();
+    }
+    let results = {
+        let mem = state.pkg_ctx_memory.lock().await;
+        mem.search(topic, 10).await
+    };
+    let results = match results {
+        Ok(r) => r,
+        Err(e) => return (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()).into_response(),
+    };
+    let text = pkg_ctx::search::format_search_results(&results, library, topic);
+    Json(serde_json::json!({ "result": text, "count": results.len() })).into_response()
+}
+
+async fn pkg_ctx_list_handler(
+    State(state): State<Arc<AppState>>,
+) -> Json<serde_json::Value> {
+    let summary = state.pkg_ctx_memory.lock().await.summarize();
+    Json(serde_json::json!({ "summary": summary }))
+}
+
+// ── OpenAPI / Swagger ────────────────────────────────────────────
+
+async fn openapi_json() -> Json<serde_json::Value> {
+    Json(serde_json::json!({
+        "openapi": "3.1.0",
+        "info": {
+            "title": "Portail API",
+            "version": env!("CARGO_PKG_VERSION"),
+            "description": "Unified proxy/gateway: AI Gateway + MCP Gateway + CDN cache + Agent protocol"
+        },
+        "servers": [{"url": "/"}],
+        "paths": {
+            "/healthz": { "get": { "summary": "Liveness check", "tags": ["health"] } },
+            "/readyz": { "get": { "summary": "Readiness check", "tags": ["health"] } },
+            "/v1/loop/status": { "get": { "summary": "Loop engine status", "tags": ["loop"] } },
+            "/v1/loop/run/{schedule}": { "post": { "summary": "Run a loop iteration", "tags": ["loop"] } },
+            "/v1/pkg-ctx/search": { "post": { "summary": "Search documentation context", "tags": ["pkg-ctx"] } },
+            "/v1/pkg-ctx/list": { "get": { "summary": "List available packages", "tags": ["pkg-ctx"] } },
+            "/a2c/chat": { "post": { "summary": "Agent-to-Consumer chat", "tags": ["chat"] } },
+        },
+        "tags": [
+            {"name": "health", "description": "Health check endpoints"},
+            {"name": "loop", "description": "Loop engine management"},
+            {"name": "pkg-ctx", "description": "Documentation context search"},
+            {"name": "chat", "description": "AI chat (A2C / orchestrator)"},
+        ]
+    }))
+}
+
+

@@ -58,6 +58,11 @@ logs/
 *.cert
 !tests/fixtures/
 
+# Generated artifacts (CI agents, docs)
+complexity-report.toml
+docs/index.html
+docs/demo.html
+
 # OS
 .DS_Store
 .DS_Store?

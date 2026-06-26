@@ -18,12 +18,13 @@
   <a href="https://pocoo.vaked.dev">Blog</a> · <a href="https://github.com/peterlodri-sec">GitHub</a> · <a href="https://x.com/0xp3t3rl">X/Twitter</a> · <a href="https://patreon.com/vaked">Patreon</a> · <a href="https://chat.vaked.dev">Chat</a>
 </p>
 
-> **v1.4.0** · 174 tests · 0 warnings · 7 CI agents · MIT-licensed since 2026.
+> **v2.0.0** · 201 tests · 0 warnings · 7 CI agents · MIT-licensed since 2026.
+> Read the philosophy: [`PHILOSOPHY.md`](PHILOSOPHY.md)
 
 Portail is a high-performance, self-hosted proxy and gateway giving you a single
 control plane for AI infrastructure. Built in Rust. Start in 5 minutes. Scale to fleet.
 
-**One binary.** Proxy, cache, hooks, agents, DNS, observability. Everything.
+**One binary.** Proxy, cache, hooks, agents, DNS, observability, loop engine. Everything.
 
 ## Features
 
@@ -42,6 +43,9 @@ control plane for AI infrastructure. Built in Rust. Start in 5 minutes. Scale to
 - **Event Store** — SQLite (WAL, retention) with pluggable Turso/libSQL backend
 - **6 CI Agents** — Advisory-only: complexity, drift-detect, spec-verify, fuzz-route, chore-bot, clippy
 - **Type Hardened** — BoundedMeta (max 16 entries, key≤128B, val≤512B) replaces FxHashMap on hot paths
+- **Loop Engine** — 5 building blocks (Schedule, Worktree, Skill, Plugin, Sub-agent) + Memory/State + plan→execute→evaluate→decide pipeline
+- **Circuit Breaker** — Auto-stop after N consecutive failures, manual reset
+- **Council Decisions** — Ship / Iterate / Escalate with token budget enforcement
 - **Config Wizard** — `portail init` interactive generator, zero-config startup
 - **GraphQL API** — Async-graphql schema, query events + publish mutations
 - **Keyboards CLI** — Status, events, hooks, cache, health, config — all HTTP-connected to running server
@@ -122,6 +126,11 @@ portail complexity         # Big-O complexity analysis
 portail docs               # Generate docs, open in browser
 portail learn <topic>      # Learn networking concepts
 portail setup              # Domain + TLS certificate setup
+portail loop run <sched>   # Run loop iterations
+portail loop prompt        # Generate _next-prompt.md for handoff
+portail loop council <id>  # Manual council override
+portail loop config        # Show loop engine configuration
+portail loop schedules     # List registered schedules
 ```
 
 ## Hardware Optimizations
@@ -162,9 +171,11 @@ task docs           # generate + open docs
 ```
 
 > **Explore**: [`AGENTS.md`](AGENTS.md) — codebase cross-reference hub.  
+> **Philosophy**: [`PHILOSOPHY.md`](PHILOSOPHY.md) — project values and principles.  
 > **Product**: [`docs/architecture/PRODUCT.md`](docs/architecture/PRODUCT.md) — strategy + positioning.  
 > **Architecture**: [`docs/architecture/DESIGN.md`](docs/architecture/DESIGN.md) + [`NETWORK_DESIGN.md`](docs/architecture/NETWORK_DESIGN.md).  
 > **Roadmap**: [`LOOP_STATE.md`](LOOP_STATE.md) — current state + next milestones.  
+> **Loop Engine**: [`crates/loopeng/src/lib.rs`](crates/loopeng/src/lib.rs) — 5 building blocks + 4-phase pipeline + circuit breaker.  
 > **Contribute**: [`docs/contributors/CONTRIBUTING.md`](docs/contributors/CONTRIBUTING.md).
 
 ## License

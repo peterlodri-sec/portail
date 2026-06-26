@@ -41,6 +41,7 @@ pub mod graphql;
 pub mod hooks;
 pub mod mcp;
 pub mod nats_bridge;
+pub mod orchestrator;
 pub mod plugins;
 pub mod plugin_hooks;
 pub mod proxy;
@@ -61,7 +62,6 @@ pub use config::Config;
 use loop_state_manager::LoopStateManager;
 use portail_vaked::PluginRegistry;
 
-use std::path::PathBuf;
 use std::sync::Arc;
 use std::sync::RwLock;
 
@@ -89,4 +89,6 @@ pub struct AppState {
     pub supervisor: Arc<supervisor::Supervisor>,
     pub plugin_registry: Arc<std::sync::Mutex<PluginRegistry>>,
     pub loop_manager: Arc<LoopStateManager>,
+    pub loop_runner: loopeng::SharedLoopEngine,
+    pub pkg_ctx_memory: tokio::sync::Mutex<pkg_ctx::memory::PkgCtxMemory>,
 }

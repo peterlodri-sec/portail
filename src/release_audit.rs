@@ -68,7 +68,7 @@ const MACHO_32_MAGIC: [u8; 4] = [0xfe, 0xed, 0xfa, 0xce];
 const MACHO_64_MAGIC: [u8; 4] = [0xfe, 0xed, 0xfa, 0xcf];
 const MACHO_32_REV: [u8; 4] = [0xce, 0xfa, 0xed, 0xfe];
 const MACHO_64_REV: [u8; 4] = [0xcf, 0xfa, 0xed, 0xfe];
-const PE_MAGIC: [u8; 2] = [b'M', b'Z'];
+const PE_MAGIC: [u8; 2] = *b"MZ";
 
 // ── Core logic ─────────────────────────────────────────────────────────────
 
@@ -523,7 +523,7 @@ pub fn generate_markdown_report(report: &AuditReport, manifest_hash: &str) -> St
     md.push_str(&format!("| Failed | {} |\n", report.summary.failed));
     md.push_str(&format!("| Checks | {}/{} passed |\n", report.summary.checks_passed, report.summary.checks_total));
     md.push_str(&format!("| Warnings | {} |\n", report.summary.warnings));
-    md.push_str("\n");
+    md.push('\n');
     md.push_str(&format!("**Manifest hash:** `{}`\n\n", manifest_hash));
 
     // Failed artifacts
@@ -541,7 +541,7 @@ pub fn generate_markdown_report(report: &AuditReport, manifest_hash: &str) -> St
                     md.push_str(&format!("- ❌ **{}**: {}\n", check.name, check.detail));
                 }
             }
-            md.push_str("\n");
+            md.push('\n');
         }
     }
 
@@ -565,7 +565,7 @@ pub fn generate_markdown_report(report: &AuditReport, manifest_hash: &str) -> St
             status, art.path, art.file_type, size_str, &art.sha256[..12], c, art.warnings.len()
         ));
     }
-    md.push_str("\n");
+    md.push('\n');
 
     // Warnings detail
     for art in &report.artifacts {
@@ -574,16 +574,16 @@ pub fn generate_markdown_report(report: &AuditReport, manifest_hash: &str) -> St
             for w in &art.warnings {
                 md.push_str(&format!("- ⚠️ {}\n", w));
             }
-            md.push_str("\n");
+            md.push('\n');
         }
     }
 
     // Verification instructions
     md.push_str("## Verification\n\n");
     md.push_str("```bash\n");
-    md.push_str(&format!("# Verify SHA256 of any artifact\n"));
+    md.push_str(&"# Verify SHA256 of any artifact\n".to_string());
     md.push_str("sha256sum <artifact>\n");
-    md.push_str("\n");
+    md.push('\n');
     md.push_str("# Compare against manifest\n");
     md.push_str("cat release-audit-manifest.json | jq '.artifacts[\"<artifact>\"].sha256'\n");
     md.push_str("```\n");

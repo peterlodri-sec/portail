@@ -23,7 +23,7 @@ pub async fn create_pool(db_path: &str) -> Result<sqlx::SqlitePool, String> {
     if let Some(parent) = PathBuf::from(&path).parent() {
         std::fs::create_dir_all(parent).ok();
     }
-    let url = format!("sqlite:{}?mode=rwc", &path);
+    let url = format!("sqlite:{}?mode=rwc", path);
     sqlx::sqlite::SqlitePoolOptions::new()
         .max_connections(8)
         .min_connections(1)

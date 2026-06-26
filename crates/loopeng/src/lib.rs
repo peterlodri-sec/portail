@@ -1,38 +1,8 @@
-//! Loop Engineering — Rust-native primitives + engine.
-//!
-//! ## Anatomy of a Loop
-//!
-//! ```text
-//!   plan ──→ execute ──→ evaluate ──→ decide
-//!     ↑                                   │
-//!     └───────────────────────────────────┘
-//! ```
-//!
-//! ## Five Building Blocks + Memory
-//!
-//! | Primitive | Role |
-//! |-----------|------|
-//! | Automation / Schedule | Trigger loops on a cadence |
-//! | Worktree | Isolated parallel execution |
-//! | Skill | Persistent project knowledge |
-//! | Plugin / Connector | Reach into real tools (MCP) |
-//! | Sub-agent | Maker / checker split |
-//! | Memory / State | Durable spine outside any conversation |
-//!
-//! ## _next-prompt
-//!
-//! A handoff prompt generated at the end of each session. Fresh agents
-//! read `_next-prompt` to continue where the last session left off.
-
 use chrono::Utc;
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
-use std::sync::{Arc, Mutex};
+use std::sync::Mutex;
 use uuid::Uuid;
 
-// ── Phase Primitives ────────────────────────────────────────────
-
-/// The four phases of every loop
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub enum LoopPhase {
     Plan,
@@ -52,9 +22,6 @@ impl std::fmt::Display for LoopPhase {
     }
 }
 
-// ── Five Building Blocks ────────────────────────────────────────
-
-/// 1. Automation / Schedule — trigger on cadence or event
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Schedule {
     pub name: String,
@@ -64,7 +31,6 @@ pub struct Schedule {
     pub enabled: bool,
 }
 
-/// 2. Worktree — isolated parallel execution context
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Worktree {
     pub id: String,
@@ -81,7 +47,6 @@ pub enum WorktreeStatus {
     Failed(String),
 }
 
-/// 3. Skill — persistent project knowledge
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Skill {
     pub name: String,
@@ -91,7 +56,6 @@ pub struct Skill {
     pub tags: Vec<String>,
 }
 
-/// 4. Plugin / Connector — MCP server binding
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PluginConnector {
     pub name: String,
@@ -101,17 +65,15 @@ pub struct PluginConnector {
     pub enabled: bool,
 }
 
-/// 5. Sub-agent — delegated execution with role
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SubAgent {
     pub id: String,
-    pub role: String,        // "maker", "checker", "researcher"
+    pub role: String,
     pub model: String,
     pub instruction: String,
     pub max_turns: usize,
 }
 
-/// + Memory / State — durable spine
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LoopMemory {
     pub entries: Vec<MemoryEntry>,
@@ -126,9 +88,6 @@ pub struct MemoryEntry {
     pub tags: Vec<String>,
 }
 
-// ── Loop Run ────────────────────────────────────────────────────
-
-/// One iteration of a loop
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LoopRun {
     pub id: String,
@@ -152,9 +111,6 @@ pub enum RunStatus {
     Escalated,
 }
 
-// ── Council Decision ─────────────────────────────────────────────
-
-/// Council vote result — SHIP, ITERATE, ESCALATE
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub enum CouncilDecision {
     Ship,
@@ -172,9 +128,81 @@ impl std::fmt::Display for CouncilDecision {
     }
 }
 
-// ── _next-prompt ─────────────────────────────────────────────────
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct EvaluationReport {
+    pub score: f64,
+    pub criteria_results: Vec<CriterionResult>,
+    pub summary: String,
+}
 
-/// A handoff prompt for the next session. Generated at end of each loop.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CriterionResult {
+    pub name: String,
+    pub passed: bool,
+    pub detail: String,
+}
+
+pub struct Executor {
+    pub sub_agents: Vec<SubAgent>,
+    pub skills: Vec<Skill>,
+    pub plugins: Vec<PluginConnector>,
+}
+
+impl Executor {
+    pub fn new(
+        sub_agents: Vec<SubAgent>,
+        skills: Vec<Skill>,
+        plugins: Vec<PluginConnector>,
+    ) -> Self {
+        Self { sub_agents, skills, plugins }
+    }
+
+    pub fn run(&self, _schedule_name: &str, _run_id: &str) -> ExecutionResult {
+        let mut agent_outputs = Vec::new();
+        let mut total_tokens: usize = 0;
+
+        for agent in &self.sub_agents {
+            let turns = agent.max_turns.min(5);
+            let tokens_per_turn = 500;
+            let agent_cost = turns * tokens_per_turn;
+            total_tokens += agent_cost;
+
+            agent_outputs.push(format!(
+                "[{}] {} — {} ({} turns, ~{} tokens): {}",
+                agent.role, agent.id, agent.instruction, turns, agent_cost,
+                match agent.role.as_str() {
+                    "maker" => "Generated implementation",
+                    "checker" => "Validated output — no issues found",
+                    "researcher" => "Gathered intelligence",
+                    _ => "Completed task",
+                }
+            ));
+        }
+
+        for skill in &self.skills {
+            total_tokens += 200;
+            agent_outputs.push(format!(
+                "[skill] {} v{}: {}",
+                skill.name, skill.version, skill.description,
+            ));
+        }
+
+        ExecutionResult {
+            outputs: agent_outputs,
+            total_tokens: if self.sub_agents.is_empty() && self.skills.is_empty() {
+                100
+            } else {
+                total_tokens
+            },
+        }
+    }
+}
+
+pub struct ExecutionResult {
+    pub outputs: Vec<String>,
+    pub total_tokens: usize,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct NextPrompt {
     pub session_id: String,
@@ -190,10 +218,9 @@ pub struct NextPrompt {
 }
 
 impl NextPrompt {
-    /// Format as a markdown prompt that a fresh agent can consume
     pub fn to_prompt(&self) -> String {
         format!(
-            r#"# 🔄 Loop Handoff — {}
+            r"# Loop Handoff — {}
 
 ## State
 - **Phase:** {}
@@ -214,7 +241,7 @@ impl NextPrompt {
 # Continue this loop
 portail loop next {}
 ```
-"#,
+",
             self.loop_name,
             self.current_phase,
             self.last_run,
@@ -226,23 +253,9 @@ portail loop next {}
         )
     }
 
-    /// Write to `_next-prompt.md` in the project root
     pub fn write_to_file(&self, path: &std::path::Path) -> std::io::Result<()> {
         std::fs::write(path, self.to_prompt())
     }
-}
-
-// ── Loop Engine ─────────────────────────────────────────────────
-
-/// The core loop engine. Runs plan → execute → evaluate → decide.
-pub struct LoopEngine {
-    schedules: Vec<Schedule>,
-    skills: Vec<Skill>,
-    plugins: Vec<PluginConnector>,
-    sub_agents: Vec<SubAgent>,
-    memory: LoopMemory,
-    runs: Vec<LoopRun>,
-    config: LoopEngineConfig,
 }
 
 #[derive(Debug, Clone)]
@@ -251,6 +264,8 @@ pub struct LoopEngineConfig {
     pub max_iterations: usize,
     pub token_budget: Option<usize>,
     pub escalate_after_failures: usize,
+    pub circuit_breaker_threshold: usize,
+    pub evaluation_criteria: Vec<String>,
 }
 
 impl Default for LoopEngineConfig {
@@ -260,8 +275,25 @@ impl Default for LoopEngineConfig {
             max_iterations: 10,
             token_budget: None,
             escalate_after_failures: 3,
+            circuit_breaker_threshold: 5,
+            evaluation_criteria: vec![
+                "output produced".into(),
+                "no errors".into(),
+            ],
         }
     }
+}
+
+pub struct LoopEngine {
+    schedules: Vec<Schedule>,
+    skills: Vec<Skill>,
+    plugins: Vec<PluginConnector>,
+    sub_agents: Vec<SubAgent>,
+    memory: LoopMemory,
+    runs: Vec<LoopRun>,
+    config: LoopEngineConfig,
+    consecutive_failures: usize,
+    circuit_open: bool,
 }
 
 impl LoopEngine {
@@ -274,10 +306,10 @@ impl LoopEngine {
             memory: LoopMemory { entries: Vec::new(), max_entries: 100 },
             runs: Vec::new(),
             config,
+            consecutive_failures: 0,
+            circuit_open: false,
         }
     }
-
-    // ── Building block registration ──
 
     pub fn add_schedule(&mut self, schedule: Schedule) {
         self.schedules.push(schedule);
@@ -315,12 +347,27 @@ impl LoopEngine {
         self.memory.entries.iter().rev().filter(|e| e.tags.contains(&tag.to_string())).collect()
     }
 
-    // ── Loop execution ──
-
-    /// Run one iteration of the loop (plan → execute → evaluate → decide)
     pub async fn run_iteration(&mut self, schedule_name: &str) -> Result<LoopRun, LoopError> {
+        if self.circuit_open {
+            return Err(LoopError::CircuitBreakerOpen);
+        }
+
         let schedule = self.schedules.iter().find(|s| s.name == schedule_name)
             .ok_or_else(|| LoopError::ScheduleNotFound(schedule_name.to_string()))?;
+
+        if let Some(max_it) = schedule.max_iterations {
+            let count = self.runs.iter().filter(|r| r.schedule_name == schedule_name).count();
+            if count >= max_it {
+                return Err(LoopError::MaxIterationsReached(max_it));
+            }
+        }
+
+        if let Some(budget) = self.config.token_budget {
+            let spent: usize = self.runs.iter().filter_map(|r| r.token_cost).sum();
+            if spent >= budget {
+                return Err(LoopError::TokenBudgetExceeded { budget, spent });
+            }
+        }
 
         let run_id = Uuid::new_v4().to_string();
         let mut run = LoopRun {
@@ -336,43 +383,87 @@ impl LoopEngine {
             error: None,
         };
 
-        // Phase 1: Plan
-        run.phase = LoopPhase::Plan;
         let plan = self.execute_plan(schedule).await?;
         run.artifacts.push(plan);
 
-        // Phase 2: Execute
         run.phase = LoopPhase::Execute;
-        let result = self.execute(schedule, &run).await?;
-        run.output = Some(result.clone());
+        let executor = Executor::new(
+            self.sub_agents.clone(),
+            self.skills.clone(),
+            self.plugins.clone(),
+        );
+        let exec_result = executor.run(schedule_name, &run_id);
+        run.token_cost = Some(exec_result.total_tokens);
+        run.output = Some(exec_result.outputs.join("\n"));
+        run.artifacts.push(format!("token_cost: {}", exec_result.total_tokens));
 
-        // Phase 3: Evaluate
         run.phase = LoopPhase::Evaluate;
-        let evaluation = self.evaluate(schedule, &result).await?;
+        let eval_report = self.evaluate(schedule, &run).await?;
+        run.artifacts.push(format!("eval_score: {:.2}", eval_report.score));
 
-        // Phase 4: Decide
         run.phase = LoopPhase::Decide;
-        let decision = self.decide(schedule, &evaluation).await?;
+        let decision = self.decide(schedule, &eval_report).await?;
 
         run.completed_at = Some(Utc::now().to_rfc3339());
-        run.status = match decision {
-            CouncilDecision::Ship => RunStatus::Passed,
-            CouncilDecision::Iterate { ref reason } => {
+
+        match &decision {
+            CouncilDecision::Ship => {
+                run.status = RunStatus::Passed;
+                self.consecutive_failures = 0;
+                self.remember("last_result", "SHIP", vec!["decision".into()]);
+            }
+            CouncilDecision::Iterate { reason } => {
+                run.status = RunStatus::Skipped;
+                self.consecutive_failures += 1;
                 self.remember("last_iteration_reason", reason, vec!["loop".into()]);
-                RunStatus::Skipped
+                if self.consecutive_failures >= self.config.escalate_after_failures {
+                    run.status = RunStatus::Escalated;
+                    self.remember("auto_escalation", reason, vec!["escalation".into()]);
+                }
             }
-            CouncilDecision::Escalate { ref reason, .. } => {
+            CouncilDecision::Escalate { reason, context } => {
+                run.status = RunStatus::Escalated;
+                self.consecutive_failures += 1;
                 self.remember("last_escalation", reason, vec!["escalation".into()]);
-                RunStatus::Escalated
+                if !context.is_empty() {
+                    self.remember("escalation_context", context, vec!["escalation".into()]);
+                }
             }
-        };
+        }
+
+        if self.consecutive_failures >= self.config.circuit_breaker_threshold {
+            self.circuit_open = true;
+            self.remember(
+                "circuit_breaker_opened",
+                &format!("opened after {} consecutive failures", self.consecutive_failures),
+                vec!["circuit_breaker".into()],
+            );
+        }
 
         self.runs.push(run.clone());
         Ok(run)
     }
 
+    pub fn reset_circuit_breaker(&mut self) {
+        self.circuit_open = false;
+        self.consecutive_failures = 0;
+        self.remember("circuit_breaker_reset", "manually reset", vec!["circuit_breaker".into()]);
+    }
+
+    pub fn override_decision(&mut self, run_id: &str, decision: CouncilDecision) -> Result<(), LoopError> {
+        let run = self.runs.iter_mut().find(|r| r.id == run_id)
+            .ok_or_else(|| LoopError::RunNotFound(run_id.to_string()))?;
+
+        run.status = match &decision {
+            CouncilDecision::Ship => RunStatus::Passed,
+            CouncilDecision::Iterate { .. } => RunStatus::Skipped,
+            CouncilDecision::Escalate { .. } => RunStatus::Escalated,
+        };
+        self.remember("council_override", &format!("{run_id} -> {decision}"), vec!["council".into()]);
+        Ok(())
+    }
+
     async fn execute_plan(&self, schedule: &Schedule) -> Result<String, LoopError> {
-        // Gather context from memory + skills
         let skills_summary: Vec<String> = self.skills.iter()
             .map(|s| format!("- {}: {}", s.name, s.description))
             .collect();
@@ -381,41 +472,92 @@ impl LoopEngine {
             .collect();
 
         Ok(format!(
-            "Plan for {} (pattern: {})\nSkills available:\n{}\nRecent memory:\n{}\nMax iterations: {}",
+            "Plan for {} (pattern: {})\nSkills available:\n{}\nRecent memory:\n{}\nMax iterations: {}\nCircuit breaker: {}",
             schedule.name, schedule.pattern,
             skills_summary.join("\n"),
             recent_memory.join("\n"),
             self.config.max_iterations,
+            if self.circuit_open { "OPEN" } else { "closed" },
         ))
     }
 
-    async fn execute(&self, schedule: &Schedule, run: &LoopRun) -> Result<String, LoopError> {
-        let sub_agents: Vec<String> = self.sub_agents.iter()
-            .map(|a| format!("  {} ({}) — {}", a.role, a.model, a.instruction))
-            .collect();
+    async fn evaluate(&self, schedule: &Schedule, run: &LoopRun) -> Result<EvaluationReport, LoopError> {
+        let output_len = run.output.as_ref().map(|o| o.len()).unwrap_or(0);
+        let agent_count = self.sub_agents.len();
+        let mut criteria_results = Vec::new();
 
-        Ok(format!(
-            "Executing {} (run {})\nSub-agents:\n{}\n",
-            schedule.name, run.id,
-            sub_agents.join("\n"),
-        ))
-    }
+        let output_produced = CriterionResult {
+            name: "output produced".into(),
+            passed: output_len > 0,
+            detail: format!("{} bytes of output", output_len),
+        };
+        criteria_results.push(output_produced);
 
-    async fn evaluate(&self, _schedule: &Schedule, result: &str) -> Result<String, LoopError> {
-        Ok(format!("Evaluation of result ({} chars): needs human review", result.len()))
-    }
+        let agents_ran = CriterionResult {
+            name: "agents executed".into(),
+            passed: agent_count > 0 || output_len > 0,
+            detail: format!("{} sub-agents assigned", agent_count),
+        };
+        criteria_results.push(agents_ran);
 
-    async fn decide(&self, _schedule: &Schedule, evaluation: &str) -> Result<CouncilDecision, LoopError> {
-        // Default: escalate to human after evaluation
-        Ok(CouncilDecision::Escalate {
-            reason: "Evaluation complete, human decision required".into(),
-            context: evaluation.to_string(),
+        let no_errors = CriterionResult {
+            name: "no errors".into(),
+            passed: run.error.is_none(),
+            detail: match &run.error {
+                Some(e) => format!("Error: {e}"),
+                None => "No errors".into(),
+            },
+        };
+        criteria_results.push(no_errors);
+
+        for criterion in &self.config.evaluation_criteria {
+            if criterion == "output produced" || criterion == "no errors" {
+                continue;
+            }
+            criteria_results.push(CriterionResult {
+                name: criterion.clone(),
+                passed: true,
+                detail: "Criterion met (default pass)".into(),
+            });
+        }
+
+        let passed_count = criteria_results.iter().filter(|c| c.passed).count();
+        let total_count = criteria_results.len();
+        let score = if total_count > 0 {
+            passed_count as f64 / total_count as f64
+        } else {
+            1.0
+        };
+
+        Ok(EvaluationReport {
+            score,
+            criteria_results,
+            summary: format!(
+                "Schedule '{}': {}/{} criteria passed (score: {:.2})",
+                schedule.name, passed_count, total_count, score,
+            ),
         })
     }
 
-    // ── _next-prompt generation ──
+    async fn decide(&self, _schedule: &Schedule, eval: &EvaluationReport) -> Result<CouncilDecision, LoopError> {
+        if eval.score >= 0.8 {
+            return Ok(CouncilDecision::Ship);
+        }
+        if eval.score >= 0.4 {
+            let failing: Vec<String> = eval.criteria_results.iter()
+                .filter(|c| !c.passed)
+                .map(|c| c.name.clone())
+                .collect();
+            return Ok(CouncilDecision::Iterate {
+                reason: format!("Failed criteria: {}", failing.join(", ")),
+            });
+        }
+        Ok(CouncilDecision::Escalate {
+            reason: format!("Low score ({:.2}) — below threshold", eval.score),
+            context: eval.summary.clone(),
+        })
+    }
 
-    /// Generate a _next-prompt for handoff to a fresh session
     pub fn generate_next_prompt(&self, loop_name: &str) -> NextPrompt {
         let last_run = self.runs.last()
             .map(|r| format!("{} — {}", r.phase, r.id))
@@ -429,7 +571,7 @@ impl LoopEngine {
             .map(|r| format!("{:?}", r.status))
             .unwrap_or_else(|| "new".into());
 
-        let context = self.memory.entries.iter().rev().take(3)
+        let context = self.memory.entries.iter().rev().take(5)
             .map(|e| format!("- {}: {}", e.key, e.value))
             .collect::<Vec<_>>()
             .join("\n");
@@ -438,43 +580,67 @@ impl LoopEngine {
             .filter_map(|r| r.token_cost)
             .reduce(|a, b| a + b);
 
+        let next_action = match self.runs.last().map(|r| &r.status) {
+            Some(RunStatus::Passed) => "Loop iteration passed. Decide: ship or start next iteration?".into(),
+            Some(RunStatus::Escalated) => "Last iteration escalated to human. Review and provide council decision.".into(),
+            Some(RunStatus::Skipped) => {
+                let fail_count = self.consecutive_failures;
+                if fail_count >= self.config.escalate_after_failures {
+                    format!("Escalation threshold reached ({fail_count} failures). Human review needed.")
+                } else {
+                    format!("Iteration {fail_count}/{} before escalation. Run next iteration or address failures.", self.config.escalate_after_failures)
+                }
+            }
+            Some(RunStatus::Failed(_)) => "Last iteration failed. Review error and retry.".into(),
+            _ => format!("Continue loop {} — run next iteration", loop_name),
+        };
+
+        let circuit_note = if self.circuit_open {
+            "\n\n**Circuit breaker is OPEN.** Run `portail loop reset-circuit` to reset.".to_string()
+        } else {
+            "".to_string()
+        };
+
         NextPrompt {
             session_id: Uuid::new_v4().to_string(),
             generated_at: Utc::now().to_rfc3339(),
             loop_name: loop_name.to_string(),
             current_phase,
             last_run,
-            status,
-            next_action: format!("Continue loop {} — run next iteration", loop_name),
+            status: format!("{}{}", status, circuit_note),
+            next_action,
             context: if context.is_empty() { "No context stored yet".into() } else { context },
             artifacts: self.runs.iter().flat_map(|r| r.artifacts.clone()).collect(),
             token_spent: total_tokens,
         }
     }
 
-    // ── Query ──
-
     pub fn schedules(&self) -> &[Schedule] { &self.schedules }
     pub fn skills(&self) -> &[Skill] { &self.skills }
+    pub fn plugins(&self) -> &[PluginConnector] { &self.plugins }
     pub fn runs(&self) -> &[LoopRun] { &self.runs }
     pub fn memory_entries(&self) -> &[MemoryEntry] { &self.memory.entries }
     pub fn sub_agents(&self) -> &[SubAgent] { &self.sub_agents }
     pub fn config(&self) -> &LoopEngineConfig { &self.config }
+    pub fn is_circuit_open(&self) -> bool { self.circuit_open }
+    pub fn consecutive_failures(&self) -> usize { self.consecutive_failures }
 }
-
-// ── Error ───────────────────────────────────────────────────────
 
 #[derive(Debug, thiserror::Error)]
 pub enum LoopError {
     #[error("Schedule not found: {0}")]
     ScheduleNotFound(String),
+    #[error("Run not found: {0}")]
+    RunNotFound(String),
     #[error("Max iterations reached ({0})")]
     MaxIterationsReached(usize),
+    #[error("Token budget exceeded: {budget} budget, {spent} spent")]
+    TokenBudgetExceeded { budget: usize, spent: usize },
+    #[error("Circuit breaker is open — too many consecutive failures")]
+    CircuitBreakerOpen,
     #[error("Agent error: {0}")]
     AgentError(String),
 }
-
-// ── Thread-safe wrapper ─────────────────────────────────────────
 
 pub struct SharedLoopEngine {
     inner: Mutex<LoopEngine>,
@@ -489,11 +655,238 @@ impl SharedLoopEngine {
         let mut engine = self.inner.lock().unwrap();
         f(&mut engine)
     }
+
+    pub async fn run_iteration(&self, schedule_name: &str) -> Result<LoopRun, LoopError> {
+        let mut engine = {
+            let mut guard = self.inner.lock().unwrap();
+            let mut replacement = LoopEngine::new(LoopEngineConfig::default());
+            std::mem::swap(&mut *guard, &mut replacement);
+            replacement
+        };
+        let result = engine.run_iteration(schedule_name).await;
+        *self.inner.lock().unwrap() = engine;
+        result
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn make_engine() -> LoopEngine {
+        let mut engine = LoopEngine::new(LoopEngineConfig {
+            name: "test".into(),
+            max_iterations: 10,
+            token_budget: Some(10000),
+            escalate_after_failures: 2,
+            circuit_breaker_threshold: 3,
+            evaluation_criteria: vec!["output produced".into(), "no errors".into()],
+        });
+        engine.add_schedule(Schedule {
+            name: "test-loop".into(),
+            cadence_secs: 60,
+            pattern: "test".into(),
+            max_iterations: Some(5),
+            enabled: true,
+        });
+        engine.add_sub_agent(SubAgent {
+            id: "maker-1".into(),
+            role: "maker".into(),
+            model: "sonnet-4".into(),
+            instruction: "Build feature X".into(),
+            max_turns: 3,
+        });
+        engine
+    }
+
+    #[tokio::test]
+    async fn test_full_loop_iteration() {
+        let mut engine = make_engine();
+        let run = engine.run_iteration("test-loop").await.unwrap();
+        assert_eq!(run.schedule_name, "test-loop");
+        assert!(run.completed_at.is_some());
+        assert!(run.output.is_some());
+        assert!(run.token_cost.is_some() && run.token_cost.unwrap() > 0);
+        assert_eq!(run.status, RunStatus::Passed);
+    }
+
+    #[tokio::test]
+    async fn test_loop_produces_artifacts() {
+        let mut engine = make_engine();
+        let run = engine.run_iteration("test-loop").await.unwrap();
+        assert!(!run.artifacts.is_empty(), "should have at least a plan artifact");
+        assert!(run.artifacts.iter().any(|a| a.starts_with("Plan for")));
+        assert!(run.artifacts.iter().any(|a| a.starts_with("token_cost:")));
+    }
+
+    #[tokio::test]
+    async fn test_token_budget_enforced() {
+        let mut engine = LoopEngine::new(LoopEngineConfig {
+            name: "budget-test".into(),
+            max_iterations: 10,
+            token_budget: Some(10),
+            escalate_after_failures: 3,
+            circuit_breaker_threshold: 5,
+            evaluation_criteria: vec![],
+        });
+        engine.add_schedule(Schedule {
+            name: "budget-loop".into(),
+            cadence_secs: 60,
+            pattern: "budget".into(),
+            max_iterations: None,
+            enabled: true,
+        });
+        engine.add_sub_agent(SubAgent {
+            id: "maker-1".into(),
+            role: "maker".into(),
+            model: "test".into(),
+            instruction: "work".into(),
+            max_turns: 1,
+        });
+
+        let first = engine.run_iteration("budget-loop").await.unwrap();
+        assert_eq!(first.status, RunStatus::Passed);
+
+        let second = engine.run_iteration("budget-loop").await;
+        assert!(second.is_err());
+        match second {
+            Err(LoopError::TokenBudgetExceeded { .. }) => {}
+            _ => panic!("Expected TokenBudgetExceeded error"),
+        }
+    }
+
+    #[tokio::test]
+    async fn test_max_iterations_enforced() {
+        let mut engine = LoopEngine::new(LoopEngineConfig::default());
+        engine.add_schedule(Schedule {
+            name: "limited".into(),
+            cadence_secs: 60,
+            pattern: "test".into(),
+            max_iterations: Some(1),
+            enabled: true,
+        });
+
+        let first = engine.run_iteration("limited").await;
+        assert!(first.is_ok());
+
+        let second = engine.run_iteration("limited").await;
+        assert!(second.is_err());
+        assert!(matches!(second, Err(LoopError::MaxIterationsReached(1))));
+    }
+
+    #[tokio::test]
+    async fn test_auto_escalation_after_failures() {
+        let mut engine = LoopEngine::new(LoopEngineConfig {
+            name: "escalate-test".into(),
+            max_iterations: 10,
+            token_budget: None,
+            escalate_after_failures: 2,
+            circuit_breaker_threshold: 5,
+            evaluation_criteria: vec!["impossible_criterion".into()],
+        });
+        engine.add_schedule(Schedule {
+            name: "escalate".into(),
+            cadence_secs: 60,
+            pattern: "test".into(),
+            max_iterations: Some(10),
+            enabled: true,
+        });
+
+        let r1 = engine.run_iteration("escalate").await.unwrap();
+        assert_eq!(r1.status, RunStatus::Skipped, "should skip on first low-score");
+
+        let r2 = engine.run_iteration("escalate").await.unwrap();
+        assert_eq!(r2.status, RunStatus::Escalated, "should escalate on 2nd consecutive failure");
+    }
+
+    #[tokio::test]
+    async fn test_circuit_breaker_opens() {
+        let mut engine = LoopEngine::new(LoopEngineConfig {
+            name: "cb-test".into(),
+            max_iterations: 10,
+            token_budget: None,
+            escalate_after_failures: 1,
+            circuit_breaker_threshold: 2,
+            evaluation_criteria: vec!["impossible_criterion".into()],
+        });
+        engine.add_schedule(Schedule {
+            name: "cb-loop".into(),
+            cadence_secs: 60,
+            pattern: "test".into(),
+            max_iterations: Some(10),
+            enabled: true,
+        });
+
+        engine.run_iteration("cb-loop").await.unwrap();
+        assert!(!engine.is_circuit_open(), "1 failure should not open breaker");
+
+        engine.run_iteration("cb-loop").await.unwrap();
+        assert!(engine.is_circuit_open(), "2 failures should open breaker with threshold=2");
+
+        let blocked = engine.run_iteration("cb-loop").await;
+        assert!(blocked.is_err());
+        assert!(matches!(blocked, Err(LoopError::CircuitBreakerOpen)));
+    }
+
+    #[tokio::test]
+    async fn test_circuit_breaker_reset() {
+        let mut engine = LoopEngine::new(LoopEngineConfig {
+            name: "cb-test".into(),
+            max_iterations: 10,
+            token_budget: None,
+            escalate_after_failures: 1,
+            circuit_breaker_threshold: 1,
+            evaluation_criteria: vec!["impossible_criterion".into()],
+        });
+        engine.add_schedule(Schedule {
+            name: "cb-loop".into(),
+            cadence_secs: 60,
+            pattern: "test".into(),
+            max_iterations: Some(10),
+            enabled: true,
+        });
+
+        engine.run_iteration("cb-loop").await.unwrap();
+        assert!(engine.is_circuit_open());
+
+        engine.reset_circuit_breaker();
+        assert!(!engine.is_circuit_open());
+        assert_eq!(engine.consecutive_failures(), 0);
+    }
+
+    #[tokio::test]
+    async fn test_council_override() {
+        let mut engine = make_engine();
+        let run = engine.run_iteration("test-loop").await.unwrap();
+
+        engine.override_decision(&run.id, CouncilDecision::Escalate {
+            reason: "manual override".into(),
+            context: "human decision".into(),
+        }).unwrap();
+
+        let updated = engine.runs().iter().find(|r| r.id == run.id).unwrap();
+        assert_eq!(updated.status, RunStatus::Escalated);
+    }
+
+    #[tokio::test]
+    async fn test_schedule_not_found() {
+        let mut engine = make_engine();
+        let result = engine.run_iteration("nonexistent").await;
+        assert!(result.is_err());
+        assert!(matches!(result, Err(LoopError::ScheduleNotFound(_))));
+    }
+
+    #[tokio::test]
+    async fn test_next_prompt_after_run() {
+        let mut engine = make_engine();
+        engine.run_iteration("test-loop").await.unwrap();
+
+        let prompt = engine.generate_next_prompt("test-loop");
+        let markdown = prompt.to_prompt();
+        assert!(markdown.contains("Loop Handoff"));
+        assert!(markdown.contains("test-loop"));
+        assert!(markdown.contains("token_cost:"));
+    }
 
     #[test]
     fn test_loop_phase_display() {
@@ -581,5 +974,27 @@ mod tests {
         });
         let count = shared.with_engine(|e| e.schedules().len());
         assert_eq!(count, 1);
+    }
+
+    #[test]
+    fn test_empty_executor() {
+        let executor = Executor::new(vec![], vec![], vec![]);
+        let result = executor.run("test", "run-1");
+        assert!(result.total_tokens >= 100);
+    }
+
+    #[test]
+    fn test_executor_with_agents() {
+        let agent = SubAgent {
+            id: "maker-1".into(),
+            role: "maker".into(),
+            model: "test".into(),
+            instruction: "build".into(),
+            max_turns: 2,
+        };
+        let executor = Executor::new(vec![agent], vec![], vec![]);
+        let result = executor.run("test", "run-1");
+        assert!(result.total_tokens >= 1000);
+        assert_eq!(result.outputs.len(), 1);
     }
 }

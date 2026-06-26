@@ -14,6 +14,8 @@ Portail is a self-hosted proxy/gateway for AI services. It sits between your app
 - **DNS** — Resolve internal services securely
 - **URL Shortening** — Share internal links easily
 - **Agent Protocol** — A2A and A2C for multi-agent systems
+- **Loop Engine** — `portail loop run` plan/execute/evaluate/decide with circuit breaker
+- **pkg-ctx** — `portail pkg-ctx add <repo>` local-first docs MCP server for AI agents
 
 ---
 

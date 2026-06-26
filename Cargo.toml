@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = [".", "creative_tui", "crates/portail-agents", "crates/portail-plugin-sdk", "crates/portail-vaked", "crates/loop-state-manager", "crates/loopeng"]
+members = [".", "creative_tui", "crates/pkg-ctx", "crates/portail-agents", "crates/portail-plugin-sdk", "crates/portail-vaked", "crates/loop-state-manager", "crates/loopeng"]
 
 [workspace.package]
 edition = "2024"
@@ -10,7 +10,7 @@ repository = "https://github.com/peterlodri-sec/portail"
 
 [package]
 name = "portail"
-version = "2.0.0"
+version = "2.1.0"
 edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
@@ -30,6 +30,7 @@ serde = { version = "=1.0.228", features = ["derive"] }
 serde_json = "=1.0.150"
 toml = "=0.8.23"
 clap = { version = "=4.6.1", features = ["derive", "env"] }
+clap_complete = "=4.5.44"
 moka = { version = "=0.12.15", features = ["future"] }
 async-nats = "=0.39.0"
 tracing = "=0.1.44"
@@ -50,6 +51,7 @@ portail-plugin-sdk = { path = "crates/portail-plugin-sdk" }
 portail-vaked = { path = "crates/portail-vaked" }
 loop-state-manager = { path = "crates/loop-state-manager" }
 loopeng = { path = "crates/loopeng" }
+pkg-ctx = { path = "crates/pkg-ctx" }
 rustc-hash = "=2.1.2"
 ratatui = "=0.29.0"
 crossterm = { version = "=0.28.1", features = ["event-stream"] }
@@ -99,6 +101,7 @@ async-graphql = "=7.2.1"
 async-stream = "=0.3.6"
 async-trait = "=0.1.89"
 
+
 [features]
 default = []
 store-nats = []
@@ -143,6 +146,9 @@ debug = false
 [dev-dependencies]
 criterion = { version = "=0.5.1", features = ["html_reports", "async_tokio"] }
 proptest = "=1.11.0"
+loopeng = { path = "crates/loopeng" }
+pkg-ctx = { path = "crates/pkg-ctx" }
+tokio = { workspace = true }
 
 [build-dependencies]
 chrono = "=0.4.45"

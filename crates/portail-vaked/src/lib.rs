@@ -85,7 +85,7 @@ impl PluginRegistry {
     /// Lower all .vaked plugins to a combined NixOS module
     pub fn lower_all_to_nix(&self) -> String {
         let mut parts = Vec::new();
-        for (_, plugin) in &self.plugins {
+        for plugin in self.plugins.values() {
             if let LoadedPlugin::Vaked(vaked) = plugin {
                 parts.push(vaked.lower_to_nix());
             }
