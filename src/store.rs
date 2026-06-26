@@ -1,23 +1,26 @@
-//! Persistent event store — pluggable backends (SQLite / Turso / libSQL).
+//! Persistent event store — pluggable backends (SQLite / NATS).
 //!
 //! # v2.0
 //!
-//! Multiple backends behind a `StoreBackend` trait. SQLite is the default.
-//! Turso (libSQL) is available via the `store-turso` Cargo feature.
+//! - SQLite: single-node, zero-config. Always available.
+//! - NATS-replicated: multi-node via NATS pub/sub. Free, open source.
+//!   Enable with `store-nats` Cargo feature.
 //!
-//! # Backend selection
+//! # Configuration
 //!
 //! ```toml
 //! [store]
 //! enabled = true
-//! provider = "turso"  # "sqlite" (default) | "turso"
-//! turso_url = "libsql://my-db.turso.io"
-//! turso_auth_token = "$TURSO_TOKEN"
+//! provider = "sqlite"  # "sqlite" (default) | "nats"
+//! db_path = "/var/lib/portail/events.db"
 //! ```
 
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
+
+#[cfg(feature = "store-nats")]
+use futures::StreamExt;
 
 use serde::{Deserialize, Serialize};
 use tokio::sync::Mutex;
@@ -35,15 +38,9 @@ pub struct StoreConfig {
     /// Retention in days (0 = unlimited)
     #[serde(default = "default_retention")]
     pub retention_days: u32,
-    /// Backend provider: "sqlite" (default) or "turso"
+    /// Backend provider: "sqlite" (default) or "nats"
     #[serde(default = "default_provider")]
     pub provider: String,
-    /// Turso: libSQL URL (only when provider = "turso")
-    #[serde(default)]
-    pub turso_url: Option<String>,
-    /// Turso: auth token (only when provider = "turso")
-    #[serde(default)]
-    pub turso_auth_token: Option<String>,
 }
 
 impl Default for StoreConfig {
@@ -53,8 +50,6 @@ impl Default for StoreConfig {
             db_path: default_db_path(),
             retention_days: default_retention(),
             provider: default_provider(),
-            turso_url: None,
-            turso_auth_token: None,
         }
     }
 }
@@ -218,122 +213,63 @@ impl StoreBackend for SqliteBackend {
     }
 }
 
-// ─── Turso Backend (feature-gated) ─────────────────────────────────
+// ─── NATS-Replicated Backend (feature-gated, free/open source) ────
 
-#[cfg(feature = "store-turso")]
-pub struct TursoBackend {
-    db: libsql::Database,
+#[cfg(feature = "store-nats")]
+pub struct NatsReplicatedBackend {
+    local: SqliteBackend,
+    nc: async_nats::Client,
 }
 
-#[cfg(feature = "store-turso")]
-impl TursoBackend {
+#[cfg(feature = "store-nats")]
+impl NatsReplicatedBackend {
     pub async fn open(config: &StoreConfig) -> Result<Self, String> {
-        let url = config
-            .turso_url
-            .as_deref()
-            .unwrap_or("libsql://localhost:8080");
-        let token = config.turso_auth_token.as_deref().unwrap_or("");
-        let db = libsql::Builder::new_remote(url.to_string(), token.to_string())
-            .build()
-            .await
-            .map_err(|e| e.to_string())?;
-        let conn = db.connect().map_err(|e| e.to_string())?;
-        conn.execute_batch(
-            "CREATE TABLE IF NOT EXISTS events (
-                id          INTEGER PRIMARY KEY AUTOINCREMENT,
-                agent_id    TEXT NOT NULL,
-                event_type  TEXT NOT NULL,
-                severity    TEXT NOT NULL DEFAULT 'info',
-                timestamp   INTEGER NOT NULL,
-                metadata    TEXT NOT NULL DEFAULT '{}',
-                created_at  INTEGER NOT NULL DEFAULT (unixepoch())
-            );
-            CREATE INDEX IF NOT EXISTS idx_events_agent   ON events(agent_id);
-            CREATE INDEX IF NOT EXISTS idx_events_type    ON events(event_type);
-            CREATE INDEX IF NOT EXISTS idx_events_ts      ON events(timestamp);
-            CREATE INDEX IF NOT EXISTS idx_events_created ON events(created_at);",
-        )
-        .await
-        .map_err(|e| e.to_string())?;
-        Ok(Self { db })
+        let local = SqliteBackend::open(config)?;
+        let nats_url = std::env::var("PORTAIL_NATS_URL")
+            .unwrap_or_else(|_| "nats://localhost:4222".into());
+        let nc = async_nats::connect(&nats_url).await.map_err(|e| e.to_string())?;
+
+        let db = local.db.clone();
+        let sub_nc = nc.clone();
+        tokio::spawn(async move {
+            let mut sub = sub_nc.subscribe("portail.store.events".to_string()).await
+                .expect("NATS subscribe for store replication");
+            while let Some(msg) = sub.next().await {
+                if let Ok(event) = serde_json::from_slice::<StoredEvent>(&msg.payload) {
+                    let conn = db.blocking_lock();
+                    let _ = conn.execute(
+                        "INSERT OR IGNORE INTO events (agent_id, event_type, severity, timestamp, metadata)
+                         VALUES (?1, ?2, ?3, ?4, ?5)",
+                        rusqlite::params![event.agent_id, event.event_type, event.severity, event.timestamp, event.metadata_json],
+                    );
+                }
+            }
+        });
+
+        Ok(Self { local, nc })
+    }
+
+    fn publish_to_nats(&self, event: &StoredEvent) {
+        let nc = self.nc.clone();
+        let payload = serde_json::to_vec(event).unwrap_or_default();
+        tokio::spawn(async move {
+            let _ = nc.publish("portail.store.events".to_string(), payload.into()).await;
+        });
     }
 }
 
-#[cfg(feature = "store-turso")]
-impl StoreBackend for TursoBackend {
+#[cfg(feature = "store-nats")]
+impl StoreBackend for NatsReplicatedBackend {
     fn insert(&self, event: &StoredEvent) -> Result<i64, String> {
-        let rt = tokio::runtime::Handle::current();
-        rt.block_on(async {
-            let conn = self.db.connect().map_err(|e| e.to_string())?;
-            let mut stmt = conn
-                .prepare(
-                    "INSERT INTO events (agent_id, event_type, severity, timestamp, metadata)
-                     VALUES (?1, ?2, ?3, ?4, ?5) RETURNING id",
-                )
-                .await
-                .map_err(|e| e.to_string())?;
-            let mut rows = stmt
-                .query([
-                    event.agent_id.clone(),
-                    event.event_type.clone(),
-                    event.severity.clone(),
-                    event.timestamp.to_string(),
-                    event.metadata_json.clone(),
-                ])
-                .await
-                .map_err(|e| e.to_string())?;
-            let id: i64 = rows
-                .next()
-                .await
-                .map_err(|e| e.to_string())?
-                .and_then(|r| r.get::<i64>(0).ok())
-                .unwrap_or(0);
-            Ok(id)
-        })
+        let id = self.local.insert(event)?;
+        self.publish_to_nats(event);
+        Ok(id)
     }
-
-    fn query(
-        &self,
-        _agent_id: Option<&str>,
-        _event_type: Option<&str>,
-        _since: Option<i64>,
-        _limit: Option<usize>,
-    ) -> Result<Vec<StoredEvent>, String> {
-        // TODO: full query implementation with params
-        Ok(Vec::new())
-    }
-
-    fn count(&self) -> Result<i64, String> {
-        let rt = tokio::runtime::Handle::current();
-        rt.block_on(async {
-            let conn = self.db.connect().map_err(|e| e.to_string())?;
-            let mut rows = conn.query("SELECT COUNT(*) FROM events", ()).await.map_err(|e| e.to_string())?;
-            let count: i64 = rows.next().await.map_err(|e| e.to_string())?.map(|r| r.get(0).unwrap_or(0)).unwrap_or(0);
-            Ok(count)
-        })
-    }
-
-    fn purge_expired(&self, retention_days: u32) -> Result<usize, String> {
-        let cutoff = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .unwrap()
-            .as_secs() as i64
-            - (retention_days as i64 * 86400);
-        let rt = tokio::runtime::Handle::current();
-        rt.block_on(async {
-            let conn = self.db.connect().map_err(|e| e.to_string())?;
-            let n = conn
-                .execute("DELETE FROM events WHERE timestamp < ?1", [cutoff.to_string()])
-                .await
-                .map_err(|e| e.to_string())?;
-            Ok(n as usize)
-        })
-    }
-
-    fn export_json(&self, since: Option<i64>) -> Result<String, String> {
-        self.query(None, None, since, Some(100000))
-            .and_then(|events| serde_json::to_string_pretty(&events).map_err(|e| e.to_string()))
-    }
+    fn query(&self, a: Option<&str>, e: Option<&str>, s: Option<i64>, l: Option<usize>)
+        -> Result<Vec<StoredEvent>, String> { self.local.query(a, e, s, l) }
+    fn count(&self) -> Result<i64, String> { self.local.count() }
+    fn purge_expired(&self, d: u32) -> Result<usize, String> { self.local.purge_expired(d) }
+    fn export_json(&self, s: Option<i64>) -> Result<String, String> { self.local.export_json(s) }
 }
 
 // ─── EventStore (facade) ──────────────────────────────────────────
@@ -349,12 +285,12 @@ impl EventStore {
     /// Open the store with the configured backend.
     pub fn open(config: StoreConfig) -> Result<Self, String> {
         let backend: Arc<dyn StoreBackend> = match config.provider.as_str() {
-            #[cfg(feature = "store-turso")]
-            "turso" => {
-                tracing::info!("opening Turso event store at {}", config.turso_url.as_deref().unwrap_or("localhost"));
+            #[cfg(feature = "store-nats")]
+            "nats" => {
+                tracing::info!("opening NATS-replicated event store");
                 let rt = tokio::runtime::Handle::current();
-                let turso = rt.block_on(TursoBackend::open(&config))?;
-                Arc::new(turso)
+                let nats = rt.block_on(NatsReplicatedBackend::open(&config))?;
+                Arc::new(nats)
             }
             _ => {
                 tracing::info!(path = %config.db_path, "opening SQLite event store");
@@ -472,18 +408,15 @@ mod tests {
         assert!(!cfg.enabled);
     }
 
-    #[cfg(feature = "store-turso")]
+    #[cfg(feature = "store-nats")]
     #[test]
-    fn turso_config_parses() {
+    fn nats_config_parses() {
         let toml = r#"
             enabled = true
-            provider = "turso"
-            turso_url = "libsql://test-db.turso.io"
-            turso_auth_token = "secret"
+            provider = "nats"
             retention_days = 7
         "#;
         let cfg: StoreConfig = toml::from_str(toml).unwrap();
-        assert_eq!(cfg.provider, "turso");
-        assert_eq!(cfg.turso_url, Some("libsql://test-db.turso.io".into()));
+        assert_eq!(cfg.provider, "nats");
     }
 }

@@ -67,8 +67,8 @@ base64 = "0.22"
 # v0.2 — persistent event store
 rusqlite = { version = "0.33", features = ["bundled"] }
 
-# v2.0 — Turso/libSQL distributed event store (optional)
-libsql = { version = "0.6", optional = true, features = ["default"] }
+# v2.0 — NATS-replicated event store (optional, free/libre)
+# libsql removed: Turso is not free. Replaced with NATS-based replication.
 
 # v0.2 — OpenTelemetry OTLP
 opentelemetry = "0.27"
@@ -83,9 +83,7 @@ async-stream = "0.3"
 
 [features]
 default = []
-store-turso = ["dep:libsql"]
-dpdk = []
-iouring = []
+store-nats = []
 
 [profile.release]
 opt-level = 3

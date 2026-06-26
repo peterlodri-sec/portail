@@ -5,9 +5,9 @@
 
 ## Week 1 — Stability + Turso ✅ (mostly done)
 
-- [x] StoreBackend trait — pluggable SQLite/Turso backends
-- [x] Turso/libSQL backend (feature-gated: `store-turso`)
-- [x] proptest suite — 5 property tests (RateLimiter, BoundedMeta, AuthState)
+- [x] StoreBackend trait — pluggable SQLite/NATS-replicated backends
+- [x] NATS-replicated backend (feature-gated: `store-nats`) — free, open source
+- [x] Turso (libSQL) evaluated and replaced — not free, NATS replication instead- [x] proptest suite — 5 property tests (RateLimiter, BoundedMeta, AuthState)
 - [x] Panic hooks + graceful shutdown module
 - [x] EventLog.all_since() for NATS consumption
 - [x] 164 → 174 tests
@@ -69,9 +69,10 @@
 
 | Crate | Purpose | Status |
 |-------|---------|--------|
-| `libsql` 0.6 | Turso distributed SQLite | ✅ Added (optional) |
 | `proptest` 1 | Property-based testing | ✅ Added (dev) |
 | `acme-lib` or `rustls-acme` | Let's Encrypt | ❌ Not yet |
+
+> **Removed**: `libsql` (Turso is paid). Replaced with NATS-replicated SQLite (free, uses existing `async-nats` dep).
 
 ---
 

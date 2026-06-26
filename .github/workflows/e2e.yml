@@ -1,0 +1,28 @@
+name: E2E Tests
+
+# Full user-journey tests: install, serve, CLI, API, config, CI agents.
+# Runs on every tag push and manual trigger. Never blocks CI — advisory.
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install Rust
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+
+      - name: Build portail
+        run: cargo build --release
+
+      - name: Install binary
+        run: sudo cp target/release/portail /usr/local/bin/
+
+      - name: Run E2E test suite
+        run: bash scripts/e2e-test.sh
