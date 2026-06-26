@@ -1,8 +1,8 @@
 /*
  * Tracer Plugin — Request/Response E2E Visualization
- * 
+ *
  * Architecture:
- * 
+ *
  *   ┌─────────────────────────────────────────────────────────────┐
  *   │                    Tracer Flow                              │
  *   ├─────────────────────────────────────────────────────────────┤
@@ -33,10 +33,10 @@
  *   └─────────────────────────────────────────────────────────────┘
  */
 
+use crate::types::BoundedMeta;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use std::time::Instant;
-use crate::types::BoundedMeta;
 
 // ── Types ────────────────────────────────────────────────────────
 
@@ -109,7 +109,7 @@ impl TraceBuilder {
     pub fn start_span(&mut self, name: &str) -> String {
         let span_id = uuid::Uuid::new_v4().to_string();
         let parent_id = self.span_stack.last().map(|s| s.span_id.clone());
-        
+
         self.span_stack.push(ActiveSpan {
             span_id: span_id.clone(),
             parent_id,
@@ -117,7 +117,7 @@ impl TraceBuilder {
             started_at: Instant::now(),
             attributes: BoundedMeta::default(),
         });
-        
+
         span_id
     }
 
@@ -137,12 +137,12 @@ impl TraceBuilder {
 
     pub fn add_span_attribute(&mut self, key: &str, value: &str) {
         if let Some(ref mut span) = self.span_stack.last_mut() {
-            span.attributes.insert(key.to_string(), value.to_string());
+            let _ = span.attributes.insert(key.to_string(), value.to_string());
         }
     }
 
     pub fn add_metadata(&mut self, key: &str, value: &str) {
-        self.metadata.insert(key.to_string(), value.to_string());
+        let _ = self.metadata.insert(key.to_string(), value.to_string());
     }
 
     pub fn finish(mut self, status: u16) -> Trace {
@@ -150,7 +150,7 @@ impl TraceBuilder {
         while !self.span_stack.is_empty() {
             self.end_span(SpanStatus::Ok);
         }
-        
+
         Trace {
             trace_id: self.trace_id,
             request_id: self.request_id,
@@ -218,7 +218,7 @@ impl TraceStore {
         } else {
             0
         };
-        
+
         TraceStats {
             total_traces: total,
             error_traces: errors,
@@ -238,23 +238,28 @@ pub struct TraceStats {
 
 pub fn render_trace_ascii(trace: &Trace) -> String {
     let mut output = String::new();
-    
+
     output.push_str(&format!("Trace: {}\n", trace.trace_id));
     output.push_str(&format!("Request: {} {}\n", trace.method, trace.path));
-    output.push_str(&format!("Status: {} | Duration: {}ms\n", trace.status, trace.total_duration_us / 1000));
+    output.push_str(&format!(
+        "Status: {} | Duration: {}ms\n",
+        trace.status,
+        trace.total_duration_us / 1000
+    ));
     output.push_str("─".repeat(60).as_str());
     output.push('\n');
-    
+
     render_spans(&mut output, &trace.spans, None, 0);
-    
+
     output
 }
 
 fn render_spans(output: &mut String, spans: &[Span], parent_id: Option<&str>, depth: usize) {
-    let children: Vec<&Span> = spans.iter()
+    let children: Vec<&Span> = spans
+        .iter()
         .filter(|s| s.parent_id.as_deref() == parent_id)
         .collect();
-    
+
     for (i, span) in children.iter().enumerate() {
         let is_last = i == children.len() - 1;
         let prefix = if depth == 0 {
@@ -271,22 +276,22 @@ fn render_spans(output: &mut String, spans: &[Span], parent_id: Option<&str>, de
             }
             p
         };
-        
+
         let status_icon = match span.status {
             SpanStatus::Ok => "✓",
             SpanStatus::Error => "✗",
             SpanStatus::Timeout => "⏱",
         };
-        
+
         let duration_ms = span.duration_us / 1000;
         let bar_len = (duration_ms as f64).log2().max(1.0) as usize;
         let bar = "█".repeat(bar_len.min(20));
-        
+
         output.push_str(&format!(
             "{}{} {} {:>6}ms {}\n",
             prefix, status_icon, span.name, duration_ms, bar
         ));
-        
+
         render_spans(output, spans, Some(&span.span_id), depth + 1);
     }
 }
@@ -306,7 +311,11 @@ pub async fn handle_traces(
     axum::extract::State(state): axum::extract::State<Arc<crate::AppState>>,
     axum::extract::Query(params): axum::extract::Query<rustc_hash::FxHashMap<String, String>>,
 ) -> axum::Json<Vec<Trace>> {
-    let n = params.get("n").and_then(|v| v.parse().ok()).unwrap_or(20).min(500);
+    let n = params
+        .get("n")
+        .and_then(|v| v.parse().ok())
+        .unwrap_or(20)
+        .min(500);
     axum::Json(state.trace_store.recent(n))
 }
 
@@ -315,8 +324,14 @@ pub async fn handle_trace_get(
     axum::extract::Path(trace_id): axum::extract::Path<String>,
 ) -> impl axum::response::IntoResponse {
     match state.trace_store.get(&trace_id) {
-        Some(trace) => (axum::http::StatusCode::OK, axum::Json(serde_json::to_value(trace).unwrap())),
-        None => (axum::http::StatusCode::NOT_FOUND, axum::Json(serde_json::json!({"error": "not found"}))),
+        Some(trace) => (
+            axum::http::StatusCode::OK,
+            axum::Json(serde_json::to_value(trace).unwrap()),
+        ),
+        None => (
+            axum::http::StatusCode::NOT_FOUND,
+            axum::Json(serde_json::json!({"error": "not found"})),
+        ),
     }
 }
 
@@ -327,11 +342,17 @@ pub async fn handle_trace_ascii(
     match state.trace_store.get(&trace_id) {
         Some(trace) => {
             let ascii = render_trace_ascii(&trace);
-            (axum::http::StatusCode::OK, [("content-type", "text/plain")], ascii)
+            (
+                axum::http::StatusCode::OK,
+                [("content-type", "text/plain")],
+                ascii,
+            )
         }
-        None => {
-            (axum::http::StatusCode::NOT_FOUND, [("content-type", "text/plain")], "Trace not found".to_string())
-        }
+        None => (
+            axum::http::StatusCode::NOT_FOUND,
+            [("content-type", "text/plain")],
+            "Trace not found".to_string(),
+        ),
     }
 }
 
@@ -364,17 +385,17 @@ mod tests {
             "GET".into(),
             "/v1/chat/completions".into(),
         );
-        
+
         builder.start_span("hook_inject");
         builder.end_span(SpanStatus::Ok);
-        
+
         builder.start_span("gateway_forward");
         builder.start_span("dns_resolve");
         builder.end_span(SpanStatus::Ok);
         builder.end_span(SpanStatus::Ok);
-        
+
         let trace = builder.finish(200);
-        
+
         assert_eq!(trace.request_id, "req-123");
         assert_eq!(trace.method, "GET");
         assert_eq!(trace.status, 200);
@@ -384,20 +405,16 @@ mod tests {
     #[test]
     fn trace_store_record_get() {
         let store = TraceStore::new(100);
-        
-        let mut builder = TraceBuilder::new(
-            "req-1".into(),
-            "POST".into(),
-            "/api/test".into(),
-        );
+
+        let mut builder = TraceBuilder::new("req-1".into(), "POST".into(), "/api/test".into());
         builder.start_span("test_span");
         builder.end_span(SpanStatus::Ok);
-        
+
         let trace = builder.finish(200);
         let trace_id = trace.trace_id.clone();
-        
+
         store.record(trace);
-        
+
         let retrieved = store.get(&trace_id);
         assert!(retrieved.is_some());
         assert_eq!(retrieved.unwrap().request_id, "req-1");
@@ -406,39 +423,31 @@ mod tests {
     #[test]
     fn trace_store_recent() {
         let store = TraceStore::new(100);
-        
+
         for i in 0..5 {
-            let builder = TraceBuilder::new(
-                format!("req-{}", i),
-                "GET".into(),
-                "/test".into(),
-            );
+            let builder = TraceBuilder::new(format!("req-{}", i), "GET".into(), "/test".into());
             store.record(builder.finish(200));
         }
-        
+
         let recent = store.recent(3);
         assert_eq!(recent.len(), 3);
     }
 
     #[test]
     fn ascii_rendering() {
-        let mut builder = TraceBuilder::new(
-            "req-123".into(),
-            "GET".into(),
-            "/v1/chat".into(),
-        );
-        
+        let mut builder = TraceBuilder::new("req-123".into(), "GET".into(), "/v1/chat".into());
+
         builder.start_span("hooks");
         builder.end_span(SpanStatus::Ok);
-        
+
         builder.start_span("gateway");
         builder.start_span("dns");
         builder.end_span(SpanStatus::Ok);
         builder.end_span(SpanStatus::Ok);
-        
+
         let trace = builder.finish(200);
         let ascii = render_trace_ascii(&trace);
-        
+
         assert!(ascii.contains("GET /v1/chat"));
         assert!(ascii.contains("hooks"));
         assert!(ascii.contains("gateway"));
@@ -448,21 +457,13 @@ mod tests {
     #[test]
     fn trace_stats() {
         let store = TraceStore::new(100);
-        
-        let builder = TraceBuilder::new(
-            "req-1".into(),
-            "GET".into(),
-            "/test".into(),
-        );
+
+        let builder = TraceBuilder::new("req-1".into(), "GET".into(), "/test".into());
         store.record(builder.finish(200));
-        
-        let builder = TraceBuilder::new(
-            "req-2".into(),
-            "GET".into(),
-            "/test".into(),
-        );
+
+        let builder = TraceBuilder::new("req-2".into(), "GET".into(), "/test".into());
         store.record(builder.finish(500));
-        
+
         let stats = store.stats();
         assert_eq!(stats.total_traces, 2);
         assert_eq!(stats.error_traces, 1);

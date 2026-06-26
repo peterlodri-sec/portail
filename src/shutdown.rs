@@ -6,7 +6,6 @@
 //! before aborting. Provides graceful shutdown with connection drain.
 
 use std::panic;
-use std::time::Duration;
 
 /// Install the production panic hook. Logs the panic info and flushes
 /// tracing before the process aborts.
@@ -14,7 +13,10 @@ pub fn install_panic_hook() {
     let default_hook = panic::take_hook();
     panic::set_hook(Box::new(move |info| {
         // Log the panic before the default hook prints to stderr
-        let location = info.location().map(|l| format!("{}:{}:{}", l.file(), l.line(), l.column())).unwrap_or_default();
+        let location = info
+            .location()
+            .map(|l| format!("{}:{}:{}", l.file(), l.line(), l.column()))
+            .unwrap_or_default();
         let payload = if let Some(s) = info.payload().downcast_ref::<&str>() {
             s.to_string()
         } else if let Some(s) = info.payload().downcast_ref::<String>() {

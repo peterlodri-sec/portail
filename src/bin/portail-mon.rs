@@ -8,8 +8,8 @@
 //   q / Ctrl+C  — quit
 //   r           — refresh now
 
-use std::time::Duration;
 use std::io::{self, Write};
+use std::time::Duration;
 
 const LOGO: &[&str] = &[
     "  ██████  ██████  ██████  ████████  █████  ██ ██      ██",

@@ -66,8 +66,14 @@ pub async fn handle(req: Request, cache: Arc<CacheManager>, origin: Option<Strin
 fn cdn_response(status: StatusCode, cache_status: &'static str, body: Bytes) -> Response {
     let mut headers = HeaderMap::new();
     headers.insert("x-cache-status", HeaderValue::from_static(cache_status));
-    headers.insert("content-type", HeaderValue::from_static("application/octet-stream"));
-    headers.insert("content-length", HeaderValue::from_str(&body.len().to_string()).unwrap());
+    headers.insert(
+        "content-type",
+        HeaderValue::from_static("application/octet-stream"),
+    );
+    headers.insert(
+        "content-length",
+        HeaderValue::from_str(&body.len().to_string()).unwrap(),
+    );
     (status, headers, body).into_response()
 }
 
@@ -81,7 +87,12 @@ mod tests {
         let (parts, _body) = resp.into_parts();
         assert_eq!(parts.status, StatusCode::OK);
         assert_eq!(
-            parts.headers.get("x-cache-status").unwrap().to_str().unwrap(),
+            parts
+                .headers
+                .get("x-cache-status")
+                .unwrap()
+                .to_str()
+                .unwrap(),
             "HIT"
         );
         assert_eq!(parts.headers.get("content-length").unwrap(), "4");

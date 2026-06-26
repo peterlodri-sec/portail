@@ -63,7 +63,9 @@ impl NatsEventBridge {
             let payload = serde_json::to_vec(event).unwrap_or_default();
 
             // Broad subject — all events
-            let _ = nc.publish("portail.events.published", payload.clone().into()).await;
+            let _ = nc
+                .publish("portail.events.published", payload.clone().into())
+                .await;
 
             // Per-agent subject
             let agent_subject = format!("portail.events.{}", event.agent_id);
@@ -105,8 +107,7 @@ pub fn spawn_bridge(
 
 impl Config {
     pub fn nats_url(&self) -> String {
-        std::env::var("PORTAIL_NATS_URL")
-            .unwrap_or_else(|_| "nats://localhost:4222".into())
+        std::env::var("PORTAIL_NATS_URL").unwrap_or_else(|_| "nats://localhost:4222".into())
     }
 
     pub fn nats_enabled(&self) -> bool {

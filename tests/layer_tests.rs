@@ -1,8 +1,8 @@
 #[cfg(test)]
 mod layer_tests {
-    use std::sync::{Arc, RwLock};
-    use portail::*;
     use portail::config::Config;
+    use portail::*;
+    use std::sync::{Arc, RwLock};
 
     // ── Test helpers ─────────────────────────────────────────────
 
@@ -24,21 +24,38 @@ mod layer_tests {
             network_isolation: Arc::new(dns::NetworkIsolation::default()),
             tinyurl: Arc::new(plugins::TinyUrlStore::new(plugins::TinyUrlConfig::default())),
             trace_store: Arc::new(plugins::TraceStore::new(100)),
-            redis_cache: Arc::new(plugins::RedisCache::new(plugins::RedisCacheConfig::default())),
-            discovery: Arc::new(discovery::DiscoveryStore::new(discovery::DiscoveryConfig::default())),
+            redis_cache: Arc::new(plugins::RedisCache::new(
+                plugins::RedisCacheConfig::default(),
+            )),
+            discovery: Arc::new(discovery::DiscoveryStore::new(
+                discovery::DiscoveryConfig::default(),
+            )),
             ebpf: Arc::new(ebpf::EbpfManager::new(ebpf::EbpfConfig::default())),
-            iouring: Arc::new(iouring::IoUringManager::new(iouring::IoUringConfig::default())),
+            iouring: Arc::new(iouring::IoUringManager::new(
+                iouring::IoUringConfig::default(),
+            )),
             dpdk: Arc::new(dpdk::DpdkManager::new(dpdk::DpdkConfig::default())),
-            hyper: Arc::new(hyper_engine::HyperManager::new(hyper_engine::HyperConfig::default())),
+            hyper: Arc::new(hyper_engine::HyperManager::new(
+                hyper_engine::HyperConfig::default(),
+            )),
             ci_status: Arc::new(ci::CiStatusStore::new(100, None)),
             metrics_handle: global_metrics(),
             rate_limiter: None,
             auth_state: None,
             event_store: None,
             session_store: portail::sessions::SessionStore::new(20),
-            file_cache: portail::file_cache::FileCache::new(&portail::file_cache::FileCacheConfig { path: "/tmp/portail-test-cache".into(), ..Default::default() }),
-            config_watcher: portail::config_watcher::ConfigWatcher::new(std::path::PathBuf::from("portail.toml")),
-            supervisor: std::sync::Arc::new(portail::supervisor::Supervisor::new(std::sync::Arc::new(portail::events::EventLog::new(100)))),
+            file_cache: portail::file_cache::FileCache::new(
+                &portail::file_cache::FileCacheConfig {
+                    path: "/tmp/portail-test-cache".into(),
+                    ..Default::default()
+                },
+            ),
+            config_watcher: portail::config_watcher::ConfigWatcher::new(std::path::PathBuf::from(
+                "portail.toml",
+            )),
+            supervisor: std::sync::Arc::new(portail::supervisor::Supervisor::new(
+                std::sync::Arc::new(portail::events::EventLog::new(100)),
+            )),
         }
     }
 
@@ -82,12 +99,15 @@ mod layer_tests {
     #[test]
     fn layer1_dns_constructible() {
         let store = dns::DnsStore::new();
-        store.add_record("example.com".into(), dns::DnsAnswer {
-            name: "example.com".into(),
-            record_type: dns::DnsRecordType::A,
-            data: "1.2.3.4".into(),
-            ttl: 300,
-        });
+        store.add_record(
+            "example.com".into(),
+            dns::DnsAnswer {
+                name: "example.com".into(),
+                record_type: dns::DnsRecordType::A,
+                data: "1.2.3.4".into(),
+                ttl: 300,
+            },
+        );
         let answers = store.query("example.com", dns::DnsRecordType::A);
         assert_eq!(answers.len(), 1);
     }
@@ -105,7 +125,7 @@ mod layer_tests {
             timestamp: 0,
             metadata: portail::types::BoundedMeta::default(),
         });
-        
+
         let rx = log.subscribe();
         // Events module is self-contained
         assert_eq!(log.recent(1).len(), 1);
@@ -125,7 +145,7 @@ mod layer_tests {
             content: "test".into(),
             enabled: true,
         });
-        
+
         let matched = store.match_message("/test");
         assert_eq!(matched.len(), 1);
     }
@@ -141,13 +161,13 @@ mod layer_tests {
             action: dns::DnsHookAction::Block,
             enabled: true,
         });
-        
+
         let query = dns::DnsQuery {
             name: "ads.example.com".into(),
             record_type: dns::DnsRecordType::A,
             source: "127.0.0.1".parse().unwrap(),
         };
-        
+
         let action = store.apply_hooks(&query);
         assert!(matches!(action, Some(dns::DnsHookAction::Block)));
     }
@@ -157,12 +177,12 @@ mod layer_tests {
     #[test]
     fn layer3_appstate_integrates_all() {
         let state = test_state();
-        
+
         // All modules should be accessible
         assert!(state.cdn_cache.is_none());
         assert!(state.doh_client.is_none());
         assert!(!state.network_isolation.enabled);
-        
+
         // Event log works
         state.event_log.publish(events::AgentEvent {
             agent_id: "test".into(),
@@ -172,7 +192,7 @@ mod layer_tests {
             metadata: portail::types::BoundedMeta::default(),
         });
         assert_eq!(state.event_log.recent(1).len(), 1);
-        
+
         // Hooks work
         state.hooks.add(hooks::Hook {
             id: "h1".into(),
@@ -184,19 +204,28 @@ mod layer_tests {
             enabled: true,
         });
         assert_eq!(state.hooks.list().len(), 1);
-        
+
         // A2A tasks work
         let task = state.a2a_tasks.create("t1".into());
         assert_eq!(task.status, a2a::TaskStatus::Submitted);
-        
+
         // DNS works
-        state.dns_store.add_record("example.com".into(), dns::DnsAnswer {
-            name: "example.com".into(),
-            record_type: dns::DnsRecordType::A,
-            data: "1.2.3.4".into(),
-            ttl: 300,
-        });
-        assert_eq!(state.dns_store.query("example.com", dns::DnsRecordType::A).len(), 1);
+        state.dns_store.add_record(
+            "example.com".into(),
+            dns::DnsAnswer {
+                name: "example.com".into(),
+                record_type: dns::DnsRecordType::A,
+                data: "1.2.3.4".into(),
+                ttl: 300,
+            },
+        );
+        assert_eq!(
+            state
+                .dns_store
+                .query("example.com", dns::DnsRecordType::A)
+                .len(),
+            1
+        );
     }
 
     // ── Layer 4: Network isolation works ─────────────────────────
@@ -208,7 +237,7 @@ mod layer_tests {
             allowed_domains: vec!["example.com".into()],
             ..Default::default()
         };
-        
+
         assert!(iso.is_allowed("api.example.com", None));
         assert!(!iso.is_allowed("evil.com", None));
     }
@@ -220,7 +249,7 @@ mod layer_tests {
             blocked_domains: vec!["ads.example.com".into()],
             ..Default::default()
         };
-        
+
         assert!(iso.is_allowed("api.example.com", None));
         assert!(!iso.is_allowed("ads.example.com", None));
     }
@@ -232,7 +261,7 @@ mod layer_tests {
             blocked_domains: vec!["evil.com".into()],
             ..Default::default()
         };
-        
+
         // When disabled, everything is allowed
         assert!(iso.is_allowed("evil.com", None));
     }
@@ -246,7 +275,7 @@ mod layer_tests {
                 { "role": "user", "content": "hello" }
             ]
         });
-        
+
         let hooks = vec![hooks::Hook {
             id: "h1".into(),
             match_agent: None,
@@ -256,10 +285,10 @@ mod layer_tests {
             content: "be helpful".into(),
             enabled: true,
         }];
-        
+
         let modified = hooks::apply_message_hooks(&body, &hooks).unwrap();
         let msgs = modified["messages"].as_array().unwrap();
-        
+
         assert_eq!(msgs.len(), 2);
         assert_eq!(msgs[0]["content"], "be helpful");
         assert_eq!(msgs[1]["content"], "hello");
@@ -277,7 +306,7 @@ mod layer_tests {
             content: "injected".into(),
             enabled: true,
         });
-        
+
         let matched = store.match_event("test-agent", "started");
         assert_eq!(matched.len(), 1);
     }
@@ -292,13 +321,13 @@ mod layer_tests {
             action: dns::DnsHookAction::Redirect("new.example.com".into()),
             enabled: true,
         });
-        
+
         let query = dns::DnsQuery {
             name: "old.example.com".into(),
             record_type: dns::DnsRecordType::A,
             source: "127.0.0.1".parse().unwrap(),
         };
-        
+
         let action = store.apply_hooks(&query);
         assert!(matches!(action, Some(dns::DnsHookAction::Redirect(_))));
     }
@@ -308,11 +337,11 @@ mod layer_tests {
     #[test]
     fn layer6_cli_types_valid() {
         use portail::cli::*;
-        
+
         // OutputFormat variants
         let _ = OutputFormat::Text;
         let _ = OutputFormat::Json;
-        
+
         // InstallMethod variants
         let _ = InstallMethod::Auto;
         let _ = InstallMethod::Cargo;

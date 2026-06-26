@@ -4,11 +4,11 @@
 use std::sync::Arc;
 
 use axum::{
+    Json,
     body::Bytes,
     extract::{Path, State},
     http::StatusCode,
     response::IntoResponse,
-    Json,
 };
 use serde::{Deserialize, Serialize};
 
@@ -24,12 +24,20 @@ pub struct FileCacheConfig {
 
 impl Default for FileCacheConfig {
     fn default() -> Self {
-        Self { enabled: false, path: default_cache_path(), max_size: default_max_size() }
+        Self {
+            enabled: false,
+            path: default_cache_path(),
+            max_size: default_max_size(),
+        }
     }
 }
 
-fn default_cache_path() -> String { "/var/cache/portail/files".into() }
-fn default_max_size() -> String { "500MB".into() }
+fn default_cache_path() -> String {
+    "/var/cache/portail/files".into()
+}
+fn default_max_size() -> String {
+    "500MB".into()
+}
 
 // ─── store ────────────────────────────────────────────────────────
 
@@ -42,22 +50,27 @@ impl FileCache {
     pub fn new(config: &FileCacheConfig) -> Self {
         let path = std::path::PathBuf::from(&config.path);
         std::fs::create_dir_all(&path).ok();
-        Self { path: Arc::new(path) }
+        Self {
+            path: Arc::new(path),
+        }
     }
 
     pub async fn put(&self, key: &str, data: &[u8]) -> Result<(), String> {
-        cacache::write(&*self.path, key, data).await
+        cacache::write(&*self.path, key, data)
+            .await
             .map(|_| ())
             .map_err(|e| format!("cache write error: {}", e))
     }
 
     pub async fn get(&self, key: &str) -> Result<Vec<u8>, String> {
-        cacache::read(&*self.path, key).await
+        cacache::read(&*self.path, key)
+            .await
             .map_err(|e| format!("cache read error: {}", e))
     }
 
     pub async fn delete(&self, key: &str) -> Result<(), String> {
-        cacache::remove(&*self.path, key).await
+        cacache::remove(&*self.path, key)
+            .await
             .map_err(|e| format!("cache delete error: {}", e))
     }
 
@@ -86,49 +99,64 @@ async fn handle_put(
 ) -> impl IntoResponse {
     match cache.put(&key, &body).await {
         Ok(()) => StatusCode::CREATED,
-        Err(e) => { tracing::warn!(key=%key, error=%e, "file-cache put"); StatusCode::INTERNAL_SERVER_ERROR }
+        Err(e) => {
+            tracing::warn!(key=%key, error=%e, "file-cache put");
+            StatusCode::INTERNAL_SERVER_ERROR
+        }
     }
 }
 
-async fn handle_get(
-    State(cache): State<FileCache>,
-    Path(key): Path<String>,
-) -> impl IntoResponse {
+async fn handle_get(State(cache): State<FileCache>, Path(key): Path<String>) -> impl IntoResponse {
     match cache.get(&key).await {
-        Ok(data) => (StatusCode::OK, [("content-type", "application/octet-stream")], data).into_response(),
+        Ok(data) => (
+            StatusCode::OK,
+            [("content-type", "application/octet-stream")],
+            data,
+        )
+            .into_response(),
         Err(_) => StatusCode::NOT_FOUND.into_response(),
     }
 }
 
-async fn handle_delete(
-    State(cache): State<FileCache>,
-    Path(key): Path<String>,
-) -> StatusCode {
+async fn handle_delete(State(cache): State<FileCache>, Path(key): Path<String>) -> StatusCode {
     match cache.delete(&key).await {
         Ok(()) => StatusCode::NO_CONTENT,
         Err(_) => StatusCode::NOT_FOUND,
     }
 }
 
-async fn handle_stats(
-    State(cache): State<FileCache>,
-) -> Json<FileCacheStats> {
+async fn handle_stats(State(cache): State<FileCache>) -> Json<FileCacheStats> {
     Json(cache.stats().await)
 }
 
 pub fn router_with_state() -> axum::Router<Arc<crate::AppState>> {
     axum::Router::new()
-        .route("/file-cache/{key}", axum::routing::put(handle_put_app).get(handle_get_app).delete(handle_delete_app))
+        .route(
+            "/file-cache/{key}",
+            axum::routing::put(handle_put_app)
+                .get(handle_get_app)
+                .delete(handle_delete_app),
+        )
         .route("/file-cache/stats", axum::routing::get(handle_stats_app))
 }
 
-async fn handle_put_app(State(s): State<Arc<crate::AppState>>, Path(k): Path<String>, b: Bytes) -> impl IntoResponse {
+async fn handle_put_app(
+    State(s): State<Arc<crate::AppState>>,
+    Path(k): Path<String>,
+    b: Bytes,
+) -> impl IntoResponse {
     handle_put(State(s.file_cache.clone()), Path(k), b).await
 }
-async fn handle_get_app(State(s): State<Arc<crate::AppState>>, Path(k): Path<String>) -> impl IntoResponse {
+async fn handle_get_app(
+    State(s): State<Arc<crate::AppState>>,
+    Path(k): Path<String>,
+) -> impl IntoResponse {
     handle_get(State(s.file_cache.clone()), Path(k)).await
 }
-async fn handle_delete_app(State(s): State<Arc<crate::AppState>>, Path(k): Path<String>) -> StatusCode {
+async fn handle_delete_app(
+    State(s): State<Arc<crate::AppState>>,
+    Path(k): Path<String>,
+) -> StatusCode {
     handle_delete(State(s.file_cache.clone()), Path(k)).await
 }
 async fn handle_stats_app(State(s): State<Arc<crate::AppState>>) -> Json<FileCacheStats> {

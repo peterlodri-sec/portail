@@ -1,8 +1,8 @@
 /*
  * DPDK Kernel Bypass Module
- * 
+ *
  * Architecture:
- * 
+ *
  *   ┌─────────────────────────────────────────────────────────────┐
  *   │                    DPDK Kernel Bypass                        │
  *   ├─────────────────────────────────────────────────────────────┤
@@ -123,23 +123,22 @@ impl DpdkManager {
         #[cfg(target_os = "linux")]
         {
             // Check if hugepages are configured
-            let hugepages = std::fs::read_to_string("/proc/meminfo")
-                .unwrap_or_default();
-            
+            let hugepages = std::fs::read_to_string("/proc/meminfo").unwrap_or_default();
+
             if !hugepages.contains("HugePages_Free") {
                 return Err("Hugepages not configured".into());
             }
-            
+
             // In a real implementation:
             // 1. Initialize EAL (Environment Abstraction Layer)
             // 2. Configure ports
             // 3. Setup RX/TX queues
             // 4. Start ports
-            
+
             self.initialized = true;
             Ok(())
         }
-        
+
         #[cfg(not(target_os = "linux"))]
         {
             Err("DPDK is only supported on Linux".into())
@@ -210,8 +209,7 @@ pub async fn handle_dpdk_stats(
 // ── Module Router ────────────────────────────────────────────────
 
 pub fn router() -> axum::Router<Arc<crate::AppState>> {
-    axum::Router::new()
-        .route("/dpdk/stats", axum::routing::get(handle_dpdk_stats))
+    axum::Router::new().route("/dpdk/stats", axum::routing::get(handle_dpdk_stats))
 }
 
 // ── Tests ────────────────────────────────────────────────────────
@@ -231,7 +229,7 @@ mod tests {
     fn dpdk_manager_stats() {
         let mut manager = DpdkManager::new(DpdkConfig::default());
         manager.initialized = true;
-        
+
         manager.record_rx(10, 1500);
         manager.record_tx(5, 750);
 

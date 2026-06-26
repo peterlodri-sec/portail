@@ -24,12 +24,16 @@ mod v0_2_integration {
             network_isolation: Arc::new(dns::NetworkIsolation::default()),
             tinyurl: Arc::new(plugins::TinyUrlStore::new(plugins::TinyUrlConfig::default())),
             trace_store: Arc::new(plugins::TraceStore::new(100)),
-            redis_cache: Arc::new(plugins::RedisCache::new(plugins::RedisCacheConfig::default())),
+            redis_cache: Arc::new(plugins::RedisCache::new(
+                plugins::RedisCacheConfig::default(),
+            )),
             discovery: Arc::new(discovery::DiscoveryStore::new(
                 discovery::DiscoveryConfig::default(),
             )),
             ebpf: Arc::new(ebpf::EbpfManager::new(ebpf::EbpfConfig::default())),
-            iouring: Arc::new(iouring::IoUringManager::new(iouring::IoUringConfig::default())),
+            iouring: Arc::new(iouring::IoUringManager::new(
+                iouring::IoUringConfig::default(),
+            )),
             dpdk: Arc::new(dpdk::DpdkManager::new(dpdk::DpdkConfig::default())),
             hyper: Arc::new(hyper_engine::HyperManager::new(
                 hyper_engine::HyperConfig::default(),
@@ -40,9 +44,18 @@ mod v0_2_integration {
             auth_state: None,
             event_store: None,
             session_store: sessions::SessionStore::new(20),
-            file_cache: portail::file_cache::FileCache::new(&portail::file_cache::FileCacheConfig { path: "/tmp/portail-test-cache".into(), ..Default::default() }),
-            config_watcher: portail::config_watcher::ConfigWatcher::new(std::path::PathBuf::from("portail.toml")),
-            supervisor: std::sync::Arc::new(portail::supervisor::Supervisor::new(std::sync::Arc::new(portail::events::EventLog::new(100)))),
+            file_cache: portail::file_cache::FileCache::new(
+                &portail::file_cache::FileCacheConfig {
+                    path: "/tmp/portail-test-cache".into(),
+                    ..Default::default()
+                },
+            ),
+            config_watcher: portail::config_watcher::ConfigWatcher::new(std::path::PathBuf::from(
+                "portail.toml",
+            )),
+            supervisor: std::sync::Arc::new(portail::supervisor::Supervisor::new(
+                std::sync::Arc::new(portail::events::EventLog::new(100)),
+            )),
         }
     }
 
@@ -277,7 +290,11 @@ mod v0_2_integration {
             store
                 .insert(&make_event(
                     &format!("agent-{}", i % 2),
-                    if i < 3 { "task.started" } else { "task.completed" },
+                    if i < 3 {
+                        "task.started"
+                    } else {
+                        "task.completed"
+                    },
                     1700000000 + i,
                 ))
                 .unwrap();
@@ -298,15 +315,11 @@ mod v0_2_integration {
             .insert(&make_event("agent-b", "task.started", 1700000002))
             .unwrap();
 
-        let a_events = store
-            .query(Some("agent-a"), None, None, Some(10))
-            .unwrap();
+        let a_events = store.query(Some("agent-a"), None, None, Some(10)).unwrap();
         assert_eq!(a_events.len(), 2);
         assert!(a_events.iter().all(|e| e.agent_id == "agent-a"));
 
-        let b_events = store
-            .query(Some("agent-b"), None, None, Some(10))
-            .unwrap();
+        let b_events = store.query(Some("agent-b"), None, None, Some(10)).unwrap();
         assert_eq!(b_events.len(), 1);
         assert_eq!(b_events[0].agent_id, "agent-b");
     }
@@ -476,8 +489,7 @@ service_name = "portail-test"
 sampling_ratio = 0.5
 "#;
 
-        let cfg: config::Config =
-            toml::from_str(toml_str).expect("parse v0.2 TOML config");
+        let cfg: config::Config = toml::from_str(toml_str).expect("parse v0.2 TOML config");
 
         // rate_limit
         assert!(cfg.rate_limit.enabled);
@@ -517,8 +529,7 @@ burst = 5
 [telemetry]
 "#;
 
-        let cfg: config::Config =
-            toml::from_str(toml_str).expect("parse minimal v0.2 TOML");
+        let cfg: config::Config = toml::from_str(toml_str).expect("parse minimal v0.2 TOML");
 
         // Rate limit defaults to enabled (v1.0); explicit disable tested here
         assert!(!cfg.rate_limit.enabled);

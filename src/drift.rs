@@ -88,7 +88,13 @@ pub fn capture(url: &str) -> Result<DriftSession> {
         probe(&client, url, "GET", "/metrics", "")?,
         probe(&client, url, "GET", "/.well-known/agent.json", "")?,
         probe(&client, url, "GET", "/stats", "")?,
-        probe_json(&client, url, "POST", "/v1/chat/completions", r#"{"model":"test","messages":[{"role":"user","content":"hi"}]}"#)?,
+        probe_json(
+            &client,
+            url,
+            "POST",
+            "/v1/chat/completions",
+            r#"{"model":"test","messages":[{"role":"user","content":"hi"}]}"#,
+        )?,
     ];
 
     let _now = SystemTime::now()
@@ -248,7 +254,7 @@ fn replay_entry(
     Ok(DriftDiff {
         method: entry.method.clone(),
         path: entry.path.clone(),
-        status: status.into(),
+        status,
         original_sha256: entry.response_sha256.clone(),
         replay_sha256: Some(replay_sha),
         detail: None,
@@ -278,12 +284,12 @@ pub fn load_latest_session() -> Result<DriftSession> {
     let dir = Path::new(DRIFT_DIR);
     let mut sessions: Vec<_> = std::fs::read_dir(dir)?
         .filter_map(|e| e.ok())
-        .filter(|e| e.path().extension().map_or(false, |ext| ext == "json"))
+        .filter(|e| e.path().extension().is_some_and(|ext| ext == "json"))
         .collect();
     sessions.sort_by_key(|e| e.path());
-    let latest = sessions.last().ok_or_else(|| {
-        anyhow::anyhow!("no drift sessions found in {}", DRIFT_DIR)
-    })?;
+    let latest = sessions
+        .last()
+        .ok_or_else(|| anyhow::anyhow!("no drift sessions found in {}", DRIFT_DIR))?;
     let json = std::fs::read_to_string(latest.path())?;
     Ok(serde_json::from_str(&json)?)
 }
@@ -376,9 +382,16 @@ pub fn run(command: &DriftCommand, ci: bool) -> Result<()> {
             let session = capture(url)?;
             save_session(&session)?;
             if ci {
-                std::fs::write("drift-session.json", &serde_json::to_string_pretty(&session)?)?;
+                std::fs::write(
+                    "drift-session.json",
+                    &serde_json::to_string_pretty(&session)?,
+                )?;
             }
-            println!("drift-detect: captured {} probes from {}", session.entries.len(), url);
+            println!(
+                "drift-detect: captured {} probes from {}",
+                session.entries.len(),
+                url
+            );
             Ok(())
         }
         DriftCommand::Replay { url } => {

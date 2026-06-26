@@ -65,9 +65,16 @@ pub fn run_doctor() -> Result<()> {
             Ok(cfg) => {
                 println!("  ✓ portail.toml is valid");
                 println!("    listen: {}", cfg.listen);
-                println!("    rate_limit: {}", if cfg.rate_limit.enabled { "on" } else { "off" });
+                println!(
+                    "    rate_limit: {}",
+                    if cfg.rate_limit.enabled { "on" } else { "off" }
+                );
                 println!("    auth: {}", if cfg.auth.enabled { "on" } else { "off" });
-                println!("    store: {} (provider: {})", if cfg.store.enabled { "on" } else { "off" }, cfg.store.provider);
+                println!(
+                    "    store: {} (provider: {})",
+                    if cfg.store.enabled { "on" } else { "off" },
+                    cfg.store.provider
+                );
             }
             Err(e) => {
                 println!("  ✗ portail.toml is invalid: {}", e);
@@ -98,7 +105,10 @@ pub fn run_doctor() -> Result<()> {
     if issues == 0 {
         println!("  ✓ All checks passed. Ready to serve!");
     } else {
-        println!("  ⚠ {} issue(s) found. Fix the items marked ✗ above.", issues);
+        println!(
+            "  ⚠ {} issue(s) found. Fix the items marked ✗ above.",
+            issues
+        );
     }
     println!("\n  Run 'portail serve' to start, or 'portail' for the TUI.");
 

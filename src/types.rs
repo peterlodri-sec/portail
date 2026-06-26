@@ -28,11 +28,15 @@ pub struct BoundedMeta {
 
 impl BoundedMeta {
     pub fn new() -> Self {
-        Self { inner: HashMap::new() }
+        Self {
+            inner: HashMap::new(),
+        }
     }
 
     pub fn with_capacity(cap: usize) -> Self {
-        Self { inner: HashMap::with_capacity(cap.min(MAX_METADATA_ENTRIES)) }
+        Self {
+            inner: HashMap::with_capacity(cap.min(MAX_METADATA_ENTRIES)),
+        }
     }
 
     pub fn insert(&mut self, key: String, value: String) -> Result<(), &'static str> {

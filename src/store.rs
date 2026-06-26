@@ -54,9 +54,15 @@ impl Default for StoreConfig {
     }
 }
 
-fn default_db_path() -> String { "/var/lib/portail/events.db".into() }
-fn default_retention() -> u32 { 30 }
-fn default_provider() -> String { "sqlite".into() }
+fn default_db_path() -> String {
+    "/var/lib/portail/events.db".into()
+}
+fn default_retention() -> u32 {
+    30
+}
+fn default_provider() -> String {
+    "sqlite".into()
+}
 
 // ─── event model ──────────────────────────────────────────────────
 
@@ -120,7 +126,9 @@ impl SqliteBackend {
             CREATE INDEX IF NOT EXISTS idx_events_created ON events(created_at);",
         )
         .map_err(|e| e.to_string())?;
-        Ok(Self { db: Arc::new(Mutex::new(conn)) })
+        Ok(Self {
+            db: Arc::new(Mutex::new(conn)),
+        })
     }
 }
 
@@ -130,7 +138,13 @@ impl StoreBackend for SqliteBackend {
         db.execute(
             "INSERT INTO events (agent_id, event_type, severity, timestamp, metadata)
              VALUES (?1, ?2, ?3, ?4, ?5)",
-            rusqlite::params![event.agent_id, event.event_type, event.severity, event.timestamp, event.metadata_json],
+            rusqlite::params![
+                event.agent_id,
+                event.event_type,
+                event.severity,
+                event.timestamp,
+                event.metadata_json
+            ],
         )
         .map_err(|e| e.to_string())?;
         Ok(db.last_insert_rowid())
@@ -144,7 +158,9 @@ impl StoreBackend for SqliteBackend {
         limit: Option<usize>,
     ) -> Result<Vec<StoredEvent>, String> {
         let db = self.db.blocking_lock();
-        let mut sql = String::from("SELECT id, agent_id, event_type, severity, timestamp, metadata FROM events WHERE 1=1");
+        let mut sql = String::from(
+            "SELECT id, agent_id, event_type, severity, timestamp, metadata FROM events WHERE 1=1",
+        );
         let mut values: Vec<Box<dyn rusqlite::types::ToSql>> = Vec::new();
 
         if let Some(a) = agent_id {
@@ -166,17 +182,18 @@ impl StoreBackend for SqliteBackend {
 
         let refs: Vec<&dyn rusqlite::types::ToSql> = values.iter().map(|b| b.as_ref()).collect();
         let mut stmt = db.prepare(&sql).map_err(|e| e.to_string())?;
-        let rows = stmt.query_map(refs.as_slice(), |row| {
-            Ok(StoredEvent {
-                id: Some(row.get(0)?),
-                agent_id: row.get(1)?,
-                event_type: row.get(2)?,
-                severity: row.get(3)?,
-                timestamp: row.get(4)?,
-                metadata_json: row.get(5)?,
+        let rows = stmt
+            .query_map(refs.as_slice(), |row| {
+                Ok(StoredEvent {
+                    id: Some(row.get(0)?),
+                    agent_id: row.get(1)?,
+                    event_type: row.get(2)?,
+                    severity: row.get(3)?,
+                    timestamp: row.get(4)?,
+                    metadata_json: row.get(5)?,
+                })
             })
-        })
-        .map_err(|e| e.to_string())?;
+            .map_err(|e| e.to_string())?;
 
         let mut events = Vec::new();
         for row in rows {
@@ -199,7 +216,10 @@ impl StoreBackend for SqliteBackend {
             - (retention_days as i64 * 86400);
         let db = self.db.blocking_lock();
         let n = db
-            .execute("DELETE FROM events WHERE timestamp < ?1", rusqlite::params![cutoff])
+            .execute(
+                "DELETE FROM events WHERE timestamp < ?1",
+                rusqlite::params![cutoff],
+            )
             .map_err(|e| e.to_string())?;
         if n > 0 {
             tracing::info!(deleted = n, "event store retention purge");
@@ -225,14 +245,18 @@ pub struct NatsReplicatedBackend {
 impl NatsReplicatedBackend {
     pub async fn open(config: &StoreConfig) -> Result<Self, String> {
         let local = SqliteBackend::open(config)?;
-        let nats_url = std::env::var("PORTAIL_NATS_URL")
-            .unwrap_or_else(|_| "nats://localhost:4222".into());
-        let nc = async_nats::connect(&nats_url).await.map_err(|e| e.to_string())?;
+        let nats_url =
+            std::env::var("PORTAIL_NATS_URL").unwrap_or_else(|_| "nats://localhost:4222".into());
+        let nc = async_nats::connect(&nats_url)
+            .await
+            .map_err(|e| e.to_string())?;
 
         let db = local.db.clone();
         let sub_nc = nc.clone();
         tokio::spawn(async move {
-            let mut sub = sub_nc.subscribe("portail.store.events".to_string()).await
+            let mut sub = sub_nc
+                .subscribe("portail.store.events".to_string())
+                .await
                 .expect("NATS subscribe for store replication");
             while let Some(msg) = sub.next().await {
                 if let Ok(event) = serde_json::from_slice::<StoredEvent>(&msg.payload) {
@@ -253,7 +277,9 @@ impl NatsReplicatedBackend {
         let nc = self.nc.clone();
         let payload = serde_json::to_vec(event).unwrap_or_default();
         tokio::spawn(async move {
-            let _ = nc.publish("portail.store.events".to_string(), payload.into()).await;
+            let _ = nc
+                .publish("portail.store.events".to_string(), payload.into())
+                .await;
         });
     }
 }
@@ -265,11 +291,24 @@ impl StoreBackend for NatsReplicatedBackend {
         self.publish_to_nats(event);
         Ok(id)
     }
-    fn query(&self, a: Option<&str>, e: Option<&str>, s: Option<i64>, l: Option<usize>)
-        -> Result<Vec<StoredEvent>, String> { self.local.query(a, e, s, l) }
-    fn count(&self) -> Result<i64, String> { self.local.count() }
-    fn purge_expired(&self, d: u32) -> Result<usize, String> { self.local.purge_expired(d) }
-    fn export_json(&self, s: Option<i64>) -> Result<String, String> { self.local.export_json(s) }
+    fn query(
+        &self,
+        a: Option<&str>,
+        e: Option<&str>,
+        s: Option<i64>,
+        l: Option<usize>,
+    ) -> Result<Vec<StoredEvent>, String> {
+        self.local.query(a, e, s, l)
+    }
+    fn count(&self) -> Result<i64, String> {
+        self.local.count()
+    }
+    fn purge_expired(&self, d: u32) -> Result<usize, String> {
+        self.local.purge_expired(d)
+    }
+    fn export_json(&self, s: Option<i64>) -> Result<String, String> {
+        self.local.export_json(s)
+    }
 }
 
 // ─── EventStore (facade) ──────────────────────────────────────────
@@ -298,7 +337,10 @@ impl EventStore {
             }
         };
 
-        let store = Self { backend: backend.clone(), config: config.clone() };
+        let store = Self {
+            backend: backend.clone(),
+            config: config.clone(),
+        };
 
         // spawn retention
         if store.config.retention_days > 0 {
@@ -379,7 +421,9 @@ mod tests {
         let id = store.insert(&event).expect("insert");
         assert!(id > 0);
 
-        let results = store.query(Some("test-agent"), None, None, Some(10)).expect("query");
+        let results = store
+            .query(Some("test-agent"), None, None, Some(10))
+            .expect("query");
         assert_eq!(results.len(), 1);
         assert_eq!(results[0].agent_id, "test-agent");
     }
@@ -388,15 +432,16 @@ mod tests {
     fn count_works() {
         let store = sqlite_store();
         for i in 0..5 {
-            store.insert(&StoredEvent {
-                id: None,
-                agent_id: format!("agent-{}", i),
-                event_type: "test".into(),
-                severity: "info".into(),
-                timestamp: 1700000000 + i,
-                metadata_json: "{}".into(),
-            })
-            .unwrap();
+            store
+                .insert(&StoredEvent {
+                    id: None,
+                    agent_id: format!("agent-{}", i),
+                    event_type: "test".into(),
+                    severity: "info".into(),
+                    timestamp: 1700000000 + i,
+                    metadata_json: "{}".into(),
+                })
+                .unwrap();
         }
         assert_eq!(store.count().unwrap(), 5);
     }

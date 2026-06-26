@@ -8,8 +8,15 @@ use std::sync::OnceLock;
 use tracing::{debug, warn};
 
 const HOP_BY_HOP: &[&str] = &[
-    "host", "connection", "transfer-encoding", "proxy-authenticate",
-    "proxy-authorization", "te", "trailer", "upgrade", "keep-alive",
+    "host",
+    "connection",
+    "transfer-encoding",
+    "proxy-authenticate",
+    "proxy-authorization",
+    "te",
+    "trailer",
+    "upgrade",
+    "keep-alive",
 ];
 
 static HTTP_CLIENT: OnceLock<Client> = OnceLock::new();
@@ -82,7 +89,8 @@ pub async fn forward_with_body(
 
     match req_builder.send().await {
         Ok(resp) => {
-            counter!("ai_gateway_requests", "status" => resp.status().as_u16().to_string()).increment(1);
+            counter!("ai_gateway_requests", "status" => resp.status().as_u16().to_string())
+                .increment(1);
             let status = resp.status();
             let resp_headers = resp.headers().clone();
             let resp_body = resp.bytes().await.unwrap_or_default();
@@ -106,14 +114,22 @@ pub async fn forward(upstream: &str, req: Request) -> Response {
         Ok(bytes) => bytes,
         Err(e) => {
             warn!(error = %e, "failed to read request body");
-            return (StatusCode::PAYLOAD_TOO_LARGE, "request body too large or unreadable").into_response();
+            return (
+                StatusCode::PAYLOAD_TOO_LARGE,
+                "request body too large or unreadable",
+            )
+                .into_response();
         }
     };
     forward_with_body(upstream, parts, body_bytes).await
 }
 
 /// Forward a request to a specific path on the upstream with raw body bytes.
-pub async fn forward_with_url(upstream: &str, path: &str, body: &[u8]) -> Result<Response, reqwest::Error> {
+pub async fn forward_with_url(
+    upstream: &str,
+    path: &str,
+    body: &[u8],
+) -> Result<Response, reqwest::Error> {
     let url = format!("{}{}", upstream.trim_end_matches('/'), path);
     let resp = client()
         .post(&url)

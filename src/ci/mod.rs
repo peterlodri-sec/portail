@@ -1,8 +1,8 @@
 /*
  * CI Status Module — Live Build Status
- * 
+ *
  * Architecture:
- * 
+ *
  *   ┌─────────────────────────────────────────────────────────────┐
  *   │                    CI Status Flow                           │
  *   ├─────────────────────────────────────────────────────────────┤
@@ -39,10 +39,10 @@
  *   └─────────────────────────────────────────────────────────────┘
  */
 
+use crate::types::BoundedMeta;
 use axum::body::Bytes;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
-use crate::types::BoundedMeta;
 
 // ── Types ────────────────────────────────────────────────────────
 
@@ -168,7 +168,7 @@ impl CiStatusStore {
 
     pub fn record_run(&self, run: WorkflowRun) {
         let mut runs = self.runs.write().unwrap_or_else(|e| e.into_inner());
-        
+
         // Update existing run or add new
         if let Some(existing) = runs.iter_mut().find(|r| r.id == run.id) {
             *existing = run;
@@ -183,11 +183,15 @@ impl CiStatusStore {
     pub fn get_status(&self) -> CiStatus {
         let runs = self.runs.read().unwrap_or_else(|e| e.into_inner());
         let total = runs.len();
-        let completed = runs.iter().filter(|r| r.status == WorkflowStatus::Completed).count();
-        let successful = runs.iter()
+        let completed = runs
+            .iter()
+            .filter(|r| r.status == WorkflowStatus::Completed)
+            .count();
+        let successful = runs
+            .iter()
             .filter(|r| r.conclusion.as_deref() == Some("success"))
             .count();
-        
+
         let success_rate = if completed > 0 {
             successful as f64 / completed as f64
         } else {
@@ -196,9 +200,15 @@ impl CiStatusStore {
 
         let overall = if runs.iter().any(|r| r.status == WorkflowStatus::InProgress) {
             OverallStatus::InProgress
-        } else if runs.iter().any(|r| r.conclusion.as_deref() == Some("failure")) {
+        } else if runs
+            .iter()
+            .any(|r| r.conclusion.as_deref() == Some("failure"))
+        {
             OverallStatus::Failing
-        } else if runs.iter().all(|r| r.conclusion.as_deref() == Some("success")) {
+        } else if runs
+            .iter()
+            .all(|r| r.conclusion.as_deref() == Some("success"))
+        {
             OverallStatus::Passing
         } else {
             OverallStatus::Unknown
@@ -240,13 +250,13 @@ impl CiStatusStore {
         if let Some(ref secret) = self.webhook_secret {
             use hmac::{Hmac, Mac};
             use sha2::Sha256;
-            
+
             type HmacSha256 = Hmac<Sha256>;
-            
+
             let mut mac = HmacSha256::new_from_slice(secret.as_bytes())
                 .expect("HMAC can take key of any size");
             mac.update(payload);
-            
+
             let expected = format!("sha256={}", hex::encode(mac.finalize().into_bytes()));
             expected == signature
         } else {
@@ -269,7 +279,10 @@ pub async fn handle_badge(
     let svg = state.ci_status.get_badge_svg();
     (
         axum::http::StatusCode::OK,
-        [("content-type", "image/svg+xml"), ("cache-control", "no-cache")],
+        [
+            ("content-type", "image/svg+xml"),
+            ("cache-control", "no-cache"),
+        ],
         svg,
     )
 }
@@ -315,11 +328,15 @@ pub async fn handle_webhook(
                         conclusion: event.workflow_run.conclusion.clone(),
                         branch: event.workflow_run.head_branch,
                         commit_sha: event.workflow_run.head_sha,
-                        commit_message: event.workflow_run.head_commit
+                        commit_message: event
+                            .workflow_run
+                            .head_commit
                             .as_ref()
                             .map(|c| c.message.clone())
                             .unwrap_or_default(),
-                        actor: event.workflow_run.actor
+                        actor: event
+                            .workflow_run
+                            .actor
                             .as_ref()
                             .map(|a| a.login.clone())
                             .unwrap_or_else(|| event.sender.login.clone()),
@@ -332,9 +349,9 @@ pub async fn handle_webhook(
                         logs_url: event.workflow_run.logs_url.clone(),
                         html_url: event.workflow_run.html_url.clone(),
                     };
-                    
+
                     state.ci_status.record_run(run);
-                    
+
                     // Publish event
                     state.event_log.publish(crate::events::AgentEvent {
                         agent_id: "ci".into(),
@@ -345,10 +362,13 @@ pub async fn handle_webhook(
                             ("action".into(), event.action),
                             ("workflow".into(), event.workflow_run.name),
                             ("status".into(), event.workflow_run.status),
-                            ("conclusion".into(), event.workflow_run.conclusion.unwrap_or_default()),
+                            (
+                                "conclusion".into(),
+                                event.workflow_run.conclusion.unwrap_or_default(),
+                            ),
                         ]),
                     });
-                    
+
                     (axum::http::StatusCode::OK, "ok")
                 }
                 Err(_) => (axum::http::StatusCode::BAD_REQUEST, "invalid payload"),
@@ -361,20 +381,21 @@ pub async fn handle_webhook(
 
 pub async fn handle_live(
     axum::extract::State(state): axum::extract::State<Arc<crate::AppState>>,
-) -> axum::response::Sse<impl futures::Stream<Item = Result<axum::response::sse::Event, std::convert::Infallible>>> {
+) -> axum::response::Sse<
+    impl futures::Stream<Item = Result<axum::response::sse::Event, std::convert::Infallible>>,
+> {
     use axum::response::sse::{Event, KeepAlive};
-    use tokio_stream::wrappers::BroadcastStream;
     use tokio_stream::StreamExt;
+    use tokio_stream::wrappers::BroadcastStream;
 
     let rx = state.event_log.subscribe();
-    let stream = BroadcastStream::new(rx)
-        .filter_map(|r| match r {
-            Ok(event) if event.agent_id == "ci" => {
-                let data = serde_json::to_string(&event).unwrap_or_default();
-                Some(Ok(Event::default().event("ci").data(data)))
-            }
-            _ => None,
-        });
+    let stream = BroadcastStream::new(rx).filter_map(|r| match r {
+        Ok(event) if event.agent_id == "ci" => {
+            let data = serde_json::to_string(&event).unwrap_or_default();
+            Some(Ok(Event::default().event("ci").data(data)))
+        }
+        _ => None,
+    });
 
     axum::response::Sse::new(stream).keep_alive(KeepAlive::default())
 }
@@ -402,7 +423,7 @@ mod tests {
     #[test]
     fn record_and_get_status() {
         let store = test_store();
-        
+
         store.record_run(WorkflowRun {
             id: 1,
             name: "CI".into(),
@@ -487,18 +508,18 @@ mod tests {
     #[test]
     fn webhook_verification() {
         let store = CiStatusStore::new(100, Some("test-secret".into()));
-        
+
         // Valid signature - compute HMAC-SHA256 of "test payload" with key "test-secret"
         let payload = b"test payload";
         let _valid_sig = "sha256=1f92c44a9de3e8b29e4e0e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e";
-        
+
         // Invalid signature
         let invalid_sig = "sha256=invalid";
-        
+
         // No secret configured - should accept all
         let no_secret_store = CiStatusStore::new(100, None);
         assert!(no_secret_store.verify_webhook(payload, "anything"));
-        
+
         // With secret - should reject invalid
         assert!(!store.verify_webhook(payload, invalid_sig));
     }

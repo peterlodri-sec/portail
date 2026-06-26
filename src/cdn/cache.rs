@@ -3,8 +3,8 @@ use bytes::Bytes;
 use moka::future::Cache;
 use std::collections::HashMap;
 use std::path::PathBuf;
-use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::Duration;
 use tokio::fs;
 use tracing::{info, warn};
@@ -19,7 +19,10 @@ impl DiskLayer {
     fn path(&self, key: &str) -> PathBuf {
         let hash = blake3::hash(key.as_bytes());
         let hex = hash.to_hex();
-        self.root.join(&hex[..2]).join(&hex[2..4]).join(hex.as_str())
+        self.root
+            .join(&hex[..2])
+            .join(&hex[2..4])
+            .join(hex.as_str())
     }
 }
 
@@ -131,14 +134,25 @@ pub async fn stats_logger(cache: Arc<CacheManager>) {
         let hits = cache.hits.load(Ordering::Relaxed);
         let misses = cache.misses.load(Ordering::Relaxed);
         let total = hits + misses;
-        let ratio = if total > 0 { hits as f64 / total as f64 * 100.0 } else { 0.0 };
-        info!(hits, misses, hit_ratio = format_args!("{:.1}%", ratio), "CDN cache stats");
+        let ratio = if total > 0 {
+            hits as f64 / total as f64 * 100.0
+        } else {
+            0.0
+        };
+        info!(
+            hits,
+            misses,
+            hit_ratio = format_args!("{:.1}%", ratio),
+            "CDN cache stats"
+        );
     }
 }
 
 fn parse_size(s: &str) -> Option<u64> {
     let s = s.trim().to_lowercase();
-    if s.is_empty() { return None; }
+    if s.is_empty() {
+        return None;
+    }
     let (num_str, unit) = s.split_at(s.len().max(1) - 1);
     match unit {
         "k" => Some(num_str.parse::<u64>().ok()? * 1_000),
@@ -168,7 +182,9 @@ mod tests {
     async fn memory_cache_roundtrip() {
         let cache = Arc::new(CacheManager {
             memory: Cache::builder().max_capacity(100).build(),
-            disk: DiskLayer { root: PathBuf::from("/tmp/_cdn_test_cache") },
+            disk: DiskLayer {
+                root: PathBuf::from("/tmp/_cdn_test_cache"),
+            },
             hits: AtomicU64::new(0),
             misses: AtomicU64::new(0),
             purges: AtomicU64::new(0),
@@ -186,7 +202,9 @@ mod tests {
     async fn memory_eviction() {
         let cache = Arc::new(CacheManager {
             memory: Cache::builder().max_capacity(2).build(),
-            disk: DiskLayer { root: PathBuf::from("/tmp/_cdn_test_evict") },
+            disk: DiskLayer {
+                root: PathBuf::from("/tmp/_cdn_test_evict"),
+            },
             hits: AtomicU64::new(0),
             misses: AtomicU64::new(0),
             purges: AtomicU64::new(0),

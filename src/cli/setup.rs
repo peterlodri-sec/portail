@@ -1,6 +1,6 @@
 use anyhow::Result;
-use std::path::{Path, PathBuf};
 use std::fs;
+use std::path::{Path, PathBuf};
 use std::process::Command;
 
 #[derive(Debug, Clone)]
@@ -45,11 +45,11 @@ pub fn run_setup(config: SetupConfig) -> Result<()> {
         println!("  [n] No, use self-signed certificates");
         println!();
         print!("Choice [y/n]: ");
-        
+
         let mut input = String::new();
         std::io::stdin().read_line(&mut input)?;
         let input = input.trim().to_lowercase();
-        
+
         if input == "y" || input == "yes" {
             print!("Enter your domain (e.g., portail.example.com): ");
             let mut domain = String::new();
@@ -72,7 +72,7 @@ pub fn run_setup(config: SetupConfig) -> Result<()> {
     // Step 2: Certificate setup
     println!("Step 2: TLS Certificates");
     println!("─────────────────────────");
-    
+
     if let Some(ref domain) = domain {
         println!("Setting up Let's Encrypt for: {}", domain);
         setup_letsencrypt(domain, &config.cert_dir)?;
@@ -85,7 +85,7 @@ pub fn run_setup(config: SetupConfig) -> Result<()> {
     // Step 3: Headscale setup (optional)
     println!("Step 3: Mesh Networking (Headscale)");
     println!("───────────────────────────────────");
-    
+
     if config.headscale {
         println!("Setting up Headscale for mesh networking...");
         setup_headscale(&config)?;
@@ -110,25 +110,25 @@ pub fn run_setup(config: SetupConfig) -> Result<()> {
     println!("  2. Check health:   portail health");
     println!("  3. View config:    portail config show");
     println!();
-    
+
     if let Some(ref domain) = domain {
         println!("Your portail is available at: https://{}", domain);
     } else {
         println!("Your portail is available at: https://localhost:8787");
     }
-    
+
     Ok(())
 }
 
 fn setup_letsencrypt(domain: &str, cert_dir: &Path) -> Result<()> {
     fs::create_dir_all(cert_dir)?;
-    
+
     // Check if certbot is installed
     if !command_exists("certbot") {
         println!("⚠ certbot not found. Installing...");
         install_certbot()?;
     }
-    
+
     // Check if nginx/caddy is available for reverse proxy
     if command_exists("caddy") {
         println!("✓ Caddy detected - will auto-provision certificates");
@@ -140,45 +140,52 @@ fn setup_letsencrypt(domain: &str, cert_dir: &Path) -> Result<()> {
         println!("⚠ No reverse proxy detected. Using standalone certbot...");
         println!("  Run: sudo certbot certonly --standalone -d {}", domain);
     }
-    
+
     println!("✓ Certificate setup complete");
     Ok(())
 }
 
 fn setup_self_signed(cert_dir: &Path) -> Result<()> {
     fs::create_dir_all(cert_dir)?;
-    
+
     let key_path = cert_dir.join("portail.key");
     let cert_path = cert_dir.join("portail.crt");
-    
+
     // Generate self-signed certificate using openssl
     let output = Command::new("openssl")
         .args([
-            "req", "-x509", "-newkey", "rsa:4096",
-            "-keyout", key_path.to_str().unwrap(),
-            "-out", cert_path.to_str().unwrap(),
-            "-days", "365",
+            "req",
+            "-x509",
+            "-newkey",
+            "rsa:4096",
+            "-keyout",
+            key_path.to_str().unwrap(),
+            "-out",
+            cert_path.to_str().unwrap(),
+            "-days",
+            "365",
             "-nodes",
-            "-subj", "/CN=localhost/O=Portail/C=US",
+            "-subj",
+            "/CN=localhost/O=Portail/C=US",
         ])
         .output()?;
-    
+
     if !output.status.success() {
         let stderr = String::from_utf8_lossy(&output.stderr);
         anyhow::bail!("Failed to generate certificate: {}", stderr);
     }
-    
+
     // Set permissions
     #[cfg(unix)]
     {
         use std::os::unix::fs::PermissionsExt;
         fs::set_permissions(&key_path, fs::Permissions::from_mode(0o600))?;
     }
-    
+
     println!("✓ Self-signed certificate generated");
     println!("  Key:  {}", key_path.display());
     println!("  Cert: {}", cert_path.display());
-    
+
     Ok(())
 }
 
@@ -189,44 +196,54 @@ fn setup_headscale(_config: &SetupConfig) -> Result<()> {
         println!("  Install: https://headscale.net/quick-setup/");
         return Ok(());
     }
-    
+
     // Create headscale namespace for portail
     let output = Command::new("headscale")
         .args(["namespaces", "create", "portail"])
         .output()?;
-    
+
     if output.status.success() {
         println!("✓ Headscale namespace 'portail' created");
     } else {
         println!("⚠ Headscale namespace may already exist");
     }
-    
+
     // Generate pre-auth key
     let output = Command::new("headscale")
-        .args(["preauthkeys", "create", "-n", "portail", "--expiration", "24h"])
+        .args([
+            "preauthkeys",
+            "create",
+            "-n",
+            "portail",
+            "--expiration",
+            "24h",
+        ])
         .output()?;
-    
+
     if output.status.success() {
         let key = String::from_utf8_lossy(&output.stdout);
         println!("✓ Pre-auth key generated: {}", key.trim());
-        println!("  Use this key to register nodes with: tailscale up --login-server <headscale-url> --authkey <key>");
+        println!(
+            "  Use this key to register nodes with: tailscale up --login-server <headscale-url> --authkey <key>"
+        );
     }
-    
+
     Ok(())
 }
 
 fn generate_config(config: &SetupConfig, domain: Option<&str>) -> Result<()> {
     fs::create_dir_all(&config.config_dir)?;
-    
+
     let config_path = config.config_dir.join("portail.toml");
-    
+
     let listen_addr = if domain.is_some() {
         "0.0.0.0:443"
     } else {
         "0.0.0.0:8787"
     };
-    
-    let config_content = format!(r#"# Portail configuration
+
+    let config_content = format!(
+        r#"# Portail configuration
 # Generated by: portail setup
 
 listen = "{}"
@@ -257,10 +274,10 @@ name = "{}"
         config.cert_dir.join("portail.key").display(),
         domain.unwrap_or("localhost"),
     );
-    
+
     fs::write(&config_path, config_content)?;
     println!("✓ Configuration written to: {}", config_path.display());
-    
+
     Ok(())
 }
 
@@ -272,9 +289,7 @@ fn install_certbot() -> Result<()> {
     if cfg!(target_os = "linux") {
         // Try apt
         if command_exists("apt-get") {
-            Command::new("apt-get")
-                .args(["update", "-qq"])
-                .status()?;
+            Command::new("apt-get").args(["update", "-qq"]).status()?;
             Command::new("apt-get")
                 .args(["install", "-y", "certbot"])
                 .status()?;
@@ -288,32 +303,34 @@ fn install_certbot() -> Result<()> {
             return Ok(());
         }
     } else if cfg!(target_os = "macos") && command_exists("brew") {
-        Command::new("brew")
-            .args(["install", "certbot"])
-            .status()?;
+        Command::new("brew").args(["install", "certbot"]).status()?;
         return Ok(());
     }
-    
+
     anyhow::bail!("Could not install certbot. Please install manually.")
 }
 
 fn setup_caddy(domain: &str, _cert_dir: &Path) -> Result<()> {
-    let caddyfile = format!(r#"{} {{
+    let caddyfile = format!(
+        r#"{} {{
     reverse_proxy localhost:8787
     tls internal
 }}
-"#, domain);
-    
+"#,
+        domain
+    );
+
     let caddy_config = Path::new("/etc/caddy/Caddyfile.portail");
     fs::write(caddy_config, caddyfile)?;
     println!("✓ Caddy config written to: {}", caddy_config.display());
     println!("  Reload Caddy: sudo systemctl reload caddy");
-    
+
     Ok(())
 }
 
 fn setup_nginx(domain: &str, cert_dir: &Path) -> Result<()> {
-    let nginx_config = format!(r#"server {{
+    let nginx_config = format!(
+        r#"server {{
     listen 443 ssl;
     server_name {};
 
@@ -333,28 +350,28 @@ fn setup_nginx(domain: &str, cert_dir: &Path) -> Result<()> {
         cert_dir.join("portail.crt").display(),
         cert_dir.join("portail.key").display(),
     );
-    
+
     let nginx_config_path = Path::new("/etc/nginx/sites-available/portail");
     fs::write(nginx_config_path, nginx_config)?;
-    
+
     // Enable site
     let enabled_path = Path::new("/etc/nginx/sites-enabled/portail");
     if !enabled_path.exists() {
         #[cfg(unix)]
         std::os::unix::fs::symlink(nginx_config_path, enabled_path)?;
     }
-    
+
     println!("✓ Nginx config written to: {}", nginx_config_path.display());
     println!("  Test: sudo nginx -t");
     println!("  Reload: sudo systemctl reload nginx");
-    
+
     Ok(())
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_setup_config_default() {
         let config = SetupConfig::default();

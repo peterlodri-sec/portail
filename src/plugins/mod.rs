@@ -15,6 +15,6 @@ pub mod redis_cache;
 pub mod tinyurl;
 pub mod tracer;
 
-pub use redis_cache::{RedisCache, RedisCacheConfig, CacheStats as RedisStats};
-pub use tinyurl::{TinyUrlStore, TinyUrlConfig, TinyUrlEntry};
-pub use tracer::{TraceStore, Trace, TraceBuilder};
+pub use redis_cache::{CacheStats as RedisStats, RedisCache, RedisCacheConfig};
+pub use tinyurl::{TinyUrlConfig, TinyUrlEntry, TinyUrlStore};
+pub use tracer::{Trace, TraceBuilder, TraceStore};

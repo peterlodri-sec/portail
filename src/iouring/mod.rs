@@ -1,8 +1,8 @@
 /*
  * io_uring I/O Module
- * 
+ *
  * Architecture:
- * 
+ *
  *   ┌─────────────────────────────────────────────────────────────┐
  *   │                    io_uring I/O Engine                      │
  *   ├─────────────────────────────────────────────────────────────┤
@@ -76,7 +76,7 @@ impl Default for IoUringConfig {
             ring_size: 4096,
             sq_poll: true, // Kernel-side polling for lower latency
             sq_thread_idle_ms: 1000,
-            fixed_buffers: true, // Pre-registered buffers
+            fixed_buffers: true,    // Pre-registered buffers
             registered_files: true, // Pre-registered file descriptors
         }
     }
@@ -86,30 +86,12 @@ impl Default for IoUringConfig {
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub enum IoUringOp {
-    Read {
-        fd: i32,
-        buf: Vec<u8>,
-        offset: u64,
-    },
-    Write {
-        fd: i32,
-        buf: Vec<u8>,
-        offset: u64,
-    },
-    Accept {
-        fd: i32,
-    },
-    Connect {
-        fd: i32,
-        addr: String,
-        port: u16,
-    },
-    Close {
-        fd: i32,
-    },
-    Timeout {
-        duration_ms: u64,
-    },
+    Read { fd: i32, buf: Vec<u8>, offset: u64 },
+    Write { fd: i32, buf: Vec<u8>, offset: u64 },
+    Accept { fd: i32 },
+    Connect { fd: i32, addr: String, port: u16 },
+    Close { fd: i32 },
+    Timeout { duration_ms: u64 },
 }
 
 // ── io_uring Completion ──────────────────────────────────────────
@@ -163,7 +145,7 @@ impl IoUringManager {
         let mut stats = self.stats.write().unwrap_or_else(|e| e.into_inner());
         stats.operations_completed += 1;
         stats.queue_depth = stats.queue_depth.saturating_sub(1);
-        
+
         // Running average
         let n = stats.operations_completed;
         stats.avg_latency_ns = (stats.avg_latency_ns * (n - 1) + latency_ns) / n;
@@ -178,6 +160,12 @@ impl IoUringManager {
 
 pub struct IoUringBuilder {
     config: IoUringConfig,
+}
+
+impl Default for IoUringBuilder {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl IoUringBuilder {
@@ -201,17 +189,16 @@ impl IoUringBuilder {
         #[cfg(target_os = "linux")]
         {
             // Check kernel version
-            let version = std::fs::read_to_string("/proc/version")
-                .unwrap_or_default();
-            
+            let version = std::fs::read_to_string("/proc/version").unwrap_or_default();
+
             // Parse kernel version (simplified)
             if !version.contains("Linux version 5.") && !version.contains("Linux version 6.") {
                 return Err("io_uring requires Linux 5.1+".into());
             }
-            
+
             Ok(IoUringManager::new(self.config))
         }
-        
+
         #[cfg(not(target_os = "linux"))]
         {
             Err("io_uring is only supported on Linux".into())
@@ -230,8 +217,7 @@ pub async fn handle_iouring_stats(
 // ── Module Router ────────────────────────────────────────────────
 
 pub fn router() -> axum::Router<Arc<crate::AppState>> {
-    axum::Router::new()
-        .route("/iouring/stats", axum::routing::get(handle_iouring_stats))
+    axum::Router::new().route("/iouring/stats", axum::routing::get(handle_iouring_stats))
 }
 
 // ── Tests ────────────────────────────────────────────────────────
@@ -251,7 +237,7 @@ mod tests {
     #[test]
     fn iouring_manager_stats() {
         let manager = IoUringManager::new(IoUringConfig::default());
-        
+
         manager.record_submission();
         manager.record_completion(1000);
 

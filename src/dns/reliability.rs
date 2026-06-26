@@ -25,7 +25,10 @@ pub struct DnsCache {
 
 impl DnsCache {
     pub fn new(max_entries: usize) -> Self {
-        Self { records: RwLock::new(HashMap::new()), max_entries }
+        Self {
+            records: RwLock::new(HashMap::new()),
+            max_entries,
+        }
     }
 
     /// Look up a cached record. Returns None if not found or expired.
@@ -51,11 +54,14 @@ impl DnsCache {
                 recs.retain(|_, r| Instant::now() <= r.expires_at);
             }
             let ttl = ttl_secs.min(86400); // cap at 24h
-            recs.insert(domain.to_string(), CachedRecord {
-                value: ips,
-                expires_at: Instant::now() + Duration::from_secs(ttl),
-                is_negative: false,
-            });
+            recs.insert(
+                domain.to_string(),
+                CachedRecord {
+                    value: ips,
+                    expires_at: Instant::now() + Duration::from_secs(ttl),
+                    is_negative: false,
+                },
+            );
         }
     }
 
@@ -63,11 +69,14 @@ impl DnsCache {
     pub fn set_negative(&self, domain: &str) {
         let mut records = self.records.write().ok();
         if let Some(ref mut recs) = records {
-            recs.insert(domain.to_string(), CachedRecord {
-                value: vec![],
-                expires_at: Instant::now() + Duration::from_secs(60),
-                is_negative: true,
-            });
+            recs.insert(
+                domain.to_string(),
+                CachedRecord {
+                    value: vec![],
+                    expires_at: Instant::now() + Duration::from_secs(60),
+                    is_negative: true,
+                },
+            );
         }
     }
 

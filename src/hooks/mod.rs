@@ -31,14 +31,19 @@ impl Default for HookStore {
 
 impl HookStore {
     pub fn new() -> Self {
-        Self { hooks: RwLock::new(Vec::new()) }
+        Self {
+            hooks: RwLock::new(Vec::new()),
+        }
     }
 
     pub fn add(&self, mut hook: Hook) {
         if hook.id.is_empty() {
             hook.id = uuid::Uuid::new_v4().to_string();
         }
-        self.hooks.write().unwrap_or_else(|e| e.into_inner()).push(hook);
+        self.hooks
+            .write()
+            .unwrap_or_else(|e| e.into_inner())
+            .push(hook);
     }
 
     pub fn remove(&self, id: &str) -> bool {

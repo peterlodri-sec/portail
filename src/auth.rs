@@ -10,8 +10,8 @@
 //! Configure additional bypass paths in `AuthConfig::bypass_paths`.
 
 use std::collections::HashMap;
-use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicU64, Ordering};
 
 use axum::{
     body::Body,
@@ -20,7 +20,7 @@ use axum::{
     middleware::Next,
     response::{IntoResponse, Response},
 };
-use jsonwebtoken::{decode, Algorithm, DecodingKey, Validation};
+use jsonwebtoken::{Algorithm, DecodingKey, Validation, decode};
 use serde::{Deserialize, Serialize};
 
 // ─── config ───────────────────────────────────────────────────────
@@ -191,7 +191,11 @@ impl AuthState {
             for (kid, key) in &inner.jwk_map {
                 let v = validation.clone();
                 if let Ok(data) = decode::<serde_json::Value>(token, key, &v) {
-                    return data.claims.get("sub").and_then(|s| s.as_str()).map(String::from);
+                    return data
+                        .claims
+                        .get("sub")
+                        .and_then(|s| s.as_str())
+                        .map(String::from);
                 }
                 // Also try without key ID
                 let _ = kid;

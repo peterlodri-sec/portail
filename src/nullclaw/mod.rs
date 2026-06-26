@@ -1,8 +1,8 @@
 /*
  * NullClaw — Network-Native Agent
- * 
+ *
  * Architecture:
- * 
+ *
  *   ┌─────────────────────────────────────────────────────────────┐
  *   │                    NullClaw Agent                           │
  *   ├─────────────────────────────────────────────────────────────┤
@@ -48,11 +48,11 @@
  *   └─────────────────────────────────────────────────────────────┘
  */
 
+use crate::types::BoundedMeta;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::Instant;
-use crate::types::BoundedMeta;
 
 // ── Configuration ────────────────────────────────────────────────
 
@@ -230,10 +230,7 @@ impl NullClaw {
 
 // ── Background Runner ────────────────────────────────────────────
 
-pub async fn run_nullclaw(
-    config: NullClawConfig,
-    state: Arc<crate::AppState>,
-) {
+pub async fn run_nullclaw(config: NullClawConfig, state: Arc<crate::AppState>) {
     let agent = NullClaw::new(config.clone());
     let interval = std::time::Duration::from_secs(config.heartbeat_interval_secs);
 
@@ -251,7 +248,10 @@ pub async fn run_nullclaw(
         timestamp: 0,
         metadata: BoundedMeta::from_iter([
             ("version".into(), env!("CARGO_PKG_VERSION").into()),
-            ("interval".into(), config.heartbeat_interval_secs.to_string()),
+            (
+                "interval".into(),
+                config.heartbeat_interval_secs.to_string(),
+            ),
         ]),
     });
 
@@ -277,7 +277,10 @@ pub async fn run_nullclaw(
                     ("uptime".into(), heartbeat.uptime_secs.to_string()),
                     ("agents_seen".into(), heartbeat.agents_seen.to_string()),
                     ("requests".into(), heartbeat.requests_processed.to_string()),
-                    ("cache_hit_rate".into(), format!("{:.2}", heartbeat.cache_hit_rate)),
+                    (
+                        "cache_hit_rate".into(),
+                        format!("{:.2}", heartbeat.cache_hit_rate),
+                    ),
                     ("active_traces".into(), heartbeat.active_traces.to_string()),
                 ]),
             });
@@ -322,7 +325,8 @@ pub async fn handle_agents(
     axum::extract::State(state): axum::extract::State<Arc<crate::AppState>>,
 ) -> axum::Json<Vec<String>> {
     let recent = state.event_log.recent(1000);
-    let mut agents: Vec<String> = recent.iter()
+    let mut agents: Vec<String> = recent
+        .iter()
         .map(|e| e.agent_id.clone())
         .collect::<std::collections::HashSet<_>>()
         .into_iter()
@@ -376,7 +380,7 @@ mod tests {
         agent.record_agent("agent-1");
         agent.record_agent("agent-2");
         agent.record_agent("agent-1"); // duplicate
-        
+
         let agents = agent.agents_seen.read().unwrap();
         assert_eq!(agents.len(), 2);
     }
@@ -386,10 +390,10 @@ mod tests {
         let agent = NullClaw::new(NullClawConfig::default());
         agent.record_agent("web-agent");
         agent.record_agent("code-agent");
-        
+
         let state = create_test_state();
         let heartbeat = agent.generate_heartbeat(&state);
-        
+
         assert_eq!(heartbeat.topology.nodes.len(), 2);
         assert!(heartbeat.topology.nodes.contains(&"web-agent".into()));
         assert!(heartbeat.topology.nodes.contains(&"code-agent".into()));
@@ -405,23 +409,44 @@ mod tests {
             dns_store: Arc::new(crate::dns::DnsStore::new()),
             doh_client: None,
             network_isolation: Arc::new(crate::dns::NetworkIsolation::default()),
-            tinyurl: Arc::new(crate::plugins::TinyUrlStore::new(crate::plugins::TinyUrlConfig::default())),
+            tinyurl: Arc::new(crate::plugins::TinyUrlStore::new(
+                crate::plugins::TinyUrlConfig::default(),
+            )),
             trace_store: Arc::new(crate::plugins::TraceStore::new(100)),
-            redis_cache: Arc::new(crate::plugins::RedisCache::new(crate::plugins::RedisCacheConfig::default())),
-            discovery: Arc::new(crate::discovery::DiscoveryStore::new(crate::discovery::DiscoveryConfig::default())),
-            ebpf: Arc::new(crate::ebpf::EbpfManager::new(crate::ebpf::EbpfConfig::default())),
-            iouring: Arc::new(crate::iouring::IoUringManager::new(crate::iouring::IoUringConfig::default())),
-            dpdk: Arc::new(crate::dpdk::DpdkManager::new(crate::dpdk::DpdkConfig::default())),
-            hyper: Arc::new(crate::hyper_engine::HyperManager::new(crate::hyper_engine::HyperConfig::default())),
+            redis_cache: Arc::new(crate::plugins::RedisCache::new(
+                crate::plugins::RedisCacheConfig::default(),
+            )),
+            discovery: Arc::new(crate::discovery::DiscoveryStore::new(
+                crate::discovery::DiscoveryConfig::default(),
+            )),
+            ebpf: Arc::new(crate::ebpf::EbpfManager::new(
+                crate::ebpf::EbpfConfig::default(),
+            )),
+            iouring: Arc::new(crate::iouring::IoUringManager::new(
+                crate::iouring::IoUringConfig::default(),
+            )),
+            dpdk: Arc::new(crate::dpdk::DpdkManager::new(
+                crate::dpdk::DpdkConfig::default(),
+            )),
+            hyper: Arc::new(crate::hyper_engine::HyperManager::new(
+                crate::hyper_engine::HyperConfig::default(),
+            )),
             ci_status: Arc::new(crate::ci::CiStatusStore::new(100, None)),
             metrics_handle: crate::test_utils::global_metrics().clone(),
             rate_limiter: None,
             auth_state: None,
             event_store: None,
             session_store: crate::sessions::SessionStore::new(20),
-            file_cache: crate::file_cache::FileCache::new(&crate::file_cache::FileCacheConfig { path: "/tmp/portail-test-cache".into(), ..Default::default() }),
-            config_watcher: crate::config_watcher::ConfigWatcher::new(std::path::PathBuf::from("portail.toml")),
-            supervisor: std::sync::Arc::new(crate::supervisor::Supervisor::new(std::sync::Arc::new(crate::events::EventLog::new(100)))),
+            file_cache: crate::file_cache::FileCache::new(&crate::file_cache::FileCacheConfig {
+                path: "/tmp/portail-test-cache".into(),
+                ..Default::default()
+            }),
+            config_watcher: crate::config_watcher::ConfigWatcher::new(std::path::PathBuf::from(
+                "portail.toml",
+            )),
+            supervisor: std::sync::Arc::new(crate::supervisor::Supervisor::new(
+                std::sync::Arc::new(crate::events::EventLog::new(100)),
+            )),
         }
     }
 }

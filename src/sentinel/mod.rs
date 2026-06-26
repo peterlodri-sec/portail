@@ -1,6 +1,6 @@
 use crate::events::{AgentEvent, EventLog};
-use std::sync::Arc;
 use crate::types::BoundedMeta;
+use std::sync::Arc;
 
 pub async fn run_sentinel(
     event_log: Arc<EventLog>,
@@ -35,7 +35,10 @@ pub async fn run_sentinel(
                             ("evictions".into(), evictions.to_string()),
                             (
                                 "entries".into(),
-                                stats.get("entries").map(|v| v.to_string()).unwrap_or_default(),
+                                stats
+                                    .get("entries")
+                                    .map(|v| v.to_string())
+                                    .unwrap_or_default(),
                             ),
                         ]),
                     });

@@ -1,12 +1,9 @@
 use crate::cdn::CacheManager;
-use std::sync::Arc;
 use futures::StreamExt;
+use std::sync::Arc;
 use tracing::info;
 
-pub async fn purge_loop(
-    mut subscription: async_nats::Subscriber,
-    cache: Arc<CacheManager>,
-) {
+pub async fn purge_loop(mut subscription: async_nats::Subscriber, cache: Arc<CacheManager>) {
     info!("CDN invalidator: listening for index.invalidated.>");
 
     while let Some(msg) = subscription.next().await {

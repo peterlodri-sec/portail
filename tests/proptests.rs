@@ -7,8 +7,8 @@
 
 #[cfg(test)]
 mod proptests {
-    use proptest::prelude::*;
     use portail::rate_limit::RateLimiter;
+    use proptest::prelude::*;
 
     // ── RateLimiter — never panics on any input ───────────────────
 

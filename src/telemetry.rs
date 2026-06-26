@@ -32,9 +32,15 @@ impl Default for TelemetryConfig {
     }
 }
 
-fn default_endpoint() -> String { "http://localhost:4317".into() }
-fn default_service_name() -> String { "portail".into() }
-fn default_sampling() -> f64 { 0.1 }
+fn default_endpoint() -> String {
+    "http://localhost:4317".into()
+}
+fn default_service_name() -> String {
+    "portail".into()
+}
+fn default_sampling() -> f64 {
+    0.1
+}
 
 pub struct OtelGuard {
     _provider: Option<opentelemetry_sdk::trace::TracerProvider>,
@@ -42,12 +48,16 @@ pub struct OtelGuard {
 
 impl OtelGuard {
     pub fn shutdown(self) {
-        if let Some(p) = self._provider { let _ = p.shutdown(); }
+        if let Some(p) = self._provider {
+            let _ = p.shutdown();
+        }
     }
 }
 
 pub fn init(config: &TelemetryConfig) -> Option<OtelGuard> {
-    if !config.enabled { return None; }
+    if !config.enabled {
+        return None;
+    }
 
     // OTLP endpoint is configured via the exporter builder, not env vars.
     // The env var approach is preferred by opentelemetry but set_var is
@@ -69,7 +79,8 @@ pub fn init(config: &TelemetryConfig) -> Option<OtelGuard> {
     let provider = opentelemetry_sdk::trace::TracerProvider::builder()
         .with_batch_exporter(exporter, opentelemetry_sdk::runtime::Tokio)
         .with_resource(Resource::new(vec![KeyValue::new(
-            "service.name", config.service_name.clone(),
+            "service.name",
+            config.service_name.clone(),
         )]))
         .with_sampler(sampler)
         .build();
@@ -82,5 +93,7 @@ pub fn init(config: &TelemetryConfig) -> Option<OtelGuard> {
         "OpenTelemetry OTLP export enabled"
     );
 
-    Some(OtelGuard { _provider: Some(provider) })
+    Some(OtelGuard {
+        _provider: Some(provider),
+    })
 }

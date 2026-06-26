@@ -9,10 +9,10 @@
 //! sup.spawn("sentinel",  SupervisorPolicy::always(), run_sentinel(log, cache));
 //! ```
 
-use std::sync::Arc;
-use std::time::Duration;
 use crate::types::BoundedMeta;
 use serde::Serialize;
+use std::sync::Arc;
+use std::time::Duration;
 use tokio::sync::watch;
 
 // ─── policy ───────────────────────────────────────────────────────
@@ -26,10 +26,21 @@ pub enum RestartPolicy {
 }
 
 impl RestartPolicy {
-    pub fn always() -> Self { Self::Always }
-    pub fn never() -> Self { Self::Never }
-    pub fn transient() -> Self { Self::Transient }
-    pub fn permanent() -> Self { Self::Permanent { max_restarts: 5, within: Duration::from_secs(60) } }
+    pub fn always() -> Self {
+        Self::Always
+    }
+    pub fn never() -> Self {
+        Self::Never
+    }
+    pub fn transient() -> Self {
+        Self::Transient
+    }
+    pub fn permanent() -> Self {
+        Self::Permanent {
+            max_restarts: 5,
+            within: Duration::from_secs(60),
+        }
+    }
 }
 
 // ─── supervisor ───────────────────────────────────────────────────
@@ -37,7 +48,7 @@ impl RestartPolicy {
 #[derive(Debug, Clone, Serialize)]
 pub struct TaskStatus {
     pub name: String,
-    pub status: String,   // "running" | "crashed" | "restarting" | "stopped"
+    pub status: String, // "running" | "crashed" | "restarting" | "stopped"
     pub restarts: u32,
     pub last_error: Option<String>,
 }
@@ -99,9 +110,7 @@ impl Supervisor {
                             event_type: "task_stopped".into(),
                             severity: "info".into(),
                             timestamp: 0,
-                            metadata: BoundedMeta::from_iter([
-                                ("task".into(), name_clone),
-                            ]),
+                            metadata: BoundedMeta::from_iter([("task".into(), name_clone)]),
                         });
                         break;
                     }
@@ -113,10 +122,10 @@ impl Supervisor {
                             RestartPolicy::Always => true,
                             RestartPolicy::Never => false,
                             RestartPolicy::Transient => restarts <= 1,
-                            RestartPolicy::Permanent { max_restarts, within } => {
-                                restarts <= max_restarts
-                                    && start.elapsed() < within
-                            }
+                            RestartPolicy::Permanent {
+                                max_restarts,
+                                within,
+                            } => restarts <= max_restarts && start.elapsed() < within,
                         };
 
                         {
@@ -124,14 +133,27 @@ impl Supervisor {
                             if let Some(t) = list.iter_mut().find(|t| t.name == name) {
                                 t.restarts = restarts;
                                 t.last_error = Some(err_str.clone());
-                                t.status = if should_restart { "restarting".into() } else { "crashed".into() };
+                                t.status = if should_restart {
+                                    "restarting".into()
+                                } else {
+                                    "crashed".into()
+                                };
                             }
                         }
 
-                        let severity = if should_restart { "warning" } else { "critical" };
+                        let severity = if should_restart {
+                            "warning"
+                        } else {
+                            "critical"
+                        };
                         event_log.publish(crate::events::AgentEvent {
                             agent_id: "supervisor".into(),
-                            event_type: (if should_restart { "task_restarting" } else { "task_crashed" }).into(),
+                            event_type: (if should_restart {
+                                "task_restarting"
+                            } else {
+                                "task_crashed"
+                            })
+                            .into(),
                             severity: severity.into(),
                             timestamp: 0,
                             metadata: BoundedMeta::from_iter([
@@ -174,6 +196,8 @@ pub async fn handle_supervisor_status(
 }
 
 pub fn router() -> axum::Router<Arc<Supervisor>> {
-    axum::Router::new()
-        .route("/supervisor/status", axum::routing::get(handle_supervisor_status))
+    axum::Router::new().route(
+        "/supervisor/status",
+        axum::routing::get(handle_supervisor_status),
+    )
 }

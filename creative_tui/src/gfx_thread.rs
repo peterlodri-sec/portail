@@ -39,61 +39,62 @@ pub fn run(uniforms: Arc<Mutex<Uniforms>>, config: AppConfig) {
     let start = std::time::Instant::now();
 
     #[allow(deprecated)]
-    event_loop.run(move |event, elwt| {
-        elwt.set_control_flow(ControlFlow::Poll);
+    event_loop
+        .run(move |event, elwt| {
+            elwt.set_control_flow(ControlFlow::Poll);
 
-        match event {
-            WinitEvent::WindowEvent {
-                event: WindowEvent::CloseRequested,
-                ..
-            } => elwt.exit(),
+            match event {
+                WinitEvent::WindowEvent {
+                    event: WindowEvent::CloseRequested,
+                    ..
+                } => elwt.exit(),
 
-            WinitEvent::WindowEvent {
-                event: WindowEvent::Resized(new_size),
-                ..
-            } if new_size.width > 0 && new_size.height > 0 => {
-                if let Some(ref mut r) = renderer {
-                    r.resize(new_size.width, new_size.height);
-                }
-            }
-
-            WinitEvent::WindowEvent {
-                event: WindowEvent::RedrawRequested,
-                ..
-            } => {
-                let r = match renderer.as_mut() {
-                    Some(r) => r,
-                    None => {
-                        let surface = instance
-                            .create_surface(Arc::clone(&window))
-                            .expect("create surface");
-                        let r = pollster::block_on(Renderer::new(
-                            &instance,
-                            surface,
-                            config.window_size,
-                        ))
-                        .expect("gpu init");
-                        renderer = Some(r);
-                        renderer.as_mut().unwrap()
+                WinitEvent::WindowEvent {
+                    event: WindowEvent::Resized(new_size),
+                    ..
+                } if new_size.width > 0 && new_size.height > 0 => {
+                    if let Some(ref mut r) = renderer {
+                        r.resize(new_size.width, new_size.height);
                     }
-                };
+                }
 
-                let elapsed = start.elapsed().as_secs_f32();
-                let u = {
-                    let guard = uniforms.lock().unwrap();
-                    let mut u = *guard;
-                    u.set_time(elapsed);
-                    u
-                };
-                r.write_uniforms(&u);
-                r.draw_frame();
-            }
+                WinitEvent::WindowEvent {
+                    event: WindowEvent::RedrawRequested,
+                    ..
+                } => {
+                    let r = match renderer.as_mut() {
+                        Some(r) => r,
+                        None => {
+                            let surface = instance
+                                .create_surface(Arc::clone(&window))
+                                .expect("create surface");
+                            let r = pollster::block_on(Renderer::new(
+                                &instance,
+                                surface,
+                                config.window_size,
+                            ))
+                            .expect("gpu init");
+                            renderer = Some(r);
+                            renderer.as_mut().unwrap()
+                        }
+                    };
 
-            WinitEvent::AboutToWait => {
-                window.request_redraw();
+                    let elapsed = start.elapsed().as_secs_f32();
+                    let u = {
+                        let guard = uniforms.lock().unwrap();
+                        let mut u = *guard;
+                        u.set_time(elapsed);
+                        u
+                    };
+                    r.write_uniforms(&u);
+                    r.draw_frame();
+                }
+
+                WinitEvent::AboutToWait => {
+                    window.request_redraw();
+                }
+                _ => {}
             }
-            _ => {}
-        }
-    })
-    .expect("event loop");
+        })
+        .expect("event loop");
 }

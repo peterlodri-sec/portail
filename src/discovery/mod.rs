@@ -1,8 +1,8 @@
 /*
  * Network Discovery — Self-Service Discovery
- * 
+ *
  * Architecture:
- * 
+ *
  *   ┌─────────────────────────────────────────────────────────────┐
  *   │                Network Discovery Flow                       │
  *   ├─────────────────────────────────────────────────────────────┤
@@ -37,10 +37,10 @@
  *   └─────────────────────────────────────────────────────────────┘
  */
 
+use crate::types::BoundedMeta;
+use rustc_hash::FxHashMap;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
-use rustc_hash::FxHashMap;
-use crate::types::BoundedMeta;
 
 // ── Types ────────────────────────────────────────────────────────
 
@@ -163,7 +163,11 @@ impl DiscoveryStore {
     pub fn list(&self, node_type: Option<NodeType>) -> Vec<NetworkNode> {
         let nodes = self.nodes.read().unwrap();
         match node_type {
-            Some(t) => nodes.values().filter(|n| n.node_type == t).cloned().collect(),
+            Some(t) => nodes
+                .values()
+                .filter(|n| n.node_type == t)
+                .cloned()
+                .collect(),
             None => nodes.values().cloned().collect(),
         }
     }
@@ -180,8 +184,11 @@ impl DiscoveryStore {
     pub fn stats(&self) -> DiscoveryStats {
         let nodes = self.nodes.read().unwrap();
         let now = now_millis();
-        let online = nodes.values().filter(|n| now - n.last_heartbeat < self.config.node_expiry_secs * 1000).count();
-        
+        let online = nodes
+            .values()
+            .filter(|n| now - n.last_heartbeat < self.config.node_expiry_secs * 1000)
+            .count();
+
         DiscoveryStats {
             total_nodes: nodes.len(),
             online_nodes: online,
@@ -200,7 +207,7 @@ pub struct DiscoveryStats {
 // ── mDNS/SD Helpers ──────────────────────────────────────────────
 
 pub fn mdns_service_name(_config: &DiscoveryConfig) -> String {
-    format!("_portail._tcp.local.")
+    "_portail._tcp.local.".to_string()
 }
 
 pub fn mdns_txt_record(node: &NetworkNode) -> Vec<(String, String)> {
@@ -246,9 +253,7 @@ pub async fn run_discovery(
                 event_type: "nodes_expired".into(),
                 severity: "info".into(),
                 timestamp: 0,
-                metadata: BoundedMeta::from_iter([
-                    ("expired".into(), expired.to_string()),
-                ]),
+                metadata: BoundedMeta::from_iter([("expired".into(), expired.to_string())]),
             });
         }
 
@@ -283,8 +288,14 @@ pub async fn handle_heartbeat(
     axum::extract::Path(id): axum::extract::Path<String>,
 ) -> impl axum::response::IntoResponse {
     match state.discovery.heartbeat(&id) {
-        Some(node) => (axum::http::StatusCode::OK, axum::Json(serde_json::to_value(node).unwrap())),
-        None => (axum::http::StatusCode::NOT_FOUND, axum::Json(serde_json::json!({"error": "not found"}))),
+        Some(node) => (
+            axum::http::StatusCode::OK,
+            axum::Json(serde_json::to_value(node).unwrap()),
+        ),
+        None => (
+            axum::http::StatusCode::NOT_FOUND,
+            axum::Json(serde_json::json!({"error": "not found"})),
+        ),
     }
 }
 
@@ -326,8 +337,14 @@ pub async fn handle_stats(
 pub fn router() -> axum::Router<Arc<crate::AppState>> {
     axum::Router::new()
         .route("/discovery/register", axum::routing::post(handle_register))
-        .route("/discovery/heartbeat/{id}", axum::routing::post(handle_heartbeat))
-        .route("/discovery/deregister/{id}", axum::routing::post(handle_deregister))
+        .route(
+            "/discovery/heartbeat/{id}",
+            axum::routing::post(handle_heartbeat),
+        )
+        .route(
+            "/discovery/deregister/{id}",
+            axum::routing::post(handle_deregister),
+        )
         .route("/discovery/nodes", axum::routing::get(handle_list))
         .route("/discovery/stats", axum::routing::get(handle_stats))
 }
@@ -368,7 +385,7 @@ mod tests {
         let store = DiscoveryStore::new(DiscoveryConfig::default());
         store.register(test_node("node-1"));
         store.register(test_node("node-2"));
-        
+
         let nodes = store.list(None);
         assert_eq!(nodes.len(), 2);
     }
@@ -377,7 +394,7 @@ mod tests {
     fn heartbeat_updates() {
         let store = DiscoveryStore::new(DiscoveryConfig::default());
         store.register(test_node("node-1"));
-        
+
         let node = store.heartbeat("node-1").unwrap();
         assert!(matches!(node.status, NodeStatus::Online));
     }
@@ -386,7 +403,7 @@ mod tests {
     fn deregister() {
         let store = DiscoveryStore::new(DiscoveryConfig::default());
         store.register(test_node("node-1"));
-        
+
         assert!(store.deregister("node-1"));
         assert!(store.get("node-1").is_none());
     }
@@ -396,7 +413,7 @@ mod tests {
         let store = DiscoveryStore::new(DiscoveryConfig::default());
         store.register(test_node("node-1"));
         store.register(test_node("node-2"));
-        
+
         let stats = store.stats();
         assert_eq!(stats.total_nodes, 2);
         assert_eq!(stats.online_nodes, 2);

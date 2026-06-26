@@ -1,8 +1,8 @@
 /*
  * Hyper Low-Level HTTP Module
- * 
+ *
  * Architecture:
- * 
+ *
  *   ┌─────────────────────────────────────────────────────────────┐
  *   │                    Hyper HTTP Engine                         │
  *   ├─────────────────────────────────────────────────────────────┤
@@ -75,7 +75,7 @@ impl Default for HyperConfig {
             http2_initial_connection_window_size: 1048576, // 1MB
             keep_alive_interval_ms: 30000,
             keep_alive_timeout_ms: 60000,
-            max_header_size: 16384, // 16KB
+            max_header_size: 16384,  // 16KB
             max_body_size: 10485760, // 10MB
         }
     }
@@ -140,7 +140,7 @@ impl HyperManager {
         stats.requests_processed += 1;
         stats.bytes_sent += bytes_sent;
         stats.bytes_received += bytes_received;
-        
+
         // Running average
         let n = stats.requests_processed;
         stats.avg_request_latency_ms = (stats.avg_request_latency_ms * (n - 1) + latency_ms) / n;
@@ -155,6 +155,12 @@ impl HyperManager {
 
 pub struct HyperServerBuilder {
     config: HyperConfig,
+}
+
+impl Default for HyperServerBuilder {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl HyperServerBuilder {
@@ -190,8 +196,7 @@ pub async fn handle_hyper_stats(
 // ── Module Router ────────────────────────────────────────────────
 
 pub fn router() -> axum::Router<Arc<crate::AppState>> {
-    axum::Router::new()
-        .route("/hyper/stats", axum::routing::get(handle_hyper_stats))
+    axum::Router::new().route("/hyper/stats", axum::routing::get(handle_hyper_stats))
 }
 
 // ── Tests ────────────────────────────────────────────────────────
@@ -210,7 +215,7 @@ mod tests {
     #[test]
     fn hyper_manager_stats() {
         let manager = HyperManager::new(HyperConfig::default());
-        
+
         manager.record_connection(false); // HTTP/1.1
         manager.record_request(10, 1024, 512);
 

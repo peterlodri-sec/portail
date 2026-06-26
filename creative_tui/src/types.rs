@@ -161,7 +161,10 @@ impl Command {
     pub fn parse(input: &str) -> Option<Self> {
         let parts: Vec<&str> = input.split_whitespace().collect();
         match parts.as_slice() {
-            ["speed", v] => v.parse::<f32>().ok().map(|n| Command::SetSpeed(Speed::new(n))),
+            ["speed", v] => v
+                .parse::<f32>()
+                .ok()
+                .map(|n| Command::SetSpeed(Speed::new(n))),
             ["color", r, g, b] => {
                 let rv = r.parse::<f32>().ok()?;
                 let gv = g.parse::<f32>().ok()?;
@@ -279,4 +282,3 @@ impl Default for AppConfig {
         }
     }
 }
-

@@ -14,10 +14,7 @@ pub struct GpuContext {
 
 /// Create adapter + device + queue + uniform buffer.
 /// Requires a surface for adapter selection.
-pub async fn init(
-    instance: &wgpu::Instance,
-    surface: &wgpu::Surface<'_>,
-) -> Option<GpuContext> {
+pub async fn init(instance: &wgpu::Instance, surface: &wgpu::Surface<'_>) -> Option<GpuContext> {
     let adapter = instance
         .request_adapter(&wgpu::RequestAdapterOptions {
             power_preference: wgpu::PowerPreference::HighPerformance,

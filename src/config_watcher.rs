@@ -8,8 +8,8 @@
 
 use crate::config::Config;
 use std::path::PathBuf;
-use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::time::SystemTime;
 use tokio::sync::RwLock;
 
@@ -133,8 +133,14 @@ impl ConfigWatcher {
         // Persist to sidecar file for offline CLI access
         let now = chrono::Utc::now().to_rfc3339();
         if let Ok(json) = serde_json::to_string(&config) {
-            let mut persisted = PersistedHistory::load(&self.path).unwrap_or(PersistedHistory { versions: Vec::new() });
-            persisted.versions.push(PersistedVersion { version, loaded_at: now, config_json: json });
+            let mut persisted = PersistedHistory::load(&self.path).unwrap_or(PersistedHistory {
+                versions: Vec::new(),
+            });
+            persisted.versions.push(PersistedVersion {
+                version,
+                loaded_at: now,
+                config_json: json,
+            });
             if persisted.versions.len() > MAX_HISTORY {
                 persisted.versions.remove(0);
             }
@@ -150,7 +156,8 @@ impl ConfigWatcher {
     /// Rollback to a previous version (1-indexed). Returns None if version not found.
     pub async fn rollback(&self, version: u64) -> Option<Config> {
         let history = self.history.read().await;
-        history.iter()
+        history
+            .iter()
             .find(|v| v.version == version)
             .map(|v| v.config.clone())
     }
@@ -178,10 +185,7 @@ async fn file_mtime(path: &std::path::Path) -> Option<SystemTime> {
 }
 
 /// Spawn the watcher background task. Applies valid configs to AppState.
-pub async fn spawn_watcher(
-    watcher: Arc<ConfigWatcher>,
-    state: Arc<crate::AppState>,
-) {
+pub async fn spawn_watcher(watcher: Arc<ConfigWatcher>, state: Arc<crate::AppState>) {
     tokio::spawn(async move {
         loop {
             tokio::time::sleep(std::time::Duration::from_secs(1)).await;

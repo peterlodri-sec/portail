@@ -48,7 +48,8 @@ impl EventLog {
             ring.pop_front();
         }
         ring.push_back(event.clone());
-        self.index.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        self.index
+            .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
         let _ = self.tx.send(event);
     }
 
@@ -98,16 +99,22 @@ pub async fn handle_recent(
     state: axum::extract::State<std::sync::Arc<crate::AppState>>,
     axum::extract::Query(params): axum::extract::Query<FxHashMap<String, String>>,
 ) -> axum::Json<Vec<AgentEvent>> {
-    let n = params.get("n").and_then(|v| v.parse().ok()).unwrap_or(50).min(500);
+    let n = params
+        .get("n")
+        .and_then(|v| v.parse().ok())
+        .unwrap_or(50)
+        .min(500);
     axum::Json(state.event_log.recent(n))
 }
 
 pub async fn handle_stream(
     state: axum::extract::State<std::sync::Arc<crate::AppState>>,
-) -> axum::response::Sse<impl futures::Stream<Item = Result<axum::response::sse::Event, std::convert::Infallible>>> {
+) -> axum::response::Sse<
+    impl futures::Stream<Item = Result<axum::response::sse::Event, std::convert::Infallible>>,
+> {
     use axum::response::sse::{Event, KeepAlive};
-    use tokio_stream::wrappers::BroadcastStream;
     use tokio_stream::StreamExt;
+    use tokio_stream::wrappers::BroadcastStream;
 
     let rx = state.event_log.subscribe();
     let stream = BroadcastStream::new(rx).filter_map(|r| match r {

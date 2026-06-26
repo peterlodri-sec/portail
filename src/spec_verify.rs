@@ -166,7 +166,9 @@ fn compute_diff(golden: &RouteSpec, current: &RouteSpec) -> Result<SpecReport> {
     let golden_map: BTreeMap<&str, Vec<&str>> = {
         let mut m: BTreeMap<&str, Vec<&str>> = BTreeMap::new();
         for r in &golden.routes {
-            m.entry(r.path.as_str()).or_default().push(r.method.as_str());
+            m.entry(r.path.as_str())
+                .or_default()
+                .push(r.method.as_str());
         }
         m
     };
@@ -174,7 +176,9 @@ fn compute_diff(golden: &RouteSpec, current: &RouteSpec) -> Result<SpecReport> {
     let current_map: BTreeMap<&str, Vec<&str>> = {
         let mut m: BTreeMap<&str, Vec<&str>> = BTreeMap::new();
         for r in &current.routes {
-            m.entry(r.path.as_str()).or_default().push(r.method.as_str());
+            m.entry(r.path.as_str())
+                .or_default()
+                .push(r.method.as_str());
         }
         m
     };
@@ -186,7 +190,10 @@ fn compute_diff(golden: &RouteSpec, current: &RouteSpec) -> Result<SpecReport> {
     for (path, methods) in &current_map {
         if !golden_map.contains_key(path) {
             for m in methods {
-                added.push(RouteEntry { method: m.to_string(), path: path.to_string() });
+                added.push(RouteEntry {
+                    method: m.to_string(),
+                    path: path.to_string(),
+                });
             }
         } else {
             let g_methods = &golden_map[path];
@@ -206,7 +213,10 @@ fn compute_diff(golden: &RouteSpec, current: &RouteSpec) -> Result<SpecReport> {
         if !current_map.contains_key(path) {
             if let Some(methods) = golden_map.get(path) {
                 for m in methods {
-                    removed.push(RouteEntry { method: m.to_string(), path: path.to_string() });
+                    removed.push(RouteEntry {
+                        method: m.to_string(),
+                        path: path.to_string(),
+                    });
                 }
             }
         }
@@ -240,7 +250,11 @@ pub fn run(command: &SpecCommand, ci: bool) -> Result<()> {
             let spec = generate();
             let toml = toml::to_string_pretty(&spec)?;
             std::fs::write(GOLDEN_FILE, &toml)?;
-            println!("spec-verify: wrote {} routes to {}", spec.routes.len(), GOLDEN_FILE);
+            println!(
+                "spec-verify: wrote {} routes to {}",
+                spec.routes.len(),
+                GOLDEN_FILE
+            );
             Ok(())
         }
         SpecCommand::Check => {
@@ -257,10 +271,16 @@ pub fn run(command: &SpecCommand, ci: bool) -> Result<()> {
                     println!("  - {} {}", r.method, r.path);
                 }
                 for c in &report.changed {
-                    println!("  ~ {}  methods: {:?} -> {:?}", c.path, c.old_methods, c.new_methods);
+                    println!(
+                        "  ~ {}  methods: {:?} -> {:?}",
+                        c.path, c.old_methods, c.new_methods
+                    );
                 }
             } else {
-                println!("spec-verify: {} routes match golden spec", report.total_routes);
+                println!(
+                    "spec-verify: {} routes match golden spec",
+                    report.total_routes
+                );
             }
             Ok(())
         }
@@ -291,7 +311,10 @@ mod tests {
     fn added_route_is_detected() {
         let golden = generate();
         let mut current = generate();
-        current.routes.push(RouteEntry { method: "GET".into(), path: "/new-route".into() });
+        current.routes.push(RouteEntry {
+            method: "GET".into(),
+            path: "/new-route".into(),
+        });
         let report = compute_diff(&golden, &current).unwrap();
         assert!(report.has_diff);
         assert_eq!(report.added.len(), 1);
@@ -302,7 +325,10 @@ mod tests {
     fn removed_route_is_detected() {
         let mut golden = generate();
         let current = generate();
-        golden.routes.push(RouteEntry { method: "GET".into(), path: "/old-route".into() });
+        golden.routes.push(RouteEntry {
+            method: "GET".into(),
+            path: "/old-route".into(),
+        });
         let report = compute_diff(&golden, &current).unwrap();
         assert!(report.has_diff);
         assert_eq!(report.removed.len(), 1);

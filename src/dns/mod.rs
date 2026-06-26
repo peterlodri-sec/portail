@@ -1,8 +1,8 @@
 use serde::{Deserialize, Serialize};
-use std::sync::Arc;
 use std::collections::HashMap;
 use std::net::IpAddr;
 use std::str::FromStr;
+use std::sync::Arc;
 
 pub mod reliability;
 
@@ -85,7 +85,7 @@ pub enum DnsRecordType {
 
 impl FromStr for DnsRecordType {
     type Err = String;
-    
+
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s.to_uppercase().as_str() {
             "A" => Ok(Self::A),
@@ -135,12 +135,12 @@ impl DnsStore {
             hooks: std::sync::RwLock::new(Vec::new()),
         }
     }
-    
+
     pub fn add_record(&self, name: String, answer: DnsAnswer) {
         let mut records = self.records.write().unwrap();
         records.entry(name).or_default().push(answer);
     }
-    
+
     pub fn query(&self, name: &str, record_type: DnsRecordType) -> Vec<DnsAnswer> {
         let records = self.records.read().unwrap();
         records
@@ -148,17 +148,20 @@ impl DnsStore {
             .map(|answers| {
                 answers
                     .iter()
-                    .filter(|a| std::mem::discriminant(&a.record_type) == std::mem::discriminant(&record_type))
+                    .filter(|a| {
+                        std::mem::discriminant(&a.record_type)
+                            == std::mem::discriminant(&record_type)
+                    })
                     .cloned()
                     .collect()
             })
             .unwrap_or_default()
     }
-    
+
     pub fn add_hook(&self, hook: DnsHook) {
         self.hooks.write().unwrap().push(hook);
     }
-    
+
     pub fn remove_hook(&self, id: &str) -> bool {
         let mut hooks = self.hooks.write().unwrap();
         let pos = hooks.iter().position(|h| h.id == id);
@@ -169,7 +172,7 @@ impl DnsStore {
             false
         }
     }
-    
+
     pub fn apply_hooks(&self, query: &DnsQuery) -> Option<DnsHookAction> {
         let hooks = self.hooks.read().unwrap();
         for hook in hooks.iter().filter(|h| h.enabled) {
@@ -195,8 +198,12 @@ impl DohClient {
             client: reqwest::Client::new(),
         }
     }
-    
-    pub async fn query(&self, name: &str, record_type: DnsRecordType) -> Result<DnsResponse, String> {
+
+    pub async fn query(
+        &self,
+        name: &str,
+        record_type: DnsRecordType,
+    ) -> Result<DnsResponse, String> {
         let qtype = match record_type {
             DnsRecordType::A => 1,
             DnsRecordType::AAAA => 28,
@@ -206,23 +213,26 @@ impl DohClient {
             DnsRecordType::NS => 2,
             DnsRecordType::SOA => 6,
         };
-        
+
         let url = format!(
             "{}?name={}&type={}",
-            self.endpoints.first().unwrap_or(&"https://cloudflare-dns.com/dns-query".into()),
+            self.endpoints
+                .first()
+                .unwrap_or(&"https://cloudflare-dns.com/dns-query".into()),
             name,
             qtype
         );
-        
-        let response = self.client
+
+        let response = self
+            .client
             .get(&url)
             .header("Accept", "application/dns-json")
             .send()
             .await
             .map_err(|e| e.to_string())?;
-        
+
         let json: serde_json::Value = response.json().await.map_err(|e| e.to_string())?;
-        
+
         let answers = json["Answer"]
             .as_array()
             .map(|arr| {
@@ -230,15 +240,16 @@ impl DohClient {
                     .map(|a| DnsAnswer {
                         name: a["name"].as_str().unwrap_or("").to_string(),
                         record_type: DnsRecordType::from_str(
-                            &a["type"].as_u64().unwrap_or(1).to_string()
-                        ).unwrap_or(DnsRecordType::A),
+                            &a["type"].as_u64().unwrap_or(1).to_string(),
+                        )
+                        .unwrap_or(DnsRecordType::A),
                         data: a["data"].as_str().unwrap_or("").to_string(),
                         ttl: a["TTL"].as_u64().unwrap_or(300) as u32,
                     })
                     .collect()
             })
             .unwrap_or_default();
-        
+
         Ok(DnsResponse {
             answers,
             ttl: 300,
@@ -277,31 +288,38 @@ impl NetworkIsolation {
         if !self.enabled {
             return true;
         }
-        
+
         // Check blocked domains
-        if self.blocked_domains.iter().any(|d| domain.contains(d.as_str())) {
+        if self
+            .blocked_domains
+            .iter()
+            .any(|d| domain.contains(d.as_str()))
+        {
             return false;
         }
-        
+
         // Check blocked IPs
         if let Some(ip) = ip {
             if self.blocked_ips.contains(&ip) {
                 return false;
             }
         }
-        
+
         // If allowlists are set, only allow listed items
         if !self.allowed_domains.is_empty() {
-            return self.allowed_domains.iter().any(|d| domain.contains(d.as_str()));
+            return self
+                .allowed_domains
+                .iter()
+                .any(|d| domain.contains(d.as_str()));
         }
-        
+
         if !self.allowed_ips.is_empty() {
             if let Some(ip) = ip {
                 return self.allowed_ips.contains(&ip);
             }
             return false;
         }
-        
+
         true
     }
 }
@@ -337,9 +355,11 @@ pub async fn handle_dns_query(
             _ => {}
         }
     }
-    
+
     // Query local store first
-    let answers = state.dns_store.query(&query.name, query.record_type.clone());
+    let answers = state
+        .dns_store
+        .query(&query.name, query.record_type.clone());
     if !answers.is_empty() {
         return axum::Json(DnsResponse {
             answers,
@@ -347,15 +367,14 @@ pub async fn handle_dns_query(
             authoritative: false,
         });
     }
-    
+
     // Forward to DoH if enabled
     if let Some(ref doh) = state.doh_client {
-        match doh.query(&query.name, query.record_type).await {
-            Ok(response) => return axum::Json(response),
-            Err(_) => {}
+        if let Ok(response) = doh.query(&query.name, query.record_type).await {
+            return axum::Json(response);
         }
     }
-    
+
     axum::Json(DnsResponse {
         answers: vec![],
         ttl: 0,
@@ -366,8 +385,7 @@ pub async fn handle_dns_query(
 // ── Module-level router ──────────────────────────────────────────
 
 pub fn router() -> axum::Router<Arc<crate::AppState>> {
-    axum::Router::new()
-        .route("/dns/query", axum::routing::post(handle_dns_query))
+    axum::Router::new().route("/dns/query", axum::routing::post(handle_dns_query))
 }
 
 // ── Tests ────────────────────────────────────────────────────────
@@ -375,22 +393,25 @@ pub fn router() -> axum::Router<Arc<crate::AppState>> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn dns_store_add_query() {
         let store = DnsStore::new();
-        store.add_record("example.com".into(), DnsAnswer {
-            name: "example.com".into(),
-            record_type: DnsRecordType::A,
-            data: "1.2.3.4".into(),
-            ttl: 300,
-        });
-        
+        store.add_record(
+            "example.com".into(),
+            DnsAnswer {
+                name: "example.com".into(),
+                record_type: DnsRecordType::A,
+                data: "1.2.3.4".into(),
+                ttl: 300,
+            },
+        );
+
         let answers = store.query("example.com", DnsRecordType::A);
         assert_eq!(answers.len(), 1);
         assert_eq!(answers[0].data, "1.2.3.4");
     }
-    
+
     #[test]
     fn dns_store_hooks() {
         let store = DnsStore::new();
@@ -401,17 +422,17 @@ mod tests {
             action: DnsHookAction::Block,
             enabled: true,
         });
-        
+
         let query = DnsQuery {
             name: "ads.example.com".into(),
             record_type: DnsRecordType::A,
             source: "127.0.0.1".parse().unwrap(),
         };
-        
+
         let action = store.apply_hooks(&query);
         assert!(matches!(action, Some(DnsHookAction::Block)));
     }
-    
+
     #[test]
     fn network_isolation() {
         let iso = NetworkIsolation {
@@ -420,7 +441,7 @@ mod tests {
             blocked_domains: vec!["evil.com".into()],
             ..Default::default()
         };
-        
+
         assert!(iso.is_allowed("api.example.com", None));
         assert!(!iso.is_allowed("evil.com", None));
         assert!(!iso.is_allowed("unknown.com", None));

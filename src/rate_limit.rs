@@ -11,8 +11,8 @@
 
 use std::collections::HashMap;
 use std::num::NonZeroU32;
-use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::Duration;
 
 use axum::{
@@ -23,9 +23,9 @@ use axum::{
     response::{IntoResponse, Response},
 };
 use governor::{
+    Quota, RateLimiter as GovLimiter,
     clock::DefaultClock,
     state::{InMemoryState, NotKeyed},
-    Quota, RateLimiter as GovLimiter,
 };
 use serde::{Deserialize, Serialize};
 
@@ -116,7 +116,10 @@ impl RateLimiter {
             .api_keys
             .iter()
             .map(|(key, limit)| {
-                (key.clone(), GovLimiter::direct(quota(limit.burst, limit.per_second)))
+                (
+                    key.clone(),
+                    GovLimiter::direct(quota(limit.burst, limit.per_second)),
+                )
             })
             .collect();
 
@@ -124,7 +127,10 @@ impl RateLimiter {
             .endpoints
             .iter()
             .map(|(path, limit)| {
-                (path.clone(), GovLimiter::direct(quota(limit.burst, limit.per_second)))
+                (
+                    path.clone(),
+                    GovLimiter::direct(quota(limit.burst, limit.per_second)),
+                )
             })
             .collect();
 

@@ -55,7 +55,10 @@ pub fn run_init() -> Result<()> {
         let origin = ask("Origin URL", "http://127.0.0.1:9000");
         let cache_dir = ask("Cache directory", "/var/cache/portail");
         let cache_size = ask("Max cache size", "10g");
-        out.push_str(&format!("origin = \"{}\"\ncache_dir = \"{}\"\ncache_size = \"{}\"\n", origin, cache_dir, cache_size));
+        out.push_str(&format!(
+            "origin = \"{}\"\ncache_dir = \"{}\"\ncache_size = \"{}\"\n",
+            origin, cache_dir, cache_size
+        ));
     }
 
     // ── Telemetry (OTLP) ──
@@ -74,7 +77,10 @@ pub fn run_init() -> Result<()> {
     if store_enabled {
         let db_path = ask("Database path", "portail-events.db");
         let retention = ask("Retention period (e.g., 30d)", "30d");
-        out.push_str(&format!("db_path = \"{}\"\nretention = \"{}\"\n", db_path, retention));
+        out.push_str(&format!(
+            "db_path = \"{}\"\nretention = \"{}\"\n",
+            db_path, retention
+        ));
     }
 
     // ── Write file ──

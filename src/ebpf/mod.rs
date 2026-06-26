@@ -1,8 +1,8 @@
 /*
  * eBPF Observability Module
- * 
+ *
  * Architecture:
- * 
+ *
  *   ┌─────────────────────────────────────────────────────────────┐
  *   │                    eBPF Observability                       │
  *   ├─────────────────────────────────────────────────────────────┤
@@ -161,19 +161,19 @@ impl EbpfManager {
     pub fn record_event(&self, event: EbpfEvent) {
         let mut stats = self.stats.write().unwrap_or_else(|e| e.into_inner());
         stats.events_processed += 1;
-        
+
         match &event.data {
             EbpfEventData::Syscall { duration_ns, .. } => {
                 stats.syscalls_traced += 1;
                 // Running average
-                stats.avg_syscall_latency_ns = 
-                    (stats.avg_syscall_latency_ns * (stats.syscalls_traced - 1) + duration_ns) 
-                    / stats.syscalls_traced;
+                stats.avg_syscall_latency_ns =
+                    (stats.avg_syscall_latency_ns * (stats.syscalls_traced - 1) + duration_ns)
+                        / stats.syscalls_traced;
             }
             EbpfEventData::NetworkLatency { rtt_ns, .. } => {
                 stats.network_events += 1;
-                stats.avg_network_rtt_ns = 
-                    (stats.avg_network_rtt_ns * (stats.network_events - 1) + rtt_ns) 
+                stats.avg_network_rtt_ns = (stats.avg_network_rtt_ns * (stats.network_events - 1)
+                    + rtt_ns)
                     / stats.network_events;
             }
             EbpfEventData::SchedulerLatency { .. } => {
@@ -210,21 +210,21 @@ impl EbpfProgram {
         // 1. Read the eBPF bytecode from a file
         // 2. Load it into the kernel using libbpf or aya
         // 3. Attach to tracepoints/kprobes
-        
+
         #[cfg(target_os = "linux")]
         {
             // Check if eBPF is supported
             if !std::path::Path::new("/sys/fs/bpf").exists() {
                 return Err("eBPF filesystem not mounted".into());
             }
-            
+
             // Check if we have CAP_BPF
             // In production, use caps crate
-            
+
             self.loaded = true;
             Ok(())
         }
-        
+
         #[cfg(not(target_os = "linux"))]
         {
             Err("eBPF is only supported on Linux".into())
@@ -251,8 +251,7 @@ pub async fn handle_ebpf_stats(
 // ── Module Router ────────────────────────────────────────────────
 
 pub fn router() -> axum::Router<Arc<crate::AppState>> {
-    axum::Router::new()
-        .route("/ebpf/stats", axum::routing::get(handle_ebpf_stats))
+    axum::Router::new().route("/ebpf/stats", axum::routing::get(handle_ebpf_stats))
 }
 
 // ── Tests ────────────────────────────────────────────────────────
@@ -272,7 +271,7 @@ mod tests {
     #[test]
     fn ebpf_manager_stats() {
         let manager = EbpfManager::new(EbpfConfig::default());
-        
+
         manager.record_event(EbpfEvent {
             timestamp: 0,
             event_type: EbpfEventType::Syscall,

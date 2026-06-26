@@ -26,10 +26,18 @@ pub struct Config {
     pub telemetry: crate::telemetry::TelemetryConfig,
 }
 
-fn default_listen() -> String { "0.0.0.0:8787".into() }
-fn default_mcp_socket() -> String { "/run/portail/mcp.sock".into() }
-fn default_cache_dir() -> String { "/var/cache/portail".into() }
-fn default_cache_size() -> String { "10g".into() }
+fn default_listen() -> String {
+    "0.0.0.0:8787".into()
+}
+fn default_mcp_socket() -> String {
+    "/run/portail/mcp.sock".into()
+}
+fn default_cache_dir() -> String {
+    "/var/cache/portail".into()
+}
+fn default_cache_size() -> String {
+    "10g".into()
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct AiGatewayConfig {
@@ -40,8 +48,12 @@ pub struct AiGatewayConfig {
     pub default_provider: Option<String>,
 }
 
-fn default_true() -> bool { true }
-fn default_upstream() -> String { "http://127.0.0.1:4000".into() }
+fn default_true() -> bool {
+    true
+}
+fn default_upstream() -> String {
+    "http://127.0.0.1:4000".into()
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct McpConfig {
@@ -76,8 +88,12 @@ pub struct CdnConfig {
     pub domains: Vec<String>,
 }
 
-fn default_false() -> bool { false }
-fn default_origin() -> String { "http://127.0.0.1:9000".into() }
+fn default_false() -> bool {
+    false
+}
+fn default_origin() -> String {
+    "http://127.0.0.1:9000".into()
+}
 
 impl Config {
     pub fn load(path: Option<&std::path::Path>) -> anyhow::Result<Self> {
@@ -115,13 +131,21 @@ impl Default for Config {
 
 impl Default for AiGatewayConfig {
     fn default() -> Self {
-        Self { enabled: true, upstream: default_upstream(), default_provider: None }
+        Self {
+            enabled: true,
+            upstream: default_upstream(),
+            default_provider: None,
+        }
     }
 }
 
 impl Default for McpConfig {
     fn default() -> Self {
-        Self { enabled: true, socket_path: default_mcp_socket(), server_registry: None }
+        Self {
+            enabled: true,
+            socket_path: default_mcp_socket(),
+            server_registry: None,
+        }
     }
 }
 

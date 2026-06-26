@@ -1,8 +1,8 @@
 /*
  * Redis Cache Module — App-Level Network-Wide Cache
- * 
+ *
  * Architecture:
- * 
+ *
  *   ┌─────────────────────────────────────────────────────────────┐
  *   │                    Redis Cache Flow                         │
  *   ├─────────────────────────────────────────────────────────────┤
@@ -39,9 +39,9 @@
  *   └─────────────────────────────────────────────────────────────┘
  */
 
+use redis::Commands;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
-use redis::Commands;
 
 // ── Configuration ────────────────────────────────────────────────
 
@@ -99,7 +99,7 @@ impl RedisCache {
 
     pub async fn get(&self, key: &str) -> Option<String> {
         let full_key = self.full_key(key);
-        
+
         // Try Redis first
         if let Ok(client) = redis::Client::open(self.config.url.as_str()) {
             if let Ok(mut conn) = client.get_connection() {
@@ -108,7 +108,7 @@ impl RedisCache {
                 }
             }
         }
-        
+
         // Fallback to in-memory
         let fallback = self.fallback.read().unwrap();
         if let Some((value, expires_at)) = fallback.get(&full_key) {
@@ -122,7 +122,7 @@ impl RedisCache {
     pub async fn set(&self, key: &str, value: &str, ttl_secs: Option<u64>) -> bool {
         let full_key = self.full_key(key);
         let ttl = ttl_secs.unwrap_or(self.config.default_ttl_secs);
-        
+
         // Try Redis first
         if let Ok(client) = redis::Client::open(self.config.url.as_str()) {
             if let Ok(mut conn) = client.get_connection() {
@@ -132,7 +132,7 @@ impl RedisCache {
                 }
             }
         }
-        
+
         // Fallback to in-memory
         let mut fallback = self.fallback.write().unwrap();
         fallback.insert(full_key, (value.to_string(), now_secs() + ttl));
@@ -141,7 +141,7 @@ impl RedisCache {
 
     pub async fn delete(&self, key: &str) -> bool {
         let full_key = self.full_key(key);
-        
+
         // Try Redis first
         if let Ok(client) = redis::Client::open(self.config.url.as_str()) {
             if let Ok(mut conn) = client.get_connection() {
@@ -151,7 +151,7 @@ impl RedisCache {
                 }
             }
         }
-        
+
         // Fallback to in-memory
         let mut fallback = self.fallback.write().unwrap();
         fallback.remove(&full_key);
@@ -168,12 +168,11 @@ impl RedisCache {
             if let Ok(mut conn) = client.get_connection() {
                 if let Ok(info) = redis::cmd("INFO").arg("memory").query::<String>(&mut conn) {
                     let used_memory = parse_info_value(&info, "used_memory").unwrap_or(0);
-                    let max_memory = parse_info_value(&info, "maxmemory").unwrap_or(
-                        self.config.max_memory_mb as u64 * 1024 * 1024
-                    );
-                    
+                    let max_memory = parse_info_value(&info, "maxmemory")
+                        .unwrap_or(self.config.max_memory_mb as u64 * 1024 * 1024);
+
                     let keys = redis::cmd("DBSIZE").query::<u64>(&mut conn).unwrap_or(0);
-                    
+
                     return CacheStats {
                         connected: true,
                         used_memory_bytes: used_memory,
@@ -185,7 +184,7 @@ impl RedisCache {
                 }
             }
         }
-        
+
         // Fallback stats
         let fallback = self.fallback.read().unwrap();
         CacheStats {
@@ -208,7 +207,7 @@ impl RedisCache {
                 }
             }
         }
-        
+
         // Fallback: clear in-memory
         let mut fallback = self.fallback.write().unwrap();
         fallback.clear();
@@ -275,7 +274,7 @@ pub async fn handle_cache_set(
         None => return (axum::http::StatusCode::BAD_REQUEST, "missing value"),
     };
     let ttl = req["ttl"].as_u64();
-    
+
     if state.redis_cache.set(key, value, ttl).await {
         (axum::http::StatusCode::OK, "ok")
     } else {
@@ -331,14 +330,14 @@ mod tests {
             url: "redis://invalid:6379".into(), // Force fallback
             ..Default::default()
         });
-        
+
         // Set
         cache.set("test_key", "test_value", Some(60)).await;
-        
+
         // Get
         let value = cache.get("test_key").await;
         assert_eq!(value, Some("test_value".to_string()));
-        
+
         // Delete
         cache.delete("test_key").await;
         assert!(cache.get("test_key").await.is_none());

@@ -1,7 +1,7 @@
+use crate::types::BoundedMeta;
 use axum::response::IntoResponse;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
-use crate::types::BoundedMeta;
 
 // ── Consumer-facing types ────────────────────────────────────────
 
@@ -87,13 +87,20 @@ pub async fn handle_chat(
 ) -> axum::response::Response {
     let upstream = {
         let c = state.config.read().unwrap();
-        c.ai_gateway.as_ref().filter(|g| g.enabled).map(|g| g.upstream.clone())
+        c.ai_gateway
+            .as_ref()
+            .filter(|g| g.enabled)
+            .map(|g| g.upstream.clone())
     };
 
     let Some(upstream) = upstream else {
-        return (axum::http::StatusCode::SERVICE_UNAVAILABLE, axum::Json(serde_json::json!({
-            "error": "AI gateway not configured"
-        }))).into_response();
+        return (
+            axum::http::StatusCode::SERVICE_UNAVAILABLE,
+            axum::Json(serde_json::json!({
+                "error": "AI gateway not configured"
+            })),
+        )
+            .into_response();
     };
 
     // Log the request
@@ -113,9 +120,13 @@ pub async fn handle_chat(
     let body = serde_json::to_vec(&req).unwrap_or_default();
     match crate::gateway::forward_with_url(&upstream, "/v1/chat/completions", &body).await {
         Ok(resp) => resp,
-        Err(e) => (axum::http::StatusCode::BAD_GATEWAY, axum::Json(serde_json::json!({
-            "error": format!("upstream error: {}", e)
-        }))).into_response(),
+        Err(e) => (
+            axum::http::StatusCode::BAD_GATEWAY,
+            axum::Json(serde_json::json!({
+                "error": format!("upstream error: {}", e)
+            })),
+        )
+            .into_response(),
     }
 }
 

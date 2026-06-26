@@ -34,22 +34,61 @@ pub struct QueryRoot;
 
 #[Object]
 impl QueryRoot {
-    async fn events(&self, ctx: &Context<'_>, agent_id: Option<String>, event_type: Option<String>, #[graphql(default = 20)] limit: usize) -> Vec<GqlEvent> {
+    async fn events(
+        &self,
+        ctx: &Context<'_>,
+        agent_id: Option<String>,
+        event_type: Option<String>,
+        #[graphql(default = 20)] limit: usize,
+    ) -> Vec<GqlEvent> {
         let state = ctx.data_unchecked::<Arc<crate::AppState>>();
-        state.event_log.recent(limit.min(200)).into_iter()
-            .filter(|e| agent_id.as_ref().map_or(true, |a| &e.agent_id == a) && event_type.as_ref().map_or(true, |t| &e.event_type == t))
-            .map(|e| GqlEvent { agent_id: e.agent_id, event_type: e.event_type, severity: e.severity, timestamp: e.timestamp, metadata_json: serde_json::to_string(&e.metadata).unwrap_or_default() })
+        state
+            .event_log
+            .recent(limit.min(200))
+            .into_iter()
+            .filter(|e| {
+                agent_id.as_ref().is_none_or(|a| &e.agent_id == a)
+                    && event_type.as_ref().is_none_or(|t| &e.event_type == t)
+            })
+            .map(|e| GqlEvent {
+                agent_id: e.agent_id,
+                event_type: e.event_type,
+                severity: e.severity,
+                timestamp: e.timestamp,
+                metadata_json: serde_json::to_string(&e.metadata).unwrap_or_default(),
+            })
             .collect()
     }
 
     async fn hooks(&self, ctx: &Context<'_>) -> Vec<GqlHook> {
         let state = ctx.data_unchecked::<Arc<crate::AppState>>();
-        state.hooks.list().into_iter().map(|h| GqlHook { id: h.id, match_agent: h.match_agent, match_path: h.match_path, match_event_type: h.match_event_type, enabled: h.enabled }).collect()
+        state
+            .hooks
+            .list()
+            .into_iter()
+            .map(|h| GqlHook {
+                id: h.id,
+                match_agent: h.match_agent,
+                match_path: h.match_path,
+                match_event_type: h.match_event_type,
+                enabled: h.enabled,
+            })
+            .collect()
     }
 
     async fn tasks(&self, ctx: &Context<'_>) -> Vec<GqlTask> {
         let state = ctx.data_unchecked::<Arc<crate::AppState>>();
-        state.a2a_tasks.get_all().into_iter().map(|t| GqlTask { id: t.id, status: format!("{:?}", t.status), message_count: t.messages.len(), artifact_count: t.artifacts.len() }).collect()
+        state
+            .a2a_tasks
+            .get_all()
+            .into_iter()
+            .map(|t| GqlTask {
+                id: t.id,
+                status: format!("{:?}", t.status),
+                message_count: t.messages.len(),
+                artifact_count: t.artifacts.len(),
+            })
+            .collect()
     }
 }
 
@@ -57,10 +96,25 @@ pub struct MutationRoot;
 
 #[Object]
 impl MutationRoot {
-    async fn publish_event(&self, ctx: &Context<'_>, agent_id: String, event_type: String, severity: Option<String>, metadata_json: Option<String>) -> async_graphql::Result<bool> {
+    async fn publish_event(
+        &self,
+        ctx: &Context<'_>,
+        agent_id: String,
+        event_type: String,
+        severity: Option<String>,
+        metadata_json: Option<String>,
+    ) -> async_graphql::Result<bool> {
         let state = ctx.data_unchecked::<Arc<crate::AppState>>();
-        let meta: crate::types::BoundedMeta = metadata_json.and_then(|s| serde_json::from_str(&s).ok()).unwrap_or_default();
-        state.event_log.publish(crate::events::AgentEvent { agent_id, event_type, severity: severity.unwrap_or_else(|| "info".into()), timestamp: 0, metadata: meta });
+        let meta: crate::types::BoundedMeta = metadata_json
+            .and_then(|s| serde_json::from_str(&s).ok())
+            .unwrap_or_default();
+        state.event_log.publish(crate::events::AgentEvent {
+            agent_id,
+            event_type,
+            severity: severity.unwrap_or_else(|| "info".into()),
+            timestamp: 0,
+            metadata: meta,
+        });
         Ok(true)
     }
 }
@@ -69,7 +123,10 @@ pub struct SubscriptionRoot;
 
 #[Subscription]
 impl SubscriptionRoot {
-    async fn live_events<'ctx>(&self, ctx: &Context<'ctx>) -> async_graphql::Result<impl futures::Stream<Item = GqlEvent> + 'ctx> {
+    async fn live_events<'ctx>(
+        &self,
+        ctx: &Context<'ctx>,
+    ) -> async_graphql::Result<impl futures::Stream<Item = GqlEvent> + 'ctx> {
         let state = ctx.data_unchecked::<Arc<crate::AppState>>();
         let mut rx = state.event_log.subscribe();
         Ok(async_stream::stream! {
@@ -98,7 +155,10 @@ pub async fn graphql_handler(
 ) -> axum::Json<serde_json::Value> {
     let schema = build_schema();
     let query = body.get("query").and_then(|v| v.as_str()).unwrap_or("");
-    let variables = body.get("variables").cloned().unwrap_or(serde_json::Value::Null);
+    let variables = body
+        .get("variables")
+        .cloned()
+        .unwrap_or(serde_json::Value::Null);
 
     let request = async_graphql::Request::new(query)
         .variables(async_graphql::Variables::from_json(variables));
@@ -107,7 +167,8 @@ pub async fn graphql_handler(
     data.insert(state);
     let response = schema.execute(request.data(data)).await;
 
-    let json = serde_json::to_value(&response).unwrap_or(serde_json::json!({"errors": [{"message": "serialization failed"}]}));
+    let json = serde_json::to_value(&response)
+        .unwrap_or(serde_json::json!({"errors": [{"message": "serialization failed"}]}));
     axum::Json(json)
 }
 

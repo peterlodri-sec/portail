@@ -4,11 +4,11 @@
 //! and portail process health every 10 seconds. Publishes events
 //! and sends webhook alerts when thresholds are crossed. v0.6.
 
+use crate::types::BoundedMeta;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::Instant;
-use crate::types::BoundedMeta;
 
 // ── Helpers ──────────────────────────────────────────────────────
 
@@ -19,9 +19,15 @@ fn now_millis() -> u64 {
         .as_millis() as u64
 }
 
-fn gf_disk_threshold() -> u8 { 85 }
-fn gf_memory_threshold() -> u8 { 90 }
-fn gf_min_free_disk() -> u64 { 1_073_741_824 }
+fn gf_disk_threshold() -> u8 {
+    85
+}
+fn gf_memory_threshold() -> u8 {
+    90
+}
+fn gf_min_free_disk() -> u64 {
+    1_073_741_824
+}
 
 // ── Configuration ────────────────────────────────────────────────
 
@@ -152,14 +158,20 @@ impl Godfather {
         let elapsed = self.started_at.elapsed().as_secs();
 
         services.push(ServiceStatus {
-            name: "proxy".into(), status: ServiceState::Running,
-            pid: Some(std::process::id()), uptime_secs: Some(elapsed),
-            memory_bytes: None, last_heartbeat: Some(now_millis()),
+            name: "proxy".into(),
+            status: ServiceState::Running,
+            pid: Some(std::process::id()),
+            uptime_secs: Some(elapsed),
+            memory_bytes: None,
+            last_heartbeat: Some(now_millis()),
         });
         services.push(ServiceStatus {
-            name: "event_log".into(), status: ServiceState::Running,
-            pid: None, uptime_secs: Some(elapsed),
-            memory_bytes: None, last_heartbeat: Some(now_millis()),
+            name: "event_log".into(),
+            status: ServiceState::Running,
+            pid: None,
+            uptime_secs: Some(elapsed),
+            memory_bytes: None,
+            last_heartbeat: Some(now_millis()),
         });
         let _ = state; // reserve for future per-service checks
         services
@@ -184,14 +196,19 @@ impl Godfather {
         let mem_total = sys.total_memory();
         let mem_pct = if mem_total > 0 {
             (mem_used as f64 / mem_total as f64) * 100.0
-        } else { 0.0 };
+        } else {
+            0.0
+        };
 
         let cpu_pct = sys.global_cpu_usage();
         let uptime = System::uptime();
 
         let pid = sysinfo::Pid::from_u32(std::process::id());
         let proc_mem = sys.process(pid).map(|p| p.memory()).unwrap_or(0);
-        let proc_cpu = sys.process(pid).map(|p| p.cpu_usage() as f64).unwrap_or(0.0);
+        let proc_cpu = sys
+            .process(pid)
+            .map(|p| p.cpu_usage() as f64)
+            .unwrap_or(0.0);
 
         let disks = Disks::new_with_refreshed_list();
         let cwd = std::env::current_dir().unwrap_or_else(|_| std::path::PathBuf::from("/"));
@@ -222,25 +239,37 @@ impl Godfather {
             disk_used = disk_total.saturating_sub(free);
             disk_pct = if disk_total > 0 {
                 (disk_used as f64 / disk_total as f64) * 100.0
-            } else { 0.0 };
+            } else {
+                0.0
+            };
         }
 
         ResourceStats {
-            memory_used_bytes: mem_used, memory_total_bytes: mem_total,
-            memory_usage_pct: mem_pct, cpu_usage_pct: cpu_pct as f64,
-            disk_used_bytes: disk_used, disk_total_bytes: disk_total,
-            disk_usage_pct: disk_pct, system_uptime_secs: uptime,
-            process_memory_bytes: proc_mem, process_cpu_pct: proc_cpu,
-            open_files: 0, open_connections: 0,
+            memory_used_bytes: mem_used,
+            memory_total_bytes: mem_total,
+            memory_usage_pct: mem_pct,
+            cpu_usage_pct: cpu_pct as f64,
+            disk_used_bytes: disk_used,
+            disk_total_bytes: disk_total,
+            disk_usage_pct: disk_pct,
+            system_uptime_secs: uptime,
+            process_memory_bytes: proc_mem,
+            process_cpu_pct: proc_cpu,
+            open_files: 0,
+            open_connections: 0,
         }
     }
 
     pub fn gather_network(&self, state: &crate::AppState) -> NetworkStats {
         let trace_stats = state.trace_store.stats();
         NetworkStats {
-            active_connections: 0, total_requests: trace_stats.total_traces as u64,
+            active_connections: 0,
+            total_requests: trace_stats.total_traces as u64,
             total_errors: trace_stats.error_traces as u64,
-            bytes_in: 0, bytes_out: 0, dns_queries: 0, dns_failures: 0,
+            bytes_in: 0,
+            bytes_out: 0,
+            dns_queries: 0,
+            dns_failures: 0,
         }
     }
 }
@@ -254,12 +283,17 @@ pub async fn run_godfather(config: GodfatherConfig, state: Arc<crate::AppState>)
     tracing::info!(interval = %config.heartbeat_interval_secs, "Godfather started");
 
     state.event_log.publish(crate::events::AgentEvent {
-        agent_id: "godfather".into(), event_type: "started".into(),
-        severity: "info".into(), timestamp: 0,
+        agent_id: "godfather".into(),
+        event_type: "started".into(),
+        severity: "info".into(),
+        timestamp: 0,
         metadata: BoundedMeta::from_iter([
             ("version".into(), env!("CARGO_PKG_VERSION").into()),
             ("pid".into(), std::process::id().to_string()),
-            ("interval".into(), config.heartbeat_interval_secs.to_string()),
+            (
+                "interval".into(),
+                config.heartbeat_interval_secs.to_string(),
+            ),
         ]),
     });
 
@@ -273,37 +307,68 @@ pub async fn run_godfather(config: GodfatherConfig, state: Arc<crate::AppState>)
             let thresholds = &config.thresholds;
             let mut severity = "info";
             let mut alerts: Vec<String> = Vec::new();
-            let disk_free = resources.disk_total_bytes.saturating_sub(resources.disk_used_bytes);
+            let disk_free = resources
+                .disk_total_bytes
+                .saturating_sub(resources.disk_used_bytes);
 
             if resources.disk_usage_pct > thresholds.disk_usage_pct as f64 {
                 severity = "critical";
-                alerts.push(format!("disk {:.1}% > {}%", resources.disk_usage_pct, thresholds.disk_usage_pct));
+                alerts.push(format!(
+                    "disk {:.1}% > {}%",
+                    resources.disk_usage_pct, thresholds.disk_usage_pct
+                ));
             }
             if disk_free < thresholds.min_free_disk_bytes && resources.disk_total_bytes > 0 {
                 severity = "critical";
-                alerts.push(format!("disk free {} < min {}", disk_free, thresholds.min_free_disk_bytes));
+                alerts.push(format!(
+                    "disk free {} < min {}",
+                    disk_free, thresholds.min_free_disk_bytes
+                ));
             }
             if resources.memory_usage_pct > thresholds.memory_usage_pct as f64 {
-                if severity != "critical" { severity = "warning"; }
-                alerts.push(format!("memory {:.1}% > {}%", resources.memory_usage_pct, thresholds.memory_usage_pct));
+                if severity != "critical" {
+                    severity = "warning";
+                }
+                alerts.push(format!(
+                    "memory {:.1}% > {}%",
+                    resources.memory_usage_pct, thresholds.memory_usage_pct
+                ));
             }
 
             let mut meta = BoundedMeta::from_iter([
-                ("memory_pct".into(), format!("{:.1}", resources.memory_usage_pct)),
+                (
+                    "memory_pct".into(),
+                    format!("{:.1}", resources.memory_usage_pct),
+                ),
                 ("cpu_pct".into(), format!("{:.1}", resources.cpu_usage_pct)),
-                ("disk_pct".into(), format!("{:.1}", resources.disk_usage_pct)),
+                (
+                    "disk_pct".into(),
+                    format!("{:.1}", resources.disk_usage_pct),
+                ),
                 ("disk_free_bytes".into(), disk_free.to_string()),
-                ("process_memory_bytes".into(), resources.process_memory_bytes.to_string()),
-                ("process_cpu_pct".into(), format!("{:.1}", resources.process_cpu_pct)),
-                ("system_uptime_secs".into(), resources.system_uptime_secs.to_string()),
+                (
+                    "process_memory_bytes".into(),
+                    resources.process_memory_bytes.to_string(),
+                ),
+                (
+                    "process_cpu_pct".into(),
+                    format!("{:.1}", resources.process_cpu_pct),
+                ),
+                (
+                    "system_uptime_secs".into(),
+                    resources.system_uptime_secs.to_string(),
+                ),
             ]);
             if !alerts.is_empty() {
-                meta.insert("alerts".into(), alerts.join("; "));
+                let _ = meta.insert("alerts".into(), alerts.join("; "));
             }
 
             state.event_log.publish(crate::events::AgentEvent {
-                agent_id: "godfather".into(), event_type: "resource".into(),
-                severity: severity.into(), timestamp: 0, metadata: meta.clone(),
+                agent_id: "godfather".into(),
+                event_type: "resource".into(),
+                severity: severity.into(),
+                timestamp: 0,
+                metadata: meta.clone(),
             });
 
             if severity == "critical" {
@@ -318,9 +383,11 @@ pub async fn run_godfather(config: GodfatherConfig, state: Arc<crate::AppState>)
                         ]}]
                     });
                     let _ = reqwest::Client::new()
-                        .post(webhook_url).json(&payload)
+                        .post(webhook_url)
+                        .json(&payload)
                         .timeout(std::time::Duration::from_secs(5))
-                        .send().await;
+                        .send()
+                        .await;
                 }
             }
         }
@@ -328,13 +395,20 @@ pub async fn run_godfather(config: GodfatherConfig, state: Arc<crate::AppState>)
         // Services
         if config.check_services {
             let services = godfather.check_portail_services(&state);
-            for svc in &services { godfather.update_service(svc.clone()); }
+            for svc in &services {
+                godfather.update_service(svc.clone());
+            }
             state.event_log.publish(crate::events::AgentEvent {
-                agent_id: "godfather".into(), event_type: "heartbeat".into(),
-                severity: "info".into(), timestamp: 0,
+                agent_id: "godfather".into(),
+                event_type: "heartbeat".into(),
+                severity: "info".into(),
+                timestamp: 0,
                 metadata: BoundedMeta::from_iter([
                     ("tick".into(), tick.to_string()),
-                    ("uptime".into(), godfather.started_at.elapsed().as_secs().to_string()),
+                    (
+                        "uptime".into(),
+                        godfather.started_at.elapsed().as_secs().to_string(),
+                    ),
                     ("services".into(), services.len().to_string()),
                 ]),
             });
@@ -343,8 +417,10 @@ pub async fn run_godfather(config: GodfatherConfig, state: Arc<crate::AppState>)
         if config.check_network {
             let network = godfather.gather_network(&state);
             state.event_log.publish(crate::events::AgentEvent {
-                agent_id: "godfather".into(), event_type: "network".into(),
-                severity: "info".into(), timestamp: 0,
+                agent_id: "godfather".into(),
+                event_type: "network".into(),
+                severity: "info".into(),
+                timestamp: 0,
                 metadata: BoundedMeta::from_iter([
                     ("total_requests".into(), network.total_requests.to_string()),
                     ("total_errors".into(), network.total_errors.to_string()),
@@ -379,6 +455,8 @@ pub struct GodfatherStatus {
 }
 
 pub fn router() -> axum::Router<Arc<crate::AppState>> {
-    axum::Router::new()
-        .route("/godfather/status", axum::routing::get(handle_godfather_status))
+    axum::Router::new().route(
+        "/godfather/status",
+        axum::routing::get(handle_godfather_status),
+    )
 }

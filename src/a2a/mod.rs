@@ -1,7 +1,7 @@
+use crate::types::BoundedMeta;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
-use crate::types::BoundedMeta;
 
 // ── Agent Card: capability advertisement ─────────────────────────
 
@@ -127,7 +127,9 @@ impl Default for TaskStore {
 
 impl TaskStore {
     pub fn new() -> Self {
-        Self { tasks: std::sync::RwLock::new(HashMap::new()) }
+        Self {
+            tasks: std::sync::RwLock::new(HashMap::new()),
+        }
     }
 
     pub fn create(&self, id: String) -> Task {
@@ -213,7 +215,8 @@ pub async fn handle_task_create(
     axum::extract::State(state): axum::extract::State<Arc<crate::AppState>>,
     axum::Json(req): axum::Json<serde_json::Value>,
 ) -> impl axum::response::IntoResponse {
-    let id = req.get("id")
+    let id = req
+        .get("id")
         .and_then(|v| v.as_str())
         .unwrap_or(&uuid::Uuid::new_v4().to_string())
         .to_string();
@@ -224,9 +227,7 @@ pub async fn handle_task_create(
         event_type: "task_created".into(),
         severity: "info".into(),
         timestamp: 0,
-        metadata: BoundedMeta::from_iter([
-            ("task_id".into(), task.id.clone()),
-        ]),
+        metadata: BoundedMeta::from_iter([("task_id".into(), task.id.clone())]),
     });
 
     (axum::http::StatusCode::CREATED, axum::Json(task))
@@ -237,8 +238,14 @@ pub async fn handle_task_get(
     axum::extract::Path(id): axum::extract::Path<String>,
 ) -> impl axum::response::IntoResponse {
     match state.a2a_tasks.get(&id) {
-        Some(task) => (axum::http::StatusCode::OK, axum::Json(serde_json::to_value(task).unwrap())),
-        None => (axum::http::StatusCode::NOT_FOUND, axum::Json(serde_json::json!({"error": "not found"}))),
+        Some(task) => (
+            axum::http::StatusCode::OK,
+            axum::Json(serde_json::to_value(task).unwrap()),
+        ),
+        None => (
+            axum::http::StatusCode::NOT_FOUND,
+            axum::Json(serde_json::json!({"error": "not found"})),
+        ),
     }
 }
 
@@ -304,10 +311,7 @@ async fn handle_ws_connection(socket: WebSocket, state: Arc<crate::AppState>) {
     send_task.abort();
 }
 
-async fn handle_ws_command(
-    state: &Arc<crate::AppState>,
-    text: &str,
-) -> serde_json::Value {
+async fn handle_ws_command(state: &Arc<crate::AppState>, text: &str) -> serde_json::Value {
     let cmd: serde_json::Value = match serde_json::from_str(text) {
         Ok(v) => v,
         Err(e) => return serde_json::json!({"error": format!("invalid json: {}", e)}),
@@ -324,9 +328,7 @@ async fn handle_ws_command(
                 event_type: "task_created".into(),
                 severity: "info".into(),
                 timestamp: 0,
-                metadata: BoundedMeta::from_iter([
-                    ("task_id".into(), id),
-                ]),
+                metadata: BoundedMeta::from_iter([("task_id".into(), id)]),
             });
             serde_json::json!({"ok": true, "task_id": task.id, "status": format!("{:?}", task.status)})
         }
@@ -384,11 +386,18 @@ mod tests {
         let task = store.update_status("t1", TaskStatus::Working).unwrap();
         assert_eq!(task.status, TaskStatus::Working);
 
-        let task = store.add_message("t1", Message {
-            role: "user".into(),
-            parts: vec![Part::Text { text: "hello".into() }],
-            metadata: BoundedMeta::default(),
-        }).unwrap();
+        let task = store
+            .add_message(
+                "t1",
+                Message {
+                    role: "user".into(),
+                    parts: vec![Part::Text {
+                        text: "hello".into(),
+                    }],
+                    metadata: BoundedMeta::default(),
+                },
+            )
+            .unwrap();
         assert_eq!(task.messages.len(), 1);
 
         let task = store.update_status("t1", TaskStatus::Completed).unwrap();
@@ -399,7 +408,11 @@ mod tests {
     fn task_not_found() {
         let store = TaskStore::new();
         assert!(store.get("nonexistent").is_none());
-        assert!(store.update_status("nonexistent", TaskStatus::Completed).is_none());
+        assert!(
+            store
+                .update_status("nonexistent", TaskStatus::Completed)
+                .is_none()
+        );
     }
 
     #[test]
@@ -440,7 +453,9 @@ mod tests {
             status: TaskStatus::Working,
             messages: vec![Message {
                 role: "user".into(),
-                parts: vec![Part::Text { text: "hello".into() }],
+                parts: vec![Part::Text {
+                    text: "hello".into(),
+                }],
                 metadata: BoundedMeta::default(),
             }],
             artifacts: vec![],
@@ -464,16 +479,22 @@ mod tests {
         assert!(text.contains("text"));
         assert!(text.contains("hi"));
 
-        let file = serde_json::to_string(&Part::File { file: FilePart {
-            name: "data.csv".into(),
-            bytes: Some("base64...".into()),
-            mime_type: Some("text/csv".into()),
-            uri: None,
-        }}).unwrap();
+        let file = serde_json::to_string(&Part::File {
+            file: FilePart {
+                name: "data.csv".into(),
+                bytes: Some("base64...".into()),
+                mime_type: Some("text/csv".into()),
+                uri: None,
+            },
+        })
+        .unwrap();
         assert!(file.contains("file"));
         assert!(file.contains("data.csv"));
 
-        let data = serde_json::to_string(&Part::Data { data: serde_json::json!({}) }).unwrap();
+        let data = serde_json::to_string(&Part::Data {
+            data: serde_json::json!({}),
+        })
+        .unwrap();
         assert!(data.contains("data"));
     }
 }

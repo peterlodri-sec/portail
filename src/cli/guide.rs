@@ -1,14 +1,18 @@
 use std::io::{self, Write};
 
 const BLOCKS: &[(&str, &str)] = &[
-    ("Overview", r#"
+    (
+        "Overview",
+        r#"
 This guide sets up branch protection for `peterlodri-sec/portail` to ensure:
 - Only maintainers and agents can merge to `main`
 - Self-hosted runners are protected from fork PRs
 - All changes require review and passing CI
-"#),
-
-    ("Step 1: Enable Branch Protection Rules", r#"
+"#,
+    ),
+    (
+        "Step 1: Enable Branch Protection Rules",
+        r#"
 Go to: Settings → Branches → Add branch protection rule
 
 Branch name pattern: main
@@ -36,18 +40,22 @@ Branch name pattern: main
 
 ❌ Allow force pushes (disabled)
 ❌ Allow deletions (disabled)
-"#),
-
-    ("Step 2: Enable Tag Protection", r#"
+"#,
+    ),
+    (
+        "Step 2: Enable Tag Protection",
+        r#"
 Go to: Settings → Tags → Add tag protection rule
 
 Tag name pattern: v*
 
 This prevents unauthorized users from pushing version tags.
 Only maintainers can create releases.
-"#),
-
-    ("Step 3: Configure CODEOWNERS", r#"
+"#,
+    ),
+    (
+        "Step 3: Configure CODEOWNERS",
+        r#"
 Create file: .github/CODEOWNERS
 
 Contents:
@@ -64,9 +72,11 @@ nix/ @peterlodri-sec
 # Security-sensitive files
 SECURITY.md @peterlodri-sec
 ```
-"#),
-
-    ("Step 4: Configure Merge Options", r#"
+"#,
+    ),
+    (
+        "Step 4: Configure Merge Options",
+        r#"
 Go to: Settings → General → Pull Requests
 
 ✅ Allow merge commits (default to merge commit)
@@ -75,9 +85,11 @@ Go to: Settings → General → Pull Requests
 ✅ Always suggest updating pull request branches
 ✅ Allow auto-merge
 ✅ Automatically delete head branches
-"#),
-
-    ("Step 5: Enable Security Features", r#"
+"#,
+    ),
+    (
+        "Step 5: Enable Security Features",
+        r#"
 Go to: Settings → Security
 
 Code security and analysis:
@@ -87,9 +99,11 @@ Code security and analysis:
   ✅ Code scanning (CodeQL)
   ✅ Secret scanning
   ✅ Secret scanning push protection
-"#),
-
-    ("Step 6: Configure Runner Permissions", r#"
+"#,
+    ),
+    (
+        "Step 6: Configure Runner Permissions",
+        r#"
 Go to: Settings → Actions → General
 
 Actions permissions:
@@ -106,9 +120,11 @@ Fork pull request workflows:
 
 Run workflows from fork pull requests:
   ✅ (enabled - protected by workflow logic)
-"#),
-
-    ("Step 7: Security Model", r#"
+"#,
+    ),
+    (
+        "Step 7: Security Model",
+        r#"
 ┌─────────────────────────────────────────────────────────────┐
 │                    CI Access Control                         │
 ├─────────────────────────────────────────────────────────────┤
@@ -126,9 +142,11 @@ Run workflows from fork pull requests:
 │   (maintainers only)        (release builds)                │
 │                                                             │
 └─────────────────────────────────────────────────────────────┘
-"#),
-
-    ("Step 8: Verify Protection", r#"
+"#,
+    ),
+    (
+        "Step 8: Verify Protection",
+        r#"
 Test with a fork PR:
 1. Fork the repo to another account
 2. Create a PR from the fork
@@ -144,9 +162,11 @@ Commands to verify:
 gh run list --workflow ci.yml --limit 10
 gh run view <run-id> --log | grep "runs-on"
 ```
-"#),
-
-    ("Quick Reference", r#"
+"#,
+    ),
+    (
+        "Quick Reference",
+        r#"
 ┌─────────────────────────────────────────────────────────────┐
 │                    Settings Summary                          │
 ├─────────────────────────────────────────────────────────────┤
@@ -168,7 +188,8 @@ gh api repos/peterlodri-sec/portail/branches/main/protection
 gh api repos/peterlodri-sec/portail/branches --jq '.[].name'
 gh api repos/peterlodri-sec/portail/tags/protection
 ```
-"#),
+"#,
+    ),
 ];
 
 pub fn run_guide() -> io::Result<()> {
@@ -177,7 +198,10 @@ pub fn run_guide() -> io::Result<()> {
 
     println!("\n╔════════════════════════════════════════════════════════════╗");
     println!("║          Branch Protection E2E Guide                      ║");
-    println!("║          {} blocks — type 'help' for commands              ║", total);
+    println!(
+        "║          {} blocks — type 'help' for commands              ║",
+        total
+    );
     println!("╚════════════════════════════════════════════════════════════╝\n");
 
     print_block(current, total);
@@ -257,7 +281,7 @@ pub fn run_guide() -> io::Result<()> {
 
 fn print_block(current: usize, total: usize) {
     let (title, content) = BLOCKS[current];
-    
+
     println!("\n┌─────────────────────────────────────────────────────────────┐");
     println!("│ {:2}/{}  {:<53} │", current + 1, total, title);
     println!("└─────────────────────────────────────────────────────────────┘");

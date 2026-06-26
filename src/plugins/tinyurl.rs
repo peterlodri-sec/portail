@@ -1,8 +1,8 @@
 /*
  * Auto-TinyURL Plugin
- * 
+ *
  * Architecture:
- * 
+ *
  *   ┌─────────────────────────────────────────────────────────────┐
  *   │                  Auto-TinyURL Flow                         │
  *   ├─────────────────────────────────────────────────────────────┤
@@ -32,11 +32,11 @@
  *   └─────────────────────────────────────────────────────────────┘
  */
 
+use axum::response::IntoResponse;
+use rustc_hash::FxHashMap;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use std::time::Instant;
-use rustc_hash::FxHashMap;
-use axum::response::IntoResponse;
 
 const BASE62: &[u8] = b"0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
 const DEFAULT_TTL_SECS: u64 = 86400; // 24 hours
@@ -100,7 +100,7 @@ impl TinyUrlStore {
         let id = self.generate_id(url);
         let short_url = format!("{}/s/{}", self.config.base_url, id);
         let now = now_secs();
-        
+
         let entry = TinyUrlEntry {
             id: id.clone(),
             original_url: url.to_string(),
@@ -112,17 +112,18 @@ impl TinyUrlStore {
         };
 
         let mut entries = self.entries.write().unwrap();
-        
+
         // Evict oldest if at capacity
         if entries.len() >= self.config.max_entries {
-            if let Some(oldest_key) = entries.iter()
+            if let Some(oldest_key) = entries
+                .iter()
                 .min_by_key(|(_, e)| e.created_at)
-                .map(|(k, _)| k.clone()) 
+                .map(|(k, _)| k.clone())
             {
                 entries.remove(&oldest_key);
             }
         }
-        
+
         entries.insert(id.clone(), entry.clone());
         Ok(entry)
     }
@@ -130,7 +131,7 @@ impl TinyUrlStore {
     pub fn resolve(&self, id: &str) -> Option<String> {
         let mut entries = self.entries.write().unwrap();
         let now = now_secs();
-        
+
         if let Some(entry) = entries.get_mut(id) {
             if entry.expires_at > now {
                 entry.hits += 1;
@@ -146,12 +147,12 @@ impl TinyUrlStore {
     pub fn get_stats(&self) -> TinyUrlStats {
         let entries = self.entries.read().unwrap();
         let now = now_secs();
-        
+
         let total = entries.len();
         let active = entries.values().filter(|e| e.expires_at > now).count();
         let expired = total - active;
         let total_hits = entries.values().map(|e| e.hits).sum();
-        
+
         TinyUrlStats {
             total_entries: total,
             active_entries: active,
@@ -171,12 +172,12 @@ impl TinyUrlStore {
     fn generate_id(&self, url: &str) -> String {
         use std::collections::hash_map::DefaultHasher;
         use std::hash::{Hash, Hasher};
-        
+
         let mut hasher = DefaultHasher::new();
         url.hash(&mut hasher);
         self.config.secret.hash(&mut hasher);
         let hash = hasher.finish();
-        
+
         base62_encode(hash)
     }
 }
@@ -195,7 +196,7 @@ fn base62_encode(mut num: u64) -> String {
     if num == 0 {
         return "0".to_string();
     }
-    
+
     let mut result = Vec::new();
     while num > 0 {
         result.push(BASE62[(num % 62) as usize]);
@@ -220,12 +221,23 @@ pub async fn handle_shorten(
 ) -> impl axum::response::IntoResponse {
     let url = match req["url"].as_str() {
         Some(u) => u,
-        None => return (axum::http::StatusCode::BAD_REQUEST, axum::Json(serde_json::json!({"error": "missing url"}))),
+        None => {
+            return (
+                axum::http::StatusCode::BAD_REQUEST,
+                axum::Json(serde_json::json!({"error": "missing url"})),
+            );
+        }
     };
-    
+
     match state.tinyurl.shorten(url) {
-        Ok(entry) => (axum::http::StatusCode::CREATED, axum::Json(serde_json::to_value(entry).unwrap())),
-        Err(e) => (axum::http::StatusCode::BAD_REQUEST, axum::Json(serde_json::json!({"error": e}))),
+        Ok(entry) => (
+            axum::http::StatusCode::CREATED,
+            axum::Json(serde_json::to_value(entry).unwrap()),
+        ),
+        Err(e) => (
+            axum::http::StatusCode::BAD_REQUEST,
+            axum::Json(serde_json::json!({"error": e})),
+        ),
     }
 }
 
@@ -234,12 +246,12 @@ pub async fn handle_resolve(
     axum::extract::Path(id): axum::extract::Path<String>,
 ) -> axum::response::Response {
     match state.tinyurl.resolve(&id) {
-        Some(url) => {
-            axum::response::Redirect::permanent(&url).into_response()
-        }
-        None => {
-            (axum::http::StatusCode::NOT_FOUND, "Short URL not found or expired").into_response()
-        }
+        Some(url) => axum::response::Redirect::permanent(&url).into_response(),
+        None => (
+            axum::http::StatusCode::NOT_FOUND,
+            "Short URL not found or expired",
+        )
+            .into_response(),
     }
 }
 
@@ -278,10 +290,10 @@ mod tests {
     fn shorten_and_resolve() {
         let store = TinyUrlStore::new(test_config());
         let entry = store.shorten("https://example.com/very/long/url").unwrap();
-        
+
         assert!(!entry.id.is_empty());
         assert!(entry.short_url.contains(&entry.id));
-        
+
         let resolved = store.resolve(&entry.id).unwrap();
         assert_eq!(resolved, "https://example.com/very/long/url");
     }
@@ -300,7 +312,7 @@ mod tests {
         };
         let store = TinyUrlStore::new(config);
         let entry = store.shorten("https://example.com").unwrap();
-        
+
         // Should be expired
         assert!(store.resolve(&entry.id).is_none());
     }
@@ -310,7 +322,7 @@ mod tests {
         let store = TinyUrlStore::new(test_config());
         store.shorten("https://example.com/1").unwrap();
         store.shorten("https://example.com/2").unwrap();
-        
+
         let stats = store.get_stats();
         assert_eq!(stats.total_entries, 2);
         assert_eq!(stats.active_entries, 2);
@@ -328,10 +340,10 @@ mod tests {
     fn hit_counter() {
         let store = TinyUrlStore::new(test_config());
         let entry = store.shorten("https://example.com").unwrap();
-        
+
         store.resolve(&entry.id);
         store.resolve(&entry.id);
-        
+
         let stats = store.get_stats();
         assert_eq!(stats.total_hits, 2);
     }

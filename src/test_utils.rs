@@ -1,5 +1,5 @@
-use std::sync::OnceLock;
 use metrics_exporter_prometheus::PrometheusHandle;
+use std::sync::OnceLock;
 
 static METRICS_HANDLE: OnceLock<PrometheusHandle> = OnceLock::new();
 

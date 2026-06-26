@@ -22,7 +22,16 @@ pub async fn start_sidecar(socket_path: &str) -> anyhow::Result<()> {
     let _ = tokio::fs::remove_file(socket_path).await;
 
     let child = Command::new("uv")
-        .args(["run", "--with", "portail-mcp", "python", "-m", "portail_mcp.server", "--socket", socket_path])
+        .args([
+            "run",
+            "--with",
+            "portail-mcp",
+            "python",
+            "-m",
+            "portail_mcp.server",
+            "--socket",
+            socket_path,
+        ])
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .kill_on_drop(true)
@@ -61,9 +70,15 @@ pub async fn start_sidecar(socket_path: &str) -> anyhow::Result<()> {
 
 pub async fn proxy_to_sidecar(socket_path: &str, req: Request) -> Response {
     let (parts, body) = req.into_parts();
-    let path = parts.uri.path_and_query().map(|pq| pq.as_str()).unwrap_or("/");
+    let path = parts
+        .uri
+        .path_and_query()
+        .map(|pq| pq.as_str())
+        .unwrap_or("/");
     let method = parts.method.to_string();
-    let body_bytes = axum::body::to_bytes(body, MAX_BODY_BYTES).await.unwrap_or_default();
+    let body_bytes = axum::body::to_bytes(body, MAX_BODY_BYTES)
+        .await
+        .unwrap_or_default();
     let socket_path = socket_path.to_string();
 
     match tokio::time::timeout(
@@ -103,12 +118,19 @@ async fn proxy_via_unix(
     decode_response(&mut stream).await
 }
 
-pub fn encode_frame(method: &str, path: &str, headers: HashMap<String, String>, body: &[u8]) -> BytesMut {
+pub fn encode_frame(
+    method: &str,
+    path: &str,
+    headers: HashMap<String, String>,
+    body: &[u8],
+) -> BytesMut {
     let headers_json = serde_json::to_string(&headers).unwrap_or_default();
     let method = method.as_bytes();
     let path = path.as_bytes();
     let headers = headers_json.as_bytes();
-    let mut buf = BytesMut::with_capacity(2 + method.len() + 4 + path.len() + 4 + headers.len() + 8 + body.len());
+    let mut buf = BytesMut::with_capacity(
+        2 + method.len() + 4 + path.len() + 4 + headers.len() + 8 + body.len(),
+    );
 
     buf.put_u16(method.len() as u16);
     buf.put_slice(method);
@@ -125,9 +147,8 @@ async fn decode_response(stream: &mut UnixStream) -> anyhow::Result<Response> {
     let mut status_hdr = [0u8; 6];
     stream.read_exact(&mut status_hdr).await?;
     let status_code = u16::from_be_bytes([status_hdr[0], status_hdr[1]]);
-    let headers_len = u32::from_be_bytes([
-        status_hdr[2], status_hdr[3], status_hdr[4], status_hdr[5],
-    ]) as usize;
+    let headers_len =
+        u32::from_be_bytes([status_hdr[2], status_hdr[3], status_hdr[4], status_hdr[5]]) as usize;
 
     let mut headers_buf = vec![0u8; headers_len];
     stream.read_exact(&mut headers_buf).await?;
@@ -182,20 +203,28 @@ mod tests {
         let method_len = u16::from_be_bytes([frame[0], frame[1]]);
         let path_start = 2 + method_len as usize;
         let path_len = u32::from_be_bytes([
-            frame[path_start], frame[path_start + 1],
-            frame[path_start + 2], frame[path_start + 3],
+            frame[path_start],
+            frame[path_start + 1],
+            frame[path_start + 2],
+            frame[path_start + 3],
         ]);
         let headers_start = path_start + 4 + path_len as usize;
         let headers_len = u32::from_be_bytes([
-            frame[headers_start], frame[headers_start + 1],
-            frame[headers_start + 2], frame[headers_start + 3],
+            frame[headers_start],
+            frame[headers_start + 1],
+            frame[headers_start + 2],
+            frame[headers_start + 3],
         ]);
         let body_start = headers_start + 4 + headers_len as usize;
         let body_len = u64::from_be_bytes([
-            frame[body_start], frame[body_start + 1],
-            frame[body_start + 2], frame[body_start + 3],
-            frame[body_start + 4], frame[body_start + 5],
-            frame[body_start + 6], frame[body_start + 7],
+            frame[body_start],
+            frame[body_start + 1],
+            frame[body_start + 2],
+            frame[body_start + 3],
+            frame[body_start + 4],
+            frame[body_start + 5],
+            frame[body_start + 6],
+            frame[body_start + 7],
         ]);
 
         let method_str = std::str::from_utf8(&frame[2..path_start]).unwrap();

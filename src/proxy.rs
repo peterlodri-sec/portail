@@ -1,11 +1,10 @@
+use crate::AppState;
 use crate::cdn;
 use crate::gateway;
 use crate::hooks;
 use crate::mcp;
-use crate::AppState;
 use crate::types::BoundedMeta;
 
-pub use cdn::CacheManager;
 use axum::body::Body;
 use axum::extract::{Request, State};
 use axum::http::{Method, StatusCode};
@@ -13,6 +12,7 @@ use axum::middleware::{self, Next};
 use axum::response::{IntoResponse, Response};
 use axum::routing::{any, delete, get};
 use axum::{Json, Router};
+pub use cdn::CacheManager;
 use metrics::{counter, histogram};
 use serde_json::json;
 use std::sync::Arc;
@@ -40,12 +40,24 @@ pub fn build_router(state: Arc<AppState>) -> Router {
         .route("/mcp/{*path}", any(route_mcp))
         .route("/mcp-rest/{*path}", any(route_mcp))
         .route("/stats", get(stats_handler))
-        .route("/events", get(crate::events::handle_recent).post(crate::events::handle_publish))
+        .route(
+            "/events",
+            get(crate::events::handle_recent).post(crate::events::handle_publish),
+        )
         .route("/events/stream", get(crate::events::handle_stream))
-        .route("/hooks", get(crate::hooks::handle_list).post(crate::hooks::handle_create))
+        .route(
+            "/hooks",
+            get(crate::hooks::handle_list).post(crate::hooks::handle_create),
+        )
         .route("/hooks/{id}", delete(crate::hooks::handle_delete))
-        .route("/.well-known/agent.json", get(crate::a2a::handle_agent_card))
-        .route("/a2a/tasks", axum::routing::post(crate::a2a::handle_task_create))
+        .route(
+            "/.well-known/agent.json",
+            get(crate::a2a::handle_agent_card),
+        )
+        .route(
+            "/a2a/tasks",
+            axum::routing::post(crate::a2a::handle_task_create),
+        )
         .route("/a2a/tasks/{id}", get(crate::a2a::handle_task_get))
         .route("/a2a/ws", axum::routing::get(crate::a2a::handle_ws))
         .route("/a2c/chat", axum::routing::post(crate::a2c::handle_chat))
@@ -71,7 +83,10 @@ pub fn build_router(state: Arc<AppState>) -> Router {
         .route("/sessions/{id}", axum::routing::get(session_detail_handler))
         .fallback(route_to_ai_gateway)
         // Decorating middleware (inner → outer)
-        .layer(middleware::from_fn_with_state(state.clone(), session_middleware))
+        .layer(middleware::from_fn_with_state(
+            state.clone(),
+            session_middleware,
+        ))
         .layer(middleware::from_fn(security_headers_middleware))
         .layer(middleware::from_fn(request_id_middleware))
         .layer(middleware::from_fn(metrics_middleware))
@@ -81,13 +96,15 @@ pub fn build_router(state: Arc<AppState>) -> Router {
                 .on_request(|req: &Request<Body>, _span: &tracing::Span| {
                     tracing::debug!(method = %req.method(), uri = %req.uri(), "request");
                 })
-                .on_response(|resp: &Response, latency: std::time::Duration, _span: &tracing::Span| {
-                    tracing::info!(
-                        status = resp.status().as_u16(),
-                        latency_us = latency.as_micros() as u64,
-                        "request completed"
-                    );
-                }),
+                .on_response(
+                    |resp: &Response, latency: std::time::Duration, _span: &tracing::Span| {
+                        tracing::info!(
+                            status = resp.status().as_u16(),
+                            latency_us = latency.as_micros() as u64,
+                            "request completed"
+                        );
+                    },
+                ),
         );
 
     // ── v0.2: auth (before rate limit so per-key limits work) ──
@@ -164,7 +181,8 @@ async fn session_middleware(
     req: Request,
     next: Next,
 ) -> Response {
-    let session_id = req.headers()
+    let session_id = req
+        .headers()
         .get("x-session-id")
         .and_then(|v| v.to_str().ok())
         .unwrap_or("")
@@ -181,30 +199,41 @@ async fn session_middleware(
     let status = resp.status().as_u16();
 
     if !session_id.is_empty() {
-        let input_tokens: u64 = resp.headers()
+        let input_tokens: u64 = resp
+            .headers()
             .get("x-tokens-input")
             .and_then(|v| v.to_str().ok())
             .and_then(|v| v.parse().ok())
             .unwrap_or(0);
-        let output_tokens: u64 = resp.headers()
+        let output_tokens: u64 = resp
+            .headers()
             .get("x-tokens-output")
             .and_then(|v| v.to_str().ok())
             .and_then(|v| v.parse().ok())
             .unwrap_or(0);
-        let cache_hit = resp.headers()
+        let cache_hit = resp
+            .headers()
             .get("x-cache-status")
             .map(|v| v.as_bytes() == b"HIT")
             .unwrap_or(false);
-        let hooks_applied: u64 = resp.headers()
+        let hooks_applied: u64 = resp
+            .headers()
             .get("x-hooks-applied")
             .and_then(|v| v.to_str().ok())
             .and_then(|v| v.parse().ok())
             .unwrap_or(0);
 
         state.session_store.record_request(
-            &session_id, &method, &path, status,
-            total_latency, portail_overhead,
-            input_tokens, output_tokens, cache_hit, hooks_applied,
+            &session_id,
+            &method,
+            &path,
+            status,
+            total_latency,
+            portail_overhead,
+            input_tokens,
+            output_tokens,
+            cache_hit,
+            hooks_applied,
         );
     }
 
@@ -214,13 +243,13 @@ async fn session_middleware(
 async fn security_headers_middleware(req: Request, next: Next) -> Response {
     let mut resp = next.run(req).await;
     let headers = resp.headers_mut();
-    
+
     // HSTS: Force HTTPS for 1 year
     headers.insert(
         "strict-transport-security",
         axum::http::HeaderValue::from_static("max-age=31536000; includeSubDomains; preload"),
     );
-    
+
     // Security headers
     headers.insert(
         "x-content-type-options",
@@ -242,23 +271,27 @@ async fn security_headers_middleware(req: Request, next: Next) -> Response {
         "permissions-policy",
         axum::http::HeaderValue::from_static("camera=(), microphone=(), geolocation=()"),
     );
-    
+
     resp
 }
 
 fn normalize_path(path: &str) -> String {
     // Normalize dynamic path segments to reduce cardinality
     let segments: Vec<&str> = path.split('/').collect();
-    let normalized: Vec<String> = segments.iter().map(|s| {
-        // Replace UUIDs and long IDs with placeholders
-        if s.len() > 20 && s.contains('-') && s.chars().all(|c| c.is_alphanumeric() || c == '-') {
-            "{id}".to_string()
-        } else if s.len() > 32 && s.chars().all(|c| c.is_alphanumeric()) {
-            "{hash}".to_string()
-        } else {
-            s.to_string()
-        }
-    }).collect();
+    let normalized: Vec<String> = segments
+        .iter()
+        .map(|s| {
+            // Replace UUIDs and long IDs with placeholders
+            if s.len() > 20 && s.contains('-') && s.chars().all(|c| c.is_alphanumeric() || c == '-')
+            {
+                "{id}".to_string()
+            } else if s.len() > 32 && s.chars().all(|c| c.is_alphanumeric()) {
+                "{hash}".to_string()
+            } else {
+                s.to_string()
+            }
+        })
+        .collect();
     normalized.join("/")
 }
 
@@ -270,7 +303,10 @@ async fn healthz() -> &'static str {
 async fn readyz(State(state): State<Arc<AppState>>) -> (StatusCode, &'static str) {
     let upstream = {
         let c = state.config.read().unwrap();
-        c.ai_gateway.as_ref().filter(|g| g.enabled).map(|g| g.upstream.clone())
+        c.ai_gateway
+            .as_ref()
+            .filter(|g| g.enabled)
+            .map(|g| g.upstream.clone())
     };
     let ready = match upstream {
         Some(url) => {
@@ -278,21 +314,27 @@ async fn readyz(State(state): State<Arc<AppState>>) -> (StatusCode, &'static str
                 .await
                 .map(|r| r.status().is_success())
                 .unwrap_or(false);
-            if !ok { return (StatusCode::SERVICE_UNAVAILABLE, "ai gateway not ready"); }
+            if !ok {
+                return (StatusCode::SERVICE_UNAVAILABLE, "ai gateway not ready");
+            }
             true
         }
         None => true,
     };
-    if ready { (StatusCode::OK, "ready") } else { (StatusCode::SERVICE_UNAVAILABLE, "not ready") }
+    if ready {
+        (StatusCode::OK, "ready")
+    } else {
+        (StatusCode::SERVICE_UNAVAILABLE, "not ready")
+    }
 }
 
-async fn route_to_ai_gateway(
-    State(state): State<Arc<AppState>>,
-    req: Request,
-) -> Response {
+async fn route_to_ai_gateway(State(state): State<Arc<AppState>>, req: Request) -> Response {
     let cfg = {
         let c = state.config.read().unwrap();
-        c.ai_gateway.as_ref().filter(|g| g.enabled).map(|g| g.upstream.clone())
+        c.ai_gateway
+            .as_ref()
+            .filter(|g| g.enabled)
+            .map(|g| g.upstream.clone())
     };
     let Some(upstream) = cfg else {
         return (StatusCode::NOT_IMPLEMENTED, "ai gateway disabled").into_response();
@@ -306,7 +348,9 @@ async fn route_to_ai_gateway(
     }
 
     let (parts, body) = req.into_parts();
-    let body_bytes = axum::body::to_bytes(body, 10_000_000).await.unwrap_or_default();
+    let body_bytes = axum::body::to_bytes(body, 10_000_000)
+        .await
+        .unwrap_or_default();
 
     let modified = serde_json::from_slice::<serde_json::Value>(&body_bytes)
         .ok()
@@ -329,10 +373,7 @@ async fn route_to_ai_gateway(
     gateway::forward_with_body(&upstream, parts, modified.into()).await
 }
 
-async fn route_cdn(
-    State(state): State<Arc<AppState>>,
-    req: Request,
-) -> Response {
+async fn route_cdn(State(state): State<Arc<AppState>>, req: Request) -> Response {
     let Some(cache) = &state.cdn_cache else {
         return (StatusCode::NOT_IMPLEMENTED, "cdn disabled").into_response();
     };
@@ -343,13 +384,13 @@ async fn route_cdn(
     cdn::handle(req, Arc::clone(cache), origin).await
 }
 
-async fn route_mcp(
-    State(state): State<Arc<AppState>>,
-    req: Request,
-) -> Response {
+async fn route_mcp(State(state): State<Arc<AppState>>, req: Request) -> Response {
     let socket = {
         let c = state.config.read().unwrap();
-        c.mcp.as_ref().filter(|m| m.enabled).map(|m| m.socket_path.clone())
+        c.mcp
+            .as_ref()
+            .filter(|m| m.enabled)
+            .map(|m| m.socket_path.clone())
     };
     let Some(socket_path) = socket else {
         return (StatusCode::NOT_IMPLEMENTED, "mcp disabled").into_response();
@@ -361,7 +402,11 @@ async fn metrics_handler(
     State(state): State<Arc<AppState>>,
 ) -> (StatusCode, [(&'static str, &'static str); 1], String) {
     let body = state.metrics_handle.render();
-    (StatusCode::OK, [("content-type", "text/plain; charset=utf-8")], body)
+    (
+        StatusCode::OK,
+        [("content-type", "text/plain; charset=utf-8")],
+        body,
+    )
 }
 
 async fn stats_handler(State(state): State<Arc<AppState>>) -> Json<serde_json::Value> {
@@ -376,8 +421,16 @@ async fn stats_handler(State(state): State<Arc<AppState>>) -> Json<serde_json::V
 // ── v1.2: dashboard health snapshot ────────────────────────────────
 
 async fn dashboard_handler(State(state): State<Arc<AppState>>) -> Json<serde_json::Value> {
-    let rate_denied = state.rate_limiter.as_ref().map(|r| r.denied_count()).unwrap_or(0);
-    let auth_failures = state.auth_state.as_ref().map(|a| a.failure_count()).unwrap_or(0);
+    let rate_denied = state
+        .rate_limiter
+        .as_ref()
+        .map(|r| r.denied_count())
+        .unwrap_or(0);
+    let auth_failures = state
+        .auth_state
+        .as_ref()
+        .map(|a| a.failure_count())
+        .unwrap_or(0);
     let config_healthy = state.config_watcher.is_healthy();
     let config_error = state.config_watcher.last_error.read().await.clone();
 
@@ -394,12 +447,15 @@ async fn dashboard_handler(State(state): State<Arc<AppState>>) -> Json<serde_jso
         "rate_limit_denied": rate_denied,
         "auth_failures": auth_failures,
         "cdn": cdn_stats,
-    }).into()
+    })
+    .into()
 }
 
 // ── Supervisor handler (v2.0) ──────────────────────────────────────
 
-async fn supervisor_handler(State(state): State<Arc<AppState>>) -> Json<Vec<crate::supervisor::TaskStatus>> {
+async fn supervisor_handler(
+    State(state): State<Arc<AppState>>,
+) -> Json<Vec<crate::supervisor::TaskStatus>> {
     Json(state.supervisor.status())
 }
 
@@ -415,7 +471,9 @@ async fn session_detail_handler(
     State(state): State<Arc<AppState>>,
     axum::extract::Path(id): axum::extract::Path<String>,
 ) -> Result<Json<crate::sessions::SessionStats>, StatusCode> {
-    state.session_store.get_session(&id)
+    state
+        .session_store
+        .get_session(&id)
         .map(Json)
         .ok_or(StatusCode::NOT_FOUND)
 }
@@ -437,30 +495,54 @@ mod tests {
             dns_store: Arc::new(crate::dns::DnsStore::new()),
             doh_client: None,
             network_isolation: Arc::new(crate::dns::NetworkIsolation::default()),
-            tinyurl: Arc::new(crate::plugins::TinyUrlStore::new(crate::plugins::TinyUrlConfig::default())),
+            tinyurl: Arc::new(crate::plugins::TinyUrlStore::new(
+                crate::plugins::TinyUrlConfig::default(),
+            )),
             trace_store: Arc::new(crate::plugins::TraceStore::new(100)),
-            redis_cache: Arc::new(crate::plugins::RedisCache::new(crate::plugins::RedisCacheConfig::default())),
-            discovery: Arc::new(crate::discovery::DiscoveryStore::new(crate::discovery::DiscoveryConfig::default())),
-            ebpf: Arc::new(crate::ebpf::EbpfManager::new(crate::ebpf::EbpfConfig::default())),
-            iouring: Arc::new(crate::iouring::IoUringManager::new(crate::iouring::IoUringConfig::default())),
-            dpdk: Arc::new(crate::dpdk::DpdkManager::new(crate::dpdk::DpdkConfig::default())),
-            hyper: Arc::new(crate::hyper_engine::HyperManager::new(crate::hyper_engine::HyperConfig::default())),
+            redis_cache: Arc::new(crate::plugins::RedisCache::new(
+                crate::plugins::RedisCacheConfig::default(),
+            )),
+            discovery: Arc::new(crate::discovery::DiscoveryStore::new(
+                crate::discovery::DiscoveryConfig::default(),
+            )),
+            ebpf: Arc::new(crate::ebpf::EbpfManager::new(
+                crate::ebpf::EbpfConfig::default(),
+            )),
+            iouring: Arc::new(crate::iouring::IoUringManager::new(
+                crate::iouring::IoUringConfig::default(),
+            )),
+            dpdk: Arc::new(crate::dpdk::DpdkManager::new(
+                crate::dpdk::DpdkConfig::default(),
+            )),
+            hyper: Arc::new(crate::hyper_engine::HyperManager::new(
+                crate::hyper_engine::HyperConfig::default(),
+            )),
             ci_status: Arc::new(crate::ci::CiStatusStore::new(100, None)),
             metrics_handle: crate::test_utils::global_metrics().clone(),
             rate_limiter: None,
             auth_state: None,
             event_store: None,
             session_store: crate::sessions::SessionStore::new(20),
-            file_cache: crate::file_cache::FileCache::new(&crate::file_cache::FileCacheConfig { path: "/tmp/portail-test-cache".into(), ..Default::default() }),
-            config_watcher: crate::config_watcher::ConfigWatcher::new(std::path::PathBuf::from("portail.toml")),
-            supervisor: std::sync::Arc::new(crate::supervisor::Supervisor::new(std::sync::Arc::new(crate::events::EventLog::new(100)))),
+            file_cache: crate::file_cache::FileCache::new(&crate::file_cache::FileCacheConfig {
+                path: "/tmp/portail-test-cache".into(),
+                ..Default::default()
+            }),
+            config_watcher: crate::config_watcher::ConfigWatcher::new(std::path::PathBuf::from(
+                "portail.toml",
+            )),
+            supervisor: std::sync::Arc::new(crate::supervisor::Supervisor::new(
+                std::sync::Arc::new(crate::events::EventLog::new(100)),
+            )),
         })
     }
 
     #[tokio::test]
     async fn healthz_returns_ok() {
         let app = build_router(test_state());
-        let req = Request::builder().uri("/healthz").body(Body::empty()).unwrap();
+        let req = Request::builder()
+            .uri("/healthz")
+            .body(Body::empty())
+            .unwrap();
         let resp = app.oneshot(req).await.unwrap();
         assert_eq!(resp.status(), StatusCode::OK);
     }
@@ -468,7 +550,10 @@ mod tests {
     #[tokio::test]
     async fn livez_returns_ok() {
         let app = build_router(test_state());
-        let req = Request::builder().uri("/livez").body(Body::empty()).unwrap();
+        let req = Request::builder()
+            .uri("/livez")
+            .body(Body::empty())
+            .unwrap();
         let resp = app.oneshot(req).await.unwrap();
         assert_eq!(resp.status(), StatusCode::OK);
     }
@@ -476,7 +561,10 @@ mod tests {
     #[tokio::test]
     async fn readyz_no_upstream() {
         let app = build_router(test_state());
-        let req = Request::builder().uri("/readyz").body(Body::empty()).unwrap();
+        let req = Request::builder()
+            .uri("/readyz")
+            .body(Body::empty())
+            .unwrap();
         let resp = app.oneshot(req).await.unwrap();
         assert_eq!(resp.status(), StatusCode::OK);
     }
@@ -484,7 +572,10 @@ mod tests {
     #[tokio::test]
     async fn stats_returns_json() {
         let app = build_router(test_state());
-        let req = Request::builder().uri("/stats").body(Body::empty()).unwrap();
+        let req = Request::builder()
+            .uri("/stats")
+            .body(Body::empty())
+            .unwrap();
         let resp = app.oneshot(req).await.unwrap();
         assert_eq!(resp.status(), StatusCode::OK);
     }
@@ -492,7 +583,10 @@ mod tests {
     #[tokio::test]
     async fn cdn_disabled_returns_not_implemented() {
         let app = build_router(test_state());
-        let req = Request::builder().uri("/cdn/foo").body(Body::empty()).unwrap();
+        let req = Request::builder()
+            .uri("/cdn/foo")
+            .body(Body::empty())
+            .unwrap();
         let resp = app.oneshot(req).await.unwrap();
         assert_eq!(resp.status(), StatusCode::NOT_IMPLEMENTED);
     }
@@ -526,7 +620,10 @@ mod tests {
     #[tokio::test]
     async fn request_id_injected() {
         let app = build_router(test_state());
-        let req = Request::builder().uri("/healthz").body(Body::empty()).unwrap();
+        let req = Request::builder()
+            .uri("/healthz")
+            .body(Body::empty())
+            .unwrap();
         let resp = app.oneshot(req).await.unwrap();
         assert!(resp.headers().get("x-request-id").is_some());
     }
@@ -541,7 +638,11 @@ mod tests {
             .unwrap();
         let resp = app.oneshot(req).await.unwrap();
         assert_eq!(
-            resp.headers().get("x-request-id").unwrap().to_str().unwrap(),
+            resp.headers()
+                .get("x-request-id")
+                .unwrap()
+                .to_str()
+                .unwrap(),
             "test-id-123"
         );
     }
@@ -549,13 +650,21 @@ mod tests {
     #[tokio::test]
     async fn metrics_returns_prometheus() {
         let app = build_router(test_state());
-        let req = Request::builder().uri("/healthz").body(Body::empty()).unwrap();
+        let req = Request::builder()
+            .uri("/healthz")
+            .body(Body::empty())
+            .unwrap();
         let _ = app.oneshot(req).await;
         let app = build_router(test_state());
-        let req = Request::builder().uri("/metrics").body(Body::empty()).unwrap();
+        let req = Request::builder()
+            .uri("/metrics")
+            .body(Body::empty())
+            .unwrap();
         let resp = app.oneshot(req).await.unwrap();
         assert_eq!(resp.status(), StatusCode::OK);
-        let body = axum::body::to_bytes(resp.into_body(), 100_000).await.unwrap();
+        let body = axum::body::to_bytes(resp.into_body(), 100_000)
+            .await
+            .unwrap();
         let text = String::from_utf8_lossy(&body);
         assert!(text.contains("health_checks") || text.contains("http_requests"));
     }
@@ -563,12 +672,20 @@ mod tests {
     #[tokio::test]
     async fn metrics_records_counter() {
         let app = build_router(test_state());
-        let req = Request::builder().uri("/healthz").body(Body::empty()).unwrap();
+        let req = Request::builder()
+            .uri("/healthz")
+            .body(Body::empty())
+            .unwrap();
         let _ = app.oneshot(req).await;
         let app = build_router(test_state());
-        let req = Request::builder().uri("/metrics").body(Body::empty()).unwrap();
+        let req = Request::builder()
+            .uri("/metrics")
+            .body(Body::empty())
+            .unwrap();
         let resp = app.oneshot(req).await.unwrap();
-        let body = axum::body::to_bytes(resp.into_body(), 100_000).await.unwrap();
+        let body = axum::body::to_bytes(resp.into_body(), 100_000)
+            .await
+            .unwrap();
         let text = String::from_utf8_lossy(&body);
         assert!(text.contains("health_checks") || text.contains("http_requests"));
     }
@@ -596,7 +713,10 @@ mod tests {
     #[tokio::test]
     async fn event_stream_returns_ok() {
         let app = build_router(test_state());
-        let req = Request::builder().uri("/events/stream").body(Body::empty()).unwrap();
+        let req = Request::builder()
+            .uri("/events/stream")
+            .body(Body::empty())
+            .unwrap();
         let resp = app.oneshot(req).await.unwrap();
         assert_eq!(resp.status(), StatusCode::OK);
     }
@@ -612,10 +732,15 @@ mod tests {
             metadata: BoundedMeta::default(),
         });
         let app = build_router(state);
-        let req = Request::builder().uri("/events").body(Body::empty()).unwrap();
+        let req = Request::builder()
+            .uri("/events")
+            .body(Body::empty())
+            .unwrap();
         let resp = app.oneshot(req).await.unwrap();
         assert_eq!(resp.status(), StatusCode::OK);
-        let body = axum::body::to_bytes(resp.into_body(), 100_000).await.unwrap();
+        let body = axum::body::to_bytes(resp.into_body(), 100_000)
+            .await
+            .unwrap();
         let events: serde_json::Value = serde_json::from_slice(&body).unwrap();
         assert!(!events.as_array().unwrap().is_empty());
     }
@@ -625,10 +750,15 @@ mod tests {
     #[tokio::test]
     async fn a2a_agent_card_returns_valid_json() {
         let app = build_router(test_state());
-        let req = Request::builder().uri("/.well-known/agent.json").body(Body::empty()).unwrap();
+        let req = Request::builder()
+            .uri("/.well-known/agent.json")
+            .body(Body::empty())
+            .unwrap();
         let resp = app.oneshot(req).await.unwrap();
         assert_eq!(resp.status(), StatusCode::OK);
-        let body = axum::body::to_bytes(resp.into_body(), 100_000).await.unwrap();
+        let body = axum::body::to_bytes(resp.into_body(), 100_000)
+            .await
+            .unwrap();
         let card: serde_json::Value = serde_json::from_slice(&body).unwrap();
         assert_eq!(card["name"], "portail");
         assert!(card["capabilities"]["streaming"].as_bool().unwrap());
@@ -648,16 +778,21 @@ mod tests {
             .unwrap();
         let resp = app.oneshot(req).await.unwrap();
         assert_eq!(resp.status(), StatusCode::CREATED);
-        let body = axum::body::to_bytes(resp.into_body(), 100_000).await.unwrap();
+        let body = axum::body::to_bytes(resp.into_body(), 100_000)
+            .await
+            .unwrap();
         let task: serde_json::Value = serde_json::from_slice(&body).unwrap();
         assert_eq!(task["status"], "submitted");
-        assert!(task["id"].as_str().unwrap().len() > 0);
+        assert!(!task["id"].as_str().unwrap().is_empty());
     }
 
     #[tokio::test]
     async fn a2a_task_get_returns_404_for_unknown() {
         let app = build_router(test_state());
-        let req = Request::builder().uri("/a2a/tasks/nonexistent").body(Body::empty()).unwrap();
+        let req = Request::builder()
+            .uri("/a2a/tasks/nonexistent")
+            .body(Body::empty())
+            .unwrap();
         let resp = app.oneshot(req).await.unwrap();
         assert_eq!(resp.status(), StatusCode::NOT_FOUND);
     }

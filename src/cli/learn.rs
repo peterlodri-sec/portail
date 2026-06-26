@@ -32,23 +32,23 @@ pub fn run_learn(topic: Option<&str>) -> Result<()> {
     println!("{}", ASCII_HEADER);
     println!("{}", SEPARATOR);
     println!();
-    
+
     match topic {
         Some(t) => show_topic(t),
         None => show_menu(),
     }
-    
+
     Ok(())
 }
 
 fn show_menu() {
     println!("Available topics:");
     println!();
-    
+
     for (i, (code, title)) in TOPICS.iter().enumerate() {
         println!("  {:2}. [{:12}] {}", i + 1, code, title);
     }
-    
+
     println!();
     println!("Usage: portail learn <topic>");
     println!("Example: portail learn dns");
@@ -342,12 +342,12 @@ fn show_headscale() {
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_topics_count() {
         assert_eq!(TOPICS.len(), 10);
     }
-    
+
     #[test]
     fn test_show_topic_unknown() {
         // Should not panic

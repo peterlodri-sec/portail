@@ -45,19 +45,35 @@ pub enum FuzzOutcome {
 /// Generate a set of malformed inputs for each route.
 pub fn generate_probes() -> Vec<(&'static str, &'static str, Vec<u8>, &'static str)> {
     let routes = vec![
-        "/healthz", "/readyz", "/metrics", "/stats",
-        "/v1/chat/completions", "/v1/messages", "/v1/responses",
-        "/.well-known/agent.json", "/events", "/hooks",
-        "/a2a/tasks", "/a2c/chat",
-        "/ci/status", "/ci/badge", "/ci/webhook",
-        "/discovery/nodes", "/discovery/stats",
+        "/healthz",
+        "/readyz",
+        "/metrics",
+        "/stats",
+        "/v1/chat/completions",
+        "/v1/messages",
+        "/v1/responses",
+        "/.well-known/agent.json",
+        "/events",
+        "/hooks",
+        "/a2a/tasks",
+        "/a2c/chat",
+        "/ci/status",
+        "/ci/badge",
+        "/ci/webhook",
+        "/discovery/nodes",
+        "/discovery/stats",
         "/dns/query",
-        "/tinyurl/shorten", "/tinyurl/stats",
-        "/traces", "/traces/stats",
+        "/tinyurl/shorten",
+        "/tinyurl/stats",
+        "/traces",
+        "/traces/stats",
         "/cache/stats",
         "/godfather/status",
         "/nullclaw/agents",
-        "/ebpf/stats", "/dpdk/stats", "/iouring/stats", "/hyper/stats",
+        "/ebpf/stats",
+        "/dpdk/stats",
+        "/iouring/stats",
+        "/hyper/stats",
     ];
 
     let mut probes = Vec::new();
@@ -73,19 +89,39 @@ pub fn generate_probes() -> Vec<(&'static str, &'static str, Vec<u8>, &'static s
         probes.push(("POST", *path, b"not-valid-json".to_vec(), "invalid JSON"));
 
         // Binary garbage
-        probes.push(("POST", *path, vec![0x00, 0x01, 0x02, 0xFF, 0xFE], "binary garbage"));
+        probes.push((
+            "POST",
+            *path,
+            vec![0x00, 0x01, 0x02, 0xFF, 0xFE],
+            "binary garbage",
+        ));
 
         // Very large body (but under limit)
         probes.push(("POST", *path, vec![b'x'; 10_000], "10KB of x"));
 
         // Null byte injection
-        probes.push(("POST", *path, b"{\"key\": \"val\x00ue\"}".to_vec(), "null byte in JSON"));
+        probes.push((
+            "POST",
+            *path,
+            b"{\"key\": \"val\x00ue\"}".to_vec(),
+            "null byte in JSON",
+        ));
 
         // Deeply nested JSON
-        probes.push(("POST", *path, b"{\"a\":{\"b\":{\"c\":{\"d\":{\"e\":1}}}}}".to_vec(), "nested JSON"));
+        probes.push((
+            "POST",
+            *path,
+            b"{\"a\":{\"b\":{\"c\":{\"d\":{\"e\":1}}}}}".to_vec(),
+            "nested JSON",
+        ));
 
         // Array instead of object
-        probes.push(("POST", *path, b"[1,2,3]".to_vec(), "array instead of object"));
+        probes.push((
+            "POST",
+            *path,
+            b"[1,2,3]".to_vec(),
+            "array instead of object",
+        ));
     }
 
     probes
@@ -109,7 +145,8 @@ pub fn run(url: &str) -> Result<FuzzReport> {
         let target = format!("{}{}", url, path);
         let result = match *method {
             "GET" => client.get(&target).send(),
-            "POST" => client.post(&target)
+            "POST" => client
+                .post(&target)
                 .header("content-type", "application/json")
                 .body(body.clone())
                 .send(),

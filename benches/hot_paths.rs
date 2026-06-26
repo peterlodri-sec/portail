@@ -1,7 +1,15 @@
+use criterion::{Criterion, black_box, criterion_group, criterion_main};
 use std::collections::HashMap;
-use criterion::{black_box, criterion_group, criterion_main, Criterion};
 
-criterion_group!(benches, bench_mcp_encode, bench_cache_ops, bench_header_strip, bench_config_parse, bench_rate_limit, bench_bounded_meta);
+criterion_group!(
+    benches,
+    bench_mcp_encode,
+    bench_cache_ops,
+    bench_header_strip,
+    bench_config_parse,
+    bench_rate_limit,
+    bench_bounded_meta
+);
 criterion_main!(benches);
 
 fn bench_mcp_encode(c: &mut Criterion) {
@@ -59,7 +67,7 @@ fn bench_cache_ops(c: &mut Criterion) {
 }
 
 fn bench_header_strip(c: &mut Criterion) {
-    use axum::http::{HeaderMap, HeaderValue, HeaderName};
+    use axum::http::{HeaderMap, HeaderName, HeaderValue};
 
     let mut headers = HeaderMap::new();
     headers.insert("host", HeaderValue::from_static("example.com"));
@@ -69,12 +77,13 @@ fn bench_header_strip(c: &mut Criterion) {
     headers.insert("transfer-encoding", HeaderValue::from_static("chunked"));
     headers.insert("connection", HeaderValue::from_static("keep-alive"));
     headers.insert("x-forwarded-for", HeaderValue::from_static("1.2.3.4"));
-    headers.insert(HeaderName::from_static("x-request-id"), HeaderValue::from_static("abc-123"));
+    headers.insert(
+        HeaderName::from_static("x-request-id"),
+        HeaderValue::from_static("abc-123"),
+    );
 
     c.bench_function("gateway_strip_hop_by_hop", |b| {
-        b.iter(|| {
-            black_box(portail::gateway::strip_hop_by_hop(black_box(&headers)))
-        })
+        b.iter(|| black_box(portail::gateway::strip_hop_by_hop(black_box(&headers))))
     });
 }
 

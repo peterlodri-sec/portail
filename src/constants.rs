@@ -1,9 +1,9 @@
 /*
  * Portail Constants
- * 
+ *
  * Centralized constants, headers, and configuration values used across the codebase.
  * Import this module to ensure consistency and avoid magic numbers.
- * 
+ *
  * Usage:
  *   use crate::constants::*;
  */
