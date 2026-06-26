@@ -145,6 +145,7 @@ async fn main() -> anyhow::Result<()> {
         rate_limiter,
         auth_state,
         event_store,
+        session_store: portail::sessions::SessionStore::new(100),
     });
 
     tokio::spawn({

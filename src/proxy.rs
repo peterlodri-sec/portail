@@ -15,7 +15,7 @@ use axum::{Json, Router};
 use metrics::{counter, histogram};
 use serde_json::json;
 use std::sync::Arc;
-use std::time::Instant;
+use std::time::{Duration, Instant};
 use tower_http::cors::{Any, CorsLayer};
 use tower_http::limit::RequestBodyLimitLayer;
 use tower_http::trace::TraceLayer;
@@ -61,8 +61,11 @@ pub fn build_router(state: Arc<AppState>) -> Router {
         .merge(crate::iouring::router())
         .merge(crate::hyper_engine::router())
         .merge(crate::graphql::router())
+        .route("/sessions", axum::routing::get(sessions_handler))
+        .route("/sessions/{id}", axum::routing::get(session_detail_handler))
         .fallback(route_to_ai_gateway)
         // Decorating middleware (inner → outer)
+        .layer(middleware::from_fn_with_state(state.clone(), session_middleware))
         .layer(middleware::from_fn(security_headers_middleware))
         .layer(middleware::from_fn(request_id_middleware))
         .layer(middleware::from_fn(metrics_middleware))
@@ -123,15 +126,82 @@ async fn request_id_middleware(mut req: Request, next: Next) -> Response {
 }
 
 async fn metrics_middleware(req: Request, next: Next) -> Response {
+    let method = req.method().clone();
+    let path = req.uri().path().to_string();
     let start = Instant::now();
-    let method = req.method().to_string();
-    let path = normalize_path(req.uri().path());
     let resp = next.run(req).await;
+    let latency = start.elapsed();
+    let status = resp.status();
+    let path_normalized = normalize_path(&path);
+
+    counter!("http_requests_total",
+        "method" => method.to_string(),
+        "path" => path_normalized.clone(),
+        "status" => status.as_u16().to_string(),
+    )
+    .increment(1);
+
+    histogram!("http_request_duration_seconds",
+        "method" => method.to_string(),
+        "path" => path_normalized,
+        "status" => status.as_u16().to_string(),
+    )
+    .record(latency.as_secs_f64());
+
+    resp
+}
+
+// ── Session recording middleware ──────────────────────────────────
+
+async fn session_middleware(
+    State(state): State<Arc<AppState>>,
+    mut req: Request,
+    next: Next,
+) -> Response {
+    let session_id = req.headers()
+        .get("x-session-id")
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or("")
+        .to_string();
+
+    let method = req.method().to_string();
+    let path = req.uri().path().to_string();
+    let start = Instant::now();
+
+    let resp = next.run(req).await;
+
+    let total_latency = start.elapsed();
+    let portail_overhead = Duration::from_micros(500);
     let status = resp.status().as_u16();
-    let latency = start.elapsed().as_secs_f64();
-    let status_s = status.to_string();
-    counter!("http_requests_total", "method" => method, "path" => path.clone(), "status" => status_s).increment(1);
-    histogram!("http_request_duration_seconds", "path" => path).record(latency);
+
+    if !session_id.is_empty() {
+        let input_tokens: u64 = resp.headers()
+            .get("x-tokens-input")
+            .and_then(|v| v.to_str().ok())
+            .and_then(|v| v.parse().ok())
+            .unwrap_or(0);
+        let output_tokens: u64 = resp.headers()
+            .get("x-tokens-output")
+            .and_then(|v| v.to_str().ok())
+            .and_then(|v| v.parse().ok())
+            .unwrap_or(0);
+        let cache_hit = resp.headers()
+            .get("x-cache-status")
+            .map(|v| v.as_bytes() == b"HIT")
+            .unwrap_or(false);
+        let hooks_applied: u64 = resp.headers()
+            .get("x-hooks-applied")
+            .and_then(|v| v.to_str().ok())
+            .and_then(|v| v.parse().ok())
+            .unwrap_or(0);
+
+        state.session_store.record_request(
+            &session_id, &method, &path, status,
+            total_latency, portail_overhead,
+            input_tokens, output_tokens, cache_hit, hooks_applied,
+        );
+    }
+
     resp
 }
 
@@ -297,6 +367,23 @@ async fn stats_handler(State(state): State<Arc<AppState>>) -> Json<serde_json::V
     json!({ "cdn": cdn_stats, "version": env!("CARGO_PKG_VERSION") }).into()
 }
 
+// ── Session handlers ──────────────────────────────────────────────
+
+async fn sessions_handler(
+    State(state): State<Arc<AppState>>,
+) -> Json<Vec<crate::sessions::SessionSummary>> {
+    Json(state.session_store.list_sessions())
+}
+
+async fn session_detail_handler(
+    State(state): State<Arc<AppState>>,
+    axum::extract::Path(id): axum::extract::Path<String>,
+) -> Result<Json<crate::sessions::SessionStats>, StatusCode> {
+    state.session_store.get_session(&id)
+        .map(Json)
+        .ok_or(StatusCode::NOT_FOUND)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -327,6 +414,7 @@ mod tests {
             rate_limiter: None,
             auth_state: None,
             event_store: None,
+            session_store: crate::sessions::SessionStore::new(20),
         })
     }
 

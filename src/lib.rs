@@ -43,6 +43,7 @@ pub mod plugins;
 pub mod proxy;
 pub mod rate_limit;
 pub mod sentinel;
+pub mod sessions;
 pub mod spec_verify;
 pub mod store;
 pub mod telemetry;
@@ -76,4 +77,5 @@ pub struct AppState {
     pub rate_limiter: Option<rate_limit::RateLimiter>,
     pub auth_state: Option<auth::AuthState>,
     pub event_store: Option<store::EventStore>,
+    pub session_store: sessions::SessionStore,
 }

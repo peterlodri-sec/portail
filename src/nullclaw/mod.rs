@@ -418,6 +418,7 @@ mod tests {
             rate_limiter: None,
             auth_state: None,
             event_store: None,
+            session_store: crate::sessions::SessionStore::new(20),
         }
     }
 }

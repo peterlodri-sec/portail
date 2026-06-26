@@ -35,6 +35,7 @@ mod layer_tests {
             rate_limiter: None,
             auth_state: None,
             event_store: None,
+            session_store: portail::sessions::SessionStore::new(20),
         }
     }
 

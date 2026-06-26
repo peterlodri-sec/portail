@@ -39,6 +39,7 @@ mod v0_2_integration {
             rate_limiter: None,
             auth_state: None,
             event_store: None,
+            session_store: sessions::SessionStore::new(20),
         }
     }
 
