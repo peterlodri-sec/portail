@@ -4,8 +4,8 @@
 
 ```
 LOOP: plan → implement → test → review → ship → repeat
-STATE:  v2.0 week 1 shipping (Store trait + Turso + proptests + panic hooks) — 164 tests
-NEXT:   v2.0 week 2 (DPDK/io_uring promo, TLS, DNS)
+STATE:  v2.0 wire-in audit complete (11 stub CLIs fixed, dead modules wired, +7 tests) — 174 tests
+NEXT:   v2.0 final (TLS, TUI live data, benchmarks, DX, release)
 OPEN:   #24 integration matrix, #1 super devnote (HUMAN ONLY)
 ```
 
