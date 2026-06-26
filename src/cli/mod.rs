@@ -194,6 +194,18 @@ pub enum Commands {
     /// System compatibility check
     Doctor,
 
+    /// Manage upstream target templates (list, export, share)
+    Target {
+        #[command(subcommand)]
+        action: TargetAction,
+    },
+
+    /// Manage built-in MCP servers (list, install, config)
+    Mcp {
+        #[command(subcommand)]
+        action: McpAction,
+    },
+
     /// Process Interception Tracker — watch /proc, log all processes
     Pit {
         /// One-shot scan instead of continuous watch
@@ -275,4 +287,26 @@ impl Cli {
     pub fn is_server(&self) -> bool {
         matches!(self.command, Some(Commands::Serve))
     }
+}
+
+#[derive(Subcommand, Debug, Clone)]
+pub enum TargetAction {
+    /// List all available target templates (built-in + configured)
+    List,
+    /// Export a target as a shareable JSON snippet
+    Export { name: String },
+    /// Show default built-in targets
+    Builtins,
+}
+
+#[derive(Subcommand, Debug, Clone)]
+pub enum McpAction {
+    /// List all MCP servers (built-in + registry)
+    List,
+    /// Show info about a specific MCP server
+    Info { name: String },
+    /// Generate configuration block for a built-in MCP server
+    Config { name: String },
+    /// List built-in MCP server templates
+    Builtins,
 }

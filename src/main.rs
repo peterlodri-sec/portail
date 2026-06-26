@@ -88,7 +88,8 @@ async fn main() -> anyhow::Result<()> {
     };
 
     if let Some(mcp_cfg) = config.mcp.as_ref().filter(|c| c.enabled) {
-        mcp::start_sidecar(&mcp_cfg.socket_path).await?;
+        let config_json = mcp_cfg.server_registry.as_ref().map(|r| serde_json::to_string(r).unwrap_or_default());
+        mcp::start_sidecar(&mcp_cfg.socket_path, config_json.as_deref()).await?;
     }
 
     // ── v0.2: rate limiting ──
@@ -607,6 +608,121 @@ async fn dispatch_cli(cmd: &cli::Commands, cli: &cli::Cli) -> anyhow::Result<()>
                 }
             } else {
                 portail_agents::pit::run_pit_watcher(config).await;
+            }
+            Ok(())
+        }
+        cli::Commands::Target { action } => {
+            match action {
+                cli::TargetAction::List => {
+                    let cfg = portail::config::Config::load(Some(&cli.config))?;
+                    let targets = if cfg.targets.is_empty() {
+                        portail::config::builtin_targets()
+                    } else {
+                        cfg.targets
+                    };
+                    println!("Target templates ({} total):", targets.len());
+                    for t in &targets {
+                        let tag_str = t.tags.join(",");
+                        println!("  {:<20} {:<12} {:3}/s  [{}]",
+                            t.name, format!("{}/", t.provider), t.rps, tag_str);
+                    }
+                }
+                cli::TargetAction::Export { name } => {
+                    let cfg = portail::config::Config::load(Some(&cli.config))?;
+                    let builtins = portail::config::builtin_targets();
+                    let all: Vec<_> = cfg.targets.iter()
+                        .chain(builtins.iter())
+                        .filter(|t| t.name == *name)
+                        .collect();
+                    match all.first() {
+                        Some(t) => println!("{}", serde_json::to_string_pretty(t)?),
+                        None => println!("Target '{name}' not found"),
+                    }
+                }
+                cli::TargetAction::Builtins => {
+                    for t in portail::config::builtin_targets() {
+                        println!("{} ({}) — {} — models: {}",
+                            t.name, t.provider, t.description.as_deref().unwrap_or(""), t.models.join(", "));
+                    }
+                }
+            }
+            Ok(())
+        }
+        cli::Commands::Mcp { action } => {
+            match action {
+                cli::McpAction::List => {
+                    let cfg = portail::config::Config::load(Some(&cli.config))?;
+                    let servers = cfg.mcp.as_ref()
+                        .and_then(|m| m.server_registry.as_ref())
+                        .map(|s| s.as_slice())
+                        .unwrap_or(&[]);
+                    if servers.is_empty() {
+                        println!("MCP servers: (none configured)");
+                        println!("  Built-in templates: portail mcp builtins");
+                    } else {
+                        println!("MCP servers ({} total):", servers.len());
+                        for s in servers {
+                            let tag_str = s.tags.join(",");
+                            let transport = &s.transport;
+                            println!("  {:<20} {:<8} auto={}  [{}]",
+                                s.name, transport, s.autostart, tag_str);
+                        }
+                    }
+                }
+                cli::McpAction::Info { name } => {
+                    let cfg = portail::config::Config::load(Some(&cli.config))?;
+                    let builtins = portail::config::builtin_mcp_servers();
+                    let all: Vec<_> = cfg.mcp.as_ref()
+                        .and_then(|m| m.server_registry.as_ref())
+                        .into_iter()
+                        .flatten()
+                        .chain(builtins.iter())
+                        .filter(|s| s.name == *name)
+                        .collect();
+                    match all.first() {
+                        Some(s) => {
+                            println!("MCP Server: {}", s.name);
+                            println!("  Transport: {}", s.transport);
+                            println!("  Autostart: {}", s.autostart);
+                            println!("  Description: {}", s.description.as_deref().unwrap_or("-"));
+                            if let Some(cmd) = &s.command {
+                                let args = s.args.as_ref().map(|a| a.join(" ")).unwrap_or_default();
+                                println!("  Command: {} {}", cmd, args);
+                            }
+                            if let Some(url) = &s.url {
+                                println!("  URL: {}", url);
+                            }
+                            println!("  Tags: {}", s.tags.join(", "));
+                        }
+                        None => println!("MCP server '{name}' not found"),
+                    }
+                }
+                cli::McpAction::Config { name } => {
+                    let s = portail::config::builtin_mcp_servers().into_iter()
+                        .find(|s| s.name == *name);
+                    match s {
+                        Some(s) => {
+                            println!("# MCP server config for: {} ({})", s.name, s.description.unwrap_or_default());
+                            println!("[[mcp.server_registry]]");
+                            println!("name = \"{}\"", s.name);
+                            println!("transport = \"{}\"", s.transport);
+                            if let Some(cmd) = &s.command {
+                                println!("command = \"{}\"", cmd);
+                            }
+                            if let Some(args) = &s.args {
+                                println!("args = {}", serde_json::to_string_pretty(args).unwrap_or_default());
+                            }
+                            println!("autostart = true");
+                        }
+                        None => println!("Built-in MCP server '{name}' not found. Available: filesystem, github, playwright, fetch, brave-search, sqlite, sequential-thinking"),
+                    }
+                }
+                cli::McpAction::Builtins => {
+                    for s in portail::config::builtin_mcp_servers() {
+                        println!("  {:<20} {}",
+                            s.name, s.description.as_deref().unwrap_or(""));
+                    }
+                }
             }
             Ok(())
         }

@@ -14,24 +14,30 @@ use tracing::{debug, info, warn};
 const SOCKET_TIMEOUT_SECS: u64 = 30;
 const MAX_BODY_BYTES: usize = 10_000_000;
 
-pub async fn start_sidecar(socket_path: &str) -> anyhow::Result<()> {
+pub async fn start_sidecar(socket_path: &str, server_config: Option<&str>) -> anyhow::Result<()> {
     let sock = Path::new(socket_path);
     if let Some(parent) = sock.parent() {
         tokio::fs::create_dir_all(parent).await?;
     }
     let _ = tokio::fs::remove_file(socket_path).await;
 
+    let mut args: Vec<String> = vec![
+        "run".to_string(),
+        "--with".to_string(),
+        "portail-mcp".to_string(),
+        "python".to_string(),
+        "-m".to_string(),
+        "portail_mcp.server".to_string(),
+        "--socket".to_string(),
+        socket_path.to_string(),
+    ];
+    if let Some(config) = server_config {
+        args.push("--config".to_string());
+        args.push(config.to_string());
+    }
+
     let child = Command::new("uv")
-        .args([
-            "run",
-            "--with",
-            "portail-mcp",
-            "python",
-            "-m",
-            "portail_mcp.server",
-            "--socket",
-            socket_path,
-        ])
+        .args(&args)
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .kill_on_drop(true)

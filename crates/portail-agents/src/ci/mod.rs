@@ -10,3 +10,4 @@ pub mod drift;
 pub mod spec_verify;
 pub mod fuzz_route;
 pub mod chore;
+pub mod research;

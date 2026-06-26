@@ -9,10 +9,107 @@ enabled = true
 upstream = "http://127.0.0.1:4000"
 default_provider = "anthropic"
 
+# ── Upstream Target Templates ─────────────────────────────────────
+# Create, reuse, and share across teams. Each target = a provider
+# endpoint with model allowlist, rate limit, and tags.
+#
+# Set API keys via env vars: $ANTHROPIC_API_KEY, $OPENAI_API_KEY, etc.
+# Export a target:    portail target export anthropic-fast
+# List available:     portail target list
+[[targets]]
+name = "anthropic-fast"
+provider = "anthropic"
+base_url = "https://api.anthropic.com/v1"
+api_key = "$ANTHROPIC_API_KEY"
+models = ["claude-sonnet-4-20250514", "claude-haiku-3-20250313"]
+rps = 10
+tags = ["production", "fast"]
+
+[[targets]]
+name = "openai-gpt5"
+provider = "openai"
+base_url = "https://api.openai.com/v1"
+api_key = "$OPENAI_API_KEY"
+models = ["gpt-5.4", "gpt-5.2"]
+rps = 10
+tags = ["production"]
+
+[[targets]]
+name = "google-gemini"
+provider = "google"
+base_url = "https://generativelanguage.googleapis.com/v1beta"
+api_key = "$GOOGLE_API_KEY"
+models = ["gemini-2.5-flash"]
+rps = 15
+
+# ── MCP Server Registry ───────────────────────────────────────────
+# Built-in MCP servers ship with portail. Configure which to
+# autostart and pass them to the Python sidecar on boot.
+#
+# List available:     portail mcp list
+# Show server info:   portail mcp info filesystem
+# Get config block:   portail mcp config playwright
 [mcp]
 enabled = true
 socket_path = "/run/portail/mcp.sock"
 
+[[mcp.server_registry]]
+name = "filesystem"
+transport = "stdio"
+command = "npx"
+args = ["-y", "@modelcontextprotocol/server-filesystem", "/"]
+autostart = false
+tags = ["built-in", "code"]
+
+[[mcp.server_registry]]
+name = "github"
+transport = "stdio"
+command = "npx"
+args = ["-y", "@modelcontextprotocol/server-github"]
+autostart = false
+tags = ["built-in", "git"]
+
+[[mcp.server_registry]]
+name = "playwright"
+transport = "stdio"
+command = "npx"
+args = ["-y", "@playwright/mcp"]
+autostart = false
+tags = ["built-in", "browser"]
+
+[[mcp.server_registry]]
+name = "fetch"
+transport = "stdio"
+command = "npx"
+args = ["-y", "@modelcontextprotocol/server-fetch"]
+autostart = false
+tags = ["built-in", "web"]
+
+[[mcp.server_registry]]
+name = "brave-search"
+transport = "stdio"
+command = "npx"
+args = ["-y", "@modelcontextprotocol/server-brave-search"]
+autostart = false
+tags = ["built-in", "search"]
+
+[[mcp.server_registry]]
+name = "sqlite"
+transport = "stdio"
+command = "npx"
+args = ["-y", "@modelcontextprotocol/server-sqlite", "./data.db"]
+autostart = false
+tags = ["built-in", "database"]
+
+[[mcp.server_registry]]
+name = "sequential-thinking"
+transport = "stdio"
+command = "npx"
+args = ["-y", "@modelcontextprotocol/server-sequential-thinking"]
+autostart = false
+tags = ["built-in", "reasoning"]
+
+# ── CDN Cache ─────────────────────────────────────────────────────
 [cdn]
 enabled = false
 origin = "http://127.0.0.1:9000"
