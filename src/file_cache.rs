@@ -185,7 +185,7 @@ mod tests {
         cache.put(key, b"hello world").await.unwrap();
         let bytes = cache.get(key).await.unwrap();
         assert_eq!(bytes, b"hello world");
-        cache.delete(key).await;
+        cache.delete(key).await.ok();
     }
 
     #[tokio::test]
