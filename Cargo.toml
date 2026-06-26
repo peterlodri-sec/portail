@@ -1,98 +1,117 @@
 [workspace]
 resolver = "2"
-members = [".", "creative_tui"]
+members = [".", "creative_tui", "crates/portail-agents"]
+
+[workspace.package]
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+repository = "https://github.com/peterlodri-sec/portail"
 
 [package]
 name = "portail"
 version = "2.0.0"
-edition = "2024"
-rust-version = "1.85"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
 description = "Unified proxy/gateway: AI Gateway + MCP Gateway + CDN cache"
-homepage = "https://github.com/peterlodri-sec/portail"
-repository = "https://github.com/peterlodri-sec/portail"
-license = "MIT"
+repository.workspace = true
 keywords = ["proxy", "gateway", "ai", "mcp", "cdn"]
 categories = ["web-programming::http-server", "network-programming", "caching"]
 readme = "README.md"
 
 [dependencies]
-axum = { version = "0.8", features = ["macros", "ws"] }
-tokio = { version = "1", features = ["full"] }
-tower = { version = "0.5", features = ["util"] }
-tower-http = { version = "0.6", features = ["cors", "trace", "limit"] }
-reqwest = { version = "0.12", features = ["json", "http2", "blocking"] }
-serde = { version = "1", features = ["derive"] }
-serde_json = "1"
-toml = "0.8"
-clap = { version = "4", features = ["derive", "env"] }
-moka = { version = "0.12", features = ["future"] }
-async-nats = "0.39"
-tracing = "0.1"
-tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
-tracing-appender = "0.2"
-futures = "0.3"
-uuid = { version = "1", features = ["v4"] }
-bytes = "1"
-anyhow = "1"
-blake3 = "1"
-tokio-stream = { version = "0.1", features = ["fs", "sync"] }
-metrics = "0.24"
-metrics-exporter-prometheus = "0.16"
-mimalloc = "0.1"
-rustc-hash = "2"
-ratatui = "0.29"
-crossterm = { version = "0.28", features = ["event-stream"] }
-chrono = { version = "0.4", features = ["serde"] }
-regex = "1"
-walkdir = "2"
-which = "7"
-redis = { version = "0.27", features = ["tokio-comp", "connection-manager"] }
-hmac = "0.12"
-sha2 = "0.10"
-hex = "0.4"
-dirs = "5"
+axum = { version = "=0.8.9", features = ["macros", "ws"] }
+tokio = { version = "=1.52.3", features = ["full"] }
+tower = { version = "=0.5.3", features = ["util"] }
+tower-http = { version = "=0.6.11", features = ["cors", "trace", "limit"] }
+reqwest = { version = "=0.12.28", features = ["json", "http2", "blocking"] }
+serde = { version = "=1.0.228", features = ["derive"] }
+serde_json = "=1.0.150"
+toml = "=0.8.23"
+clap = { version = "=4.6.1", features = ["derive", "env"] }
+moka = { version = "=0.12.15", features = ["future"] }
+async-nats = "=0.39.0"
+tracing = "=0.1.44"
+tracing-subscriber = { version = "=0.3.23", features = ["env-filter", "json"] }
+tracing-appender = "=0.2.5"
+futures = "=0.3.32"
+uuid = { version = "=1.23.4", features = ["v4"] }
+bytes = "=1.12.0"
+anyhow = "=1.0.103"
+blake3 = "=1.8.5"
+tokio-stream = { version = "=0.1.18", features = ["fs", "sync"] }
+metrics = "=0.24.6"
+metrics-exporter-prometheus = "=0.16.2"
+mimalloc = "=0.1.52"
+tikv-jemallocator = { version = "=0.6.1", optional = true }
+rustc-hash = "=2.1.2"
+ratatui = "=0.29.0"
+crossterm = { version = "=0.28.1", features = ["event-stream"] }
+chrono = { version = "=0.4.45", features = ["serde"] }
+regex = "=1.12.4"
+walkdir = "=2.5.0"
+which = "=7.0.3"
+redis = { version = "=0.27.6", features = ["tokio-comp", "connection-manager"] }
+hmac = "=0.12.1"
+sha2 = "=0.10.9"
+hex = "=0.4.3"
+dirs = "=5.0.1"
 
 # v0.6 — system resource monitor (Godfather)
-sysinfo = "0.32"
+sysinfo = "=0.32.1"
 
 # v0.6 — file cache (content-addressable, ~500MB fort)
-cacache = { version = "13", features = ["mmap"] }
+cacache = { version = "=13.1.0", features = ["mmap"] }
 
 # v0.2 — rate limiting
-governor = { version = "0.7", features = ["std"] }
+governor = { version = "=0.7.0", features = ["std"] }
 
 # v0.2 — authentication
-jsonwebtoken = "9"
-base64 = "0.22"
+jsonwebtoken = "=9.3.1"
+base64 = "=0.22.1"
 
 # v2.x — SSL: AWS-LC (optimized, FIPS-compliant). Replaces OpenSSL.
-# Enable with: cargo build --features aws-lc
-# Or set env: AWS_LC_SYS_STATIC=1 for static linking
-aws-lc-rs = { version = "1", optional = true }
+aws-lc-rs = { version = "=1.17.0", optional = true }
 
 # v0.2 — persistent event store
-rusqlite = { version = "0.33", features = ["bundled"] }
+rusqlite = { version = "=0.33.0", features = ["bundled"] }
 
 # v2.x — sqlx async SQLite (primary backend, compile-time checked queries)
-sqlx = { version = "0.9", features = ["runtime-tokio", "sqlite", "migrate"] }
-# libsql removed: Turso is not free. Replaced with NATS-based replication.
+sqlx = { version = "=0.9.0", features = ["runtime-tokio", "sqlite", "migrate"] }
 
 # v0.2 — OpenTelemetry OTLP
-opentelemetry = "0.27"
-opentelemetry_sdk = { version = "0.27", features = ["rt-tokio"] }
-opentelemetry-otlp = { version = "0.27", features = ["grpc-tonic", "metrics"] }
-opentelemetry-semantic-conventions = "0.27"
-tracing-opentelemetry = "0.28"
+opentelemetry = "=0.27.1"
+opentelemetry_sdk = { version = "=0.27.1", features = ["rt-tokio"] }
+opentelemetry-otlp = { version = "=0.27.0", features = ["grpc-tonic", "metrics"] }
+opentelemetry-semantic-conventions = "=0.27.0"
+tracing-opentelemetry = "=0.28.0"
 
 # v0.6 — GraphQL API
-async-graphql = "7"
-async-stream = "0.3"
-async-trait = "0.1"
+async-graphql = "=7.2.1"
+async-stream = "=0.3.6"
+async-trait = "=0.1.89"
 
 [features]
 default = []
 store-nats = []
 aws-lc = ["dep:aws-lc-rs"]
+jemalloc = ["dep:tikv-jemallocator"]
+portail_system_alloc = []
+
+[workspace.dependencies]
+serde = { version = "=1.0.228", features = ["derive"] }
+serde_json = "=1.0.150"
+tokio = { version = "=1.52.3", features = ["full"] }
+tracing = "=0.1.44"
+anyhow = "=1.0.103"
+chrono = { version = "=0.4.45", features = ["serde"] }
+reqwest = { version = "=0.12.28", features = ["json", "http2", "blocking"] }
+sha2 = "=0.10.9"
+hex = "=0.4.3"
+async-trait = "=0.1.89"
+futures = "=0.3.32"
+walkdir = "=2.5.0"
 
 [profile.release]
 opt-level = 3
@@ -114,11 +133,11 @@ codegen-units = 1
 debug = false
 
 [dev-dependencies]
-criterion = { version = "0.5", features = ["html_reports", "async_tokio"] }
-proptest = "1"
+criterion = { version = "=0.5.1", features = ["html_reports", "async_tokio"] }
+proptest = "=1.11.0"
 
 [build-dependencies]
-chrono = "0.4"
+chrono = "=0.4.45"
 
 [[bench]]
 name = "hot_paths"

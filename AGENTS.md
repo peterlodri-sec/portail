@@ -10,18 +10,23 @@
 |----------------|---------|
 | Understand what Portail is | [`README.md`](README.md) |
 | Get started in 5 minutes | [`START_HERE.md`](START_HERE.md) |
-| See architecture overview | [`docs/architecture/DESIGN.md`](docs/architecture/DESIGN.md) |
-| See network design | [`docs/architecture/NETWORK_DESIGN.md`](docs/architecture/NETWORK_DESIGN.md) |
-| Understand the product strategy | [`docs/architecture/PRODUCT.md`](docs/architecture/PRODUCT.md) |
-| See development roadmap | [`LOOP_STATE.md`](LOOP_STATE.md) |
-| See v2.0 plan | [`docs/architecture/V2_0_PLAN.md`](docs/architecture/V2_0_PLAN.md) |
-| Understand OSI/network layers | [`docs/layers/README.md`](docs/layers/README.md) |
+| Architecture overview | [`docs/architecture/DESIGN.md`](docs/architecture/DESIGN.md) |
+| Network design | [`docs/architecture/NETWORK_DESIGN.md`](docs/architecture/NETWORK_DESIGN.md) |
+| Product strategy | [`docs/architecture/PRODUCT.md`](docs/architecture/PRODUCT.md) |
+| Development roadmap | [`LOOP_STATE.md`](LOOP_STATE.md) |
+| v2.0 plan | [`docs/architecture/V2_0_PLAN.md`](docs/architecture/V2_0_PLAN.md) |
+| OSI/network layers | [`docs/layers/README.md`](docs/layers/README.md) |
 | Contribute | [`docs/contributors/CONTRIBUTING.md`](docs/contributors/CONTRIBUTING.md) |
 | Release process | [`docs/contributors/RELEASE.md`](docs/contributors/RELEASE.md) |
 | CI agent design | [`docs/contributors/CHORE_BOT_DESIGN.md`](docs/contributors/CHORE_BOT_DESIGN.md) |
 | Report security issue | [`SECURITY.md`](SECURITY.md) |
 | Code of conduct | [`docs/contributors/CODE_OF_CONDUCT.md`](docs/contributors/CODE_OF_CONDUCT.md) |
-| See version history | [`CHANGELOG.md`](CHANGELOG.md) |
+| Version history | [`CHANGELOG.md`](CHANGELOG.md) |
+| Cheatsheets | [`docs/cheatsheets/`](docs/cheatsheets/) |
+| ADK-Rust reference | [`docs/adk-rust-cheatsheet.md`](docs/adk-rust-cheatsheet.md) |
+| Axum server patterns | [`docs/cheatsheets/axum.md`](docs/cheatsheets/axum.md) |
+| Tokio async patterns | [`docs/cheatsheets/tokio.md`](docs/cheatsheets/tokio.md) |
+| Tower middleware | [`docs/cheatsheets/tower.md`](docs/cheatsheets/tower.md) |
 | Dependencies + features | [`Cargo.toml`](Cargo.toml) |
 | Route spec (60+ endpoints) | [`spec.routes.toml`](spec.routes.toml) |
 | Dev commands | [`Taskfile.yml`](Taskfile.yml) |
@@ -31,6 +36,12 @@
 | HTTP router (all routes) | [`src/proxy.rs`](src/proxy.rs) |
 | Nix flake | [`flake.nix`](flake.nix) |
 | Ownership | [`CODEOWNERS`](CODEOWNERS) |
+| NullClaw agent (heartbeat) | [`crates/portail-agents/src/nullclaw.rs`](crates/portail-agents/src/nullclaw.rs) |
+| Drift-detect CI agent | [`crates/portail-agents/src/ci/drift.rs`](crates/portail-agents/src/ci/drift.rs) |
+| Spec-verify CI agent | [`crates/portail-agents/src/ci/spec_verify.rs`](crates/portail-agents/src/ci/spec_verify.rs) |
+| Fuzz-route CI agent | [`crates/portail-agents/src/ci/fuzz_route.rs`](crates/portail-agents/src/ci/fuzz_route.rs) |
+| Chore-bot CI agent | [`crates/portail-agents/src/ci/chore.rs`](crates/portail-agents/src/ci/chore.rs) |
+| Release-audit | [`src/release_audit.rs`](src/release_audit.rs) |
 
 ---
 

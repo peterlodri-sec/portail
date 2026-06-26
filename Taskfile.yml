@@ -46,9 +46,16 @@ tasks:
       - cargo fmt
 
   check:
-    desc: Run cargo check
+    desc: Run cargo check (default allocator)
     cmds:
       - cargo check --locked
+
+  check-all-allocs:
+    desc: Check all allocator variants compile
+    cmds:
+      - rtk cargo check 2>&1
+      - rtk cargo check --features jemalloc 2>&1
+      - rtk cargo check --features portail_system_alloc 2>&1
 
   bench:
     desc: Run benchmarks

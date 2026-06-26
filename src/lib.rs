@@ -24,18 +24,14 @@
 pub mod a2a;
 pub mod a2c;
 pub mod auth;
-pub mod build_info;
 pub mod cdn;
 pub mod ci;
 pub mod cli;
 pub mod config;
 pub mod config_watcher;
-pub mod constants;
 pub mod discovery;
 pub mod dns;
-pub mod dpdk;
 pub mod drift;
-pub mod ebpf;
 pub mod events;
 pub mod file_cache;
 pub mod fuzz_route;
@@ -43,11 +39,8 @@ pub mod gateway;
 pub mod godfather;
 pub mod graphql;
 pub mod hooks;
-pub mod hyper_engine;
-pub mod iouring;
 pub mod mcp;
 pub mod nats_bridge;
-pub mod nullclaw;
 pub mod plugins;
 pub mod proxy;
 pub mod rate_limit;
@@ -81,13 +74,8 @@ pub struct AppState {
     pub trace_store: Arc<plugins::TraceStore>,
     pub redis_cache: Arc<plugins::RedisCache>,
     pub discovery: Arc<discovery::DiscoveryStore>,
-    pub ebpf: Arc<ebpf::EbpfManager>,
-    pub iouring: Arc<iouring::IoUringManager>,
-    pub dpdk: Arc<dpdk::DpdkManager>,
-    pub hyper: Arc<hyper_engine::HyperManager>,
     pub ci_status: Arc<ci::CiStatusStore>,
     pub metrics_handle: metrics_exporter_prometheus::PrometheusHandle,
-    // ── v0.2 ──
     pub rate_limiter: Option<rate_limit::RateLimiter>,
     pub auth_state: Option<auth::AuthState>,
     pub event_store: Option<store::EventStore>,

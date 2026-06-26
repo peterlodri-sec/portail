@@ -115,12 +115,7 @@ pub fn generate() -> RouteSpec {
         route("POST", "/cache/flush"),
         // Diagnostics
         route("GET", "/godfather/status"),
-        route("GET", "/nullclaw/heartbeat"),
-        route("GET", "/nullclaw/agents"),
-        route("GET", "/ebpf/stats"),
-        route("GET", "/dpdk/stats"),
-        route("GET", "/iouring/stats"),
-        route("GET", "/hyper/stats"),
+        route("GET", "/agents/status"),
     ];
 
     RouteSpec {

@@ -1,5 +1,4 @@
 use clap::Parser;
-use mimalloc::MiMalloc;
 use portail::AppState;
 use portail::cdn;
 use portail::cli;
@@ -13,8 +12,17 @@ use portail::events::EventLog;
 use portail::mcp;
 use std::sync::{Arc, RwLock};
 
+// Allocator selection:
+//   default    → mimalloc (fast general-purpose)
+//   jemalloc   → cargo build --features jemalloc  (better for high-concurrency)
+//   system     → cargo build --cfg portail_system_alloc  (use Rust's default alloc)
+#[cfg(not(any(feature = "jemalloc", feature = "portail_system_alloc")))]
 #[global_allocator]
-static GLOBAL: MiMalloc = MiMalloc;
+static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
+
+#[cfg(feature = "jemalloc")]
+#[global_allocator]
+static GLOBAL: tikv_jemallocator::Jemalloc = tikv_jemallocator::Jemalloc;
 
 const MAX_EVENTS: usize = 2000;
 
@@ -139,18 +147,6 @@ async fn main() -> anyhow::Result<()> {
         discovery: Arc::new(portail::discovery::DiscoveryStore::new(
             portail::discovery::DiscoveryConfig::default(),
         )),
-        ebpf: Arc::new(portail::ebpf::EbpfManager::new(
-            portail::ebpf::EbpfConfig::default(),
-        )),
-        iouring: Arc::new(portail::iouring::IoUringManager::new(
-            portail::iouring::IoUringConfig::default(),
-        )),
-        dpdk: Arc::new(portail::dpdk::DpdkManager::new(
-            portail::dpdk::DpdkConfig::default(),
-        )),
-        hyper: Arc::new(portail::hyper_engine::HyperManager::new(
-            portail::hyper_engine::HyperConfig::default(),
-        )),
         ci_status: Arc::new(portail::ci::CiStatusStore::new(
             1000,
             std::env::var("PORTAIL_WEBHOOK_SECRET").ok().or_else(|| {
@@ -199,14 +195,6 @@ async fn main() -> anyhow::Result<()> {
                 .await
         }
     });
-    tokio::spawn({
-        let state = Arc::clone(&state);
-        async move {
-            portail::nullclaw::run_nullclaw(portail::nullclaw::NullClawConfig::default(), state)
-                .await
-        }
-    });
-
     // ── v1.1: self-healing config (file watcher replaces SIGHUP) ──
     portail::config_watcher::spawn_watcher(config_watcher, Arc::clone(&state)).await;
 

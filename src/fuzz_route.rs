@@ -69,11 +69,6 @@ pub fn generate_probes() -> Vec<(&'static str, &'static str, Vec<u8>, &'static s
         "/traces/stats",
         "/cache/stats",
         "/godfather/status",
-        "/nullclaw/agents",
-        "/ebpf/stats",
-        "/dpdk/stats",
-        "/iouring/stats",
-        "/hyper/stats",
     ];
 
     let mut probes = Vec::new();
