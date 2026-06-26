@@ -66,6 +66,18 @@ nix-check:
 nix-build:
     nix build .#portail
 
+# ── Docker ─────────────────────────────────────────────────────────────
+docker-build:
+    docker build -t portail:latest .
+
+docker-run: docker-build
+    docker run --rm -p 8787:8787 portail:latest
+
+docker-slim:
+    docker build -t portail:slim --target build -f Dockerfile .
+    @echo "Binary size:"
+    docker run --rm portail:slim ls -lh /build/target/release/portail
+
 # ── Release ────────────────────────────────────────────────────────────
 release-dist: release
     upx --best --lzma target/release/portail
@@ -104,4 +116,7 @@ help:
     @echo "  audit          cargo audit"
     @echo "  deny           cargo deny check"
     @echo "  ci             check + lint + test"
+    @echo "  docker-build   build Docker image"
+    @echo "  docker-run     build + run on :8787"
+    @echo "  docker-slim    check compressed binary size"
     @echo "  nix-check      nix flake check --impulse"

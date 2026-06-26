@@ -61,10 +61,26 @@ Triggered on `v*` tags. Performs the following for each target:
 5. `cargo bench` (criterion, compared against main baseline)
 6. `nix flake check` (NixOS module + package)
 
+### Docker image (`Dockerfile`)
+Multi-stage build:
+1. **Builder** — `rust:1.85-slim-bookworm`, installs `upx-ucl`, builds with LTO/fat/codegen-units=1, UPX `--best --lzma`
+2. **Runtime** — `gcr.io/distroless/cc-debian12`, single binary, non-root user `1000:1000`
+3. **SBOM + provenance** enabled via Docker Buildx
+
+### ghcr.io publishing (`docker.yml`)
+Triggered on `v*` tags:
+1. Set up QEMU + Buildx for multi-arch
+2. Login to ghcr.io via `GITHUB_TOKEN`
+3. Generate tags: `vX.Y.Z`, `vX.Y`, `vX`, `edge`
+4. Build + push `linux/amd64,linux/arm64` with GHA cache
+5. Cosign sign image (keyless via OIDC)
+6. Verify signature
+
 ### Caching
 - `actions/cache` for `~/.cargo/registry`, `~/.cargo/git`, `target/`
 - `sccache` for Rust compilation caching
 - GitHub Actions `rust-cache` action for per-branch keyed caches
+- Docker: `type=gha` cache mode for Buildx layer caching
 
 ## NixOS Module
 
@@ -109,8 +125,8 @@ rustPlatform.buildRustPackage {
 
 ## TODOs
 
-- [ ] Publish `v0.1.0` to crates.io
-- [ ] Add Dockerfile + multi-arch ghcr.io builds
+- [ ] Publish `v0.1.0` (tag + crates.io + GitHub Release)
+- [x] Dockerfile + multi-arch ghcr.io builds (waiting on v0.1.0 tag trigger)
 - [ ] OpenTelemetry export (OTLP)
 - [ ] Headroom compression for cache storage
 - [ ] Rate limiting (token bucket per key/IP)
