@@ -42,6 +42,20 @@
         # ═══════════════════════════════════════════════════════
         craneLib = crane.mkLib pkgs;
         src = craneLib.cleanCargoSource (craneLib.path ./.);
+
+        # Common build args shared across profiles
+        commonBuildArgs = {
+          nativeBuildInputs = with pkgs; [ pkg-config installShellFiles ];
+          buildInputs = with pkgs; [ aws-lc openssl zlib zstd ]
+            ++ pkgs.lib.optionals pkgs.stdenv.isLinux [ mold-wrapped ]
+            ++ pkgs.lib.optionals pkgs.stdenv.isDarwin [
+              pkgs.darwin.apple_sdk.frameworks.Security
+              pkgs.darwin.apple_sdk.frameworks.SystemConfiguration
+              pkgs.darwin.apple_sdk.frameworks.CoreFoundation
+            ];
+          RUSTFLAGS = "-C linker=mold -C link-arg=-Wl,--threads=all --remap-path-prefix=${toString ./..}=/portail-src";
+        };
+
         cargoArtifacts = craneLib.buildDepsOnly {
           inherit src;
           nativeBuildInputs = with pkgs; [ pkg-config ];
@@ -55,23 +69,38 @@
       in {
         # ── Packages ────────────────────────────────────────
         packages = {
-          default = craneLib.buildPackage {
+          # ── Thin LTO profile (parallelized, fast) ──────────
+          default = craneLib.buildPackage (commonBuildArgs // {
             inherit src cargoArtifacts;
-            nativeBuildInputs = with pkgs; [ pkg-config installShellFiles ];
-            buildInputs = with pkgs; [ aws-lc openssl zlib zstd ]
-              ++ pkgs.lib.optionals pkgs.stdenv.isLinux [ mold-wrapped ]
-              ++ pkgs.lib.optionals pkgs.stdenv.isDarwin [
-                pkgs.darwin.apple_sdk.frameworks.Security
-                pkgs.darwin.apple_sdk.frameworks.SystemConfiguration
-                pkgs.darwin.apple_sdk.frameworks.CoreFoundation
-              ];
+            CARGO_PROFILE_RELEASE_LTO = "thin";
+            CARGO_PROFILE_RELEASE_CODEGEN_UNITS = "16";
+            CARGO_PROFILE_RELEASE_OPT_LEVEL = "3";
+            CARGO_PROFILE_RELEASE_STRIP = "symbols";
+            CARGO_PROFILE_RELEASE_DEBUG = "false";
 
+            postInstall = ''
+              echo "=== Genesis Seal ==="
+              mkdir -p $out/var/portail
+              sha256sum $out/bin/portail > $out/var/portail/GENESIS_SEAL.hash
+              echo "Seal: $(cat $out/var/portail/GENESIS_SEAL.hash)"
+            '';
+          });
+
+          # ── Fat LTO profile (max optimization, slower) ─────
+          portail-max = craneLib.buildPackage (commonBuildArgs // {
+            inherit src cargoArtifacts;
             CARGO_PROFILE_RELEASE_LTO = "fat";
             CARGO_PROFILE_RELEASE_CODEGEN_UNITS = "1";
             CARGO_PROFILE_RELEASE_OPT_LEVEL = "3";
             CARGO_PROFILE_RELEASE_STRIP = "symbols";
             CARGO_PROFILE_RELEASE_DEBUG = "false";
-          };
+
+            postInstall = ''
+              echo "=== Genesis Seal (max) ==="
+              mkdir -p $out/var/portail
+              sha256sum $out/bin/portail > $out/var/portail/GENESIS_SEAL.hash
+            '';
+          });
 
           portail = self.packages.${system}.default;
           portail-mcp = pkgs.callPackage ./nix/mcp-plugin.nix { };
