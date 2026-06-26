@@ -4,6 +4,12 @@
 # CI/CD workflows
 .github/ @peterlodri-sec
 
+# Documentation
+docs/ @peterlodri-sec
+AGENTS.md @peterlodri-sec
+LOOP_STATE.md @peterlodri-sec
+CHANGELOG.md @peterlodri-sec
+
 # Nix configuration
 nix/ @peterlodri-sec
 

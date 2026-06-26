@@ -202,24 +202,18 @@ This will:
 ## Development
 
 ```bash
-# Build
-cargo build
-
-# Test
-cargo test
-
-# Lint
-cargo clippy -- -D warnings
-
-# Format
-cargo fmt
-
-# Bench
-cargo bench
-
-# TUI dashboard (development)
-cargo run
+cargo build          # Build
+cargo test            # Test (174 passing)
+cargo clippy -- -D warnings  # Lint
+cargo fmt             # Format
+cargo bench           # Bench
+cargo run             # TUI dashboard (development)
 ```
+
+> Explore the codebase: [`AGENTS.md`](AGENTS.md) — cross-reference hub.  
+> Product strategy: [`docs/architecture/PRODUCT.md`](docs/architecture/PRODUCT.md).  
+> Architecture: [`docs/architecture/DESIGN.md`](docs/architecture/DESIGN.md).  
+> Contributors: [`docs/contributors/CONTRIBUTING.md`](docs/contributors/CONTRIBUTING.md).
 
 ## License
 
