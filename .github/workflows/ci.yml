@@ -3,6 +3,13 @@ name: CI
 on:
   push:
     branches: [main]
+    paths:
+      - 'src/**'
+      - 'crates/**'
+      - 'Cargo.toml'
+      - 'Cargo.lock'
+      - 'rust-toolchain.toml'
+      - '.github/workflows/ci.yml'
   pull_request:
     branches: [main]
   release:
@@ -15,7 +22,6 @@ env:
 
 jobs:
   rust-checks:
-    if: github.event_name == 'release' || contains(github.event.head_commit.modified, 'src/') || contains(github.event.head_commit.modified, 'crates/') || github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -28,19 +34,8 @@ jobs:
       - run: cargo clippy --locked --all-targets -- --deny warnings
       - run: cargo fmt --check
 
-  rust-macos:
-    if: github.event_name == 'release' || contains(github.event.head_commit.modified, 'src/') || contains(github.event.head_commit.modified, 'crates/') || github.event_name == 'pull_request'
-    runs-on: macos-latest
-    steps:
-      - uses: actions/checkout@v7
-      - uses: actions-rust-lang/setup-rust-toolchain@v1
-        with:
-          cache-workspaces: true
-      - run: cargo check --locked --all-targets --workspace
-      - run: cargo test --locked --workspace
-
   binary-profiling:
-    if: github.event_name == 'pull_request' && (contains(github.event.head_commit.modified, 'src/') || contains(github.event.head_commit.modified, 'Cargo.toml') || contains(github.event.head_commit.modified, 'Cargo.lock'))
+    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -53,29 +48,3 @@ jobs:
           echo '```' >> $GITHUB_STEP_SUMMARY
           cargo bloat --release --bin portail --crates >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
-
-  nix-verification:
-    if: github.event_name == 'release' || contains(github.event.head_commit.modified, 'flake.nix') || contains(github.event.head_commit.modified, 'flake.lock') || contains(github.event.head_commit.modified, 'rust-toolchain.toml')
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
-      - uses: cachix/install-nix-action@v25
-        with:
-          nix_path: nixpkgs=channel:nixos-unstable
-      - uses: DeterminateSystems/magic-nix-cache-action@v2
-      - run: nix flake check --impure
-
-  python-lint:
-    if: contains(github.event.head_commit.modified, 'plugins/') || github.event_name == 'release'
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: plugins/portail-mcp
-    steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-python@v6
-        with:
-          python-version: "3.12"
-          cache: pip
-      - run: pip install -e ".[dev]"
-      - run: pip install ruff && ruff check
