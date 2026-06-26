@@ -1,8 +1,6 @@
 //! Redis backend — distributed cache via Redis.
-//!
-//! Optional backend. Requires a running Redis instance.
-//! Keys are prefixed with `portail:cdn:` for namespace isolation.
-//! TTL is set per-entry (default 1h).
+//! Stub for v2.1+. Requires a running Redis instance.
+#![allow(dead_code)]
 
 use bytes::Bytes;
 use std::collections::HashMap;

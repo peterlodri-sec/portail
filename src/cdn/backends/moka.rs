@@ -110,7 +110,7 @@ impl CacheBackend for MokaBackend {
     }
 }
 
-fn parse_size(s: &str) -> Option<u64> {
+pub(crate) fn parse_size(s: &str) -> Option<u64> {
     let s = s.trim().to_lowercase();
     if s.is_empty() { return None; }
     let (num_str, unit) = s.split_at(s.len().max(1) - 1);

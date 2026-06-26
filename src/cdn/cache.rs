@@ -48,21 +48,6 @@ pub async fn stats_logger(cache: Arc<CacheManager>) {
     }
 }
 
-fn parse_size(s: &str) -> Option<u64> {
-    let s = s.trim().to_lowercase();
-    if s.is_empty() {
-        return None;
-    }
-    let (num_str, unit) = s.split_at(s.len().max(1) - 1);
-    match unit {
-        "k" => Some(num_str.parse::<u64>().ok()? * 1_000),
-        "m" => Some(num_str.parse::<u64>().ok()? * 1_000_000),
-        "g" => Some(num_str.parse::<u64>().ok()? * 1_000_000_000),
-        "t" => Some(num_str.parse::<u64>().ok()? * 1_000_000_000_000),
-        _ => s.parse().ok(),
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -70,6 +55,7 @@ mod tests {
 
     #[test]
     fn parse_size_unit() {
+        use crate::cdn::backends::moka::parse_size;
         assert_eq!(parse_size("50g"), Some(50_000_000_000));
         assert_eq!(parse_size("256m"), Some(256_000_000));
         assert_eq!(parse_size("1t"), Some(1_000_000_000_000));

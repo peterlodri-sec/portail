@@ -12,7 +12,6 @@ use portail::config::Config;
 use portail::events::EventLog;
 use portail::mcp;
 use std::sync::{Arc, RwLock};
-use tracing_subscriber::EnvFilter;
 
 #[global_allocator]
 static GLOBAL: MiMalloc = MiMalloc;
@@ -24,10 +23,8 @@ async fn main() -> anyhow::Result<()> {
     // ── v2.0: production panic hook ──
     portail::shutdown::install_panic_hook();
 
-    tracing_subscriber::fmt()
-        .with_env_filter(EnvFilter::from_default_env())
-        .json()
-        .init();
+    // ── v2.x: non-blocking JSON tracing (SOTA) ──
+    let (_guard, _log_dir) = portail::telemetry::init_logging();
 
     let cli = cli::Cli::parse();
 

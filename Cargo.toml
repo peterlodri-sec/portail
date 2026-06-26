@@ -29,6 +29,7 @@ moka = { version = "0.12", features = ["future"] }
 async-nats = "0.39"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
+tracing-appender = "0.2"
 futures = "0.3"
 uuid = { version = "1", features = ["v4"] }
 bytes = "1"
