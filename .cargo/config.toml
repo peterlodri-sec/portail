@@ -1,0 +1,26 @@
+[target.x86_64-unknown-linux-gnu]
+linker = "clang"
+rustflags = ["-C", "link-arg=-fuse-ld=mold"]
+
+[target.aarch64-apple-darwin]
+rustflags = []
+
+[profile.release]
+opt-level = 3
+lto = "fat"
+codegen-units = 1
+strip = "symbols"
+debug = false
+
+[profile.dev]
+opt-level = 0
+debug = true
+split-debuginfo = "unpacked"
+incremental = true
+codegen-units = 256
+
+[profile.bench]
+opt-level = 3
+lto = "fat"
+codegen-units = 1
+debug = false

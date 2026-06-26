@@ -1,0 +1,9 @@
+/target/
+/.direnv/
+.env
+*.swp
+*.swo
+__pycache__/
+*.pyc
+.venv/
+dist/

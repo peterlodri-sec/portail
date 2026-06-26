@@ -1,0 +1,21 @@
+# Portail config — /etc/portail/config.toml
+listen = "0.0.0.0:8787"
+mcp_socket = "/run/portail/mcp.sock"
+cache_dir = "/var/cache/portail"
+cache_size = "10g"
+
+[ai_gateway]
+enabled = true
+upstream = "http://127.0.0.1:4000"
+default_provider = "anthropic"
+
+[mcp]
+enabled = true
+socket_path = "/run/portail/mcp.sock"
+
+[cdn]
+enabled = false
+origin = "http://127.0.0.1:9000"
+cache_dir = "/var/cache/portail"
+cache_size = "10g"
+domains = ["cdn.example.com"]

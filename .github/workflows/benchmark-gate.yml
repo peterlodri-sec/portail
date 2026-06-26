@@ -1,0 +1,56 @@
+name: Benchmark Gate
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - src/**/*.rs
+      - Cargo.toml
+      - Cargo.lock
+      - benches/**/*.rs
+
+env:
+  CARGO_TERM_COLOR: always
+  RUSTFLAGS: -D warnings
+
+jobs:
+  bench:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
+
+      - name: Cache cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-bench-${{ hashFiles('Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-bench-
+
+      - name: Install cargo-criterion
+        uses: baptiste0928/cargo-install@v3
+        with:
+          crate: cargo-criterion
+
+      - name: Build bench deps
+        run: cargo build --benches --locked
+
+      - name: Run benchmarks
+        run: cargo criterion --message-format=json 2>&1 | tee bench-output.json
+
+      - uses: benchmark-action/github-action-benchmark@v1
+        with:
+          tool: cargo
+          output-file-path: bench-output.json
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          auto-push: false
+          alert-threshold: "200%"
+          comment-on-alert: true
+          summary-always: true

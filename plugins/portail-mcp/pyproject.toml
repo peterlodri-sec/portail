@@ -1,0 +1,19 @@
+[project]
+name = "portail-mcp"
+version = "0.1.0"
+description = "Portail MCP Gateway — LiteLLM MCP manager in a sidecar"
+requires-python = ">=3.12"
+dependencies = [
+    "litellm>=1.60.0",
+    "fastapi>=0.115.0",
+    "uvicorn[standard]>=0.34.0",
+    "httpx>=0.28.0",
+    "pydantic>=2.0",
+    "mcp>=1.6.0",
+]
+
+[project.scripts]
+portail-mcp = "portail_mcp.server:main"
+
+[tool.uv]
+dev-dependencies = ["pytest>=8"]
