@@ -47,6 +47,7 @@ pub mod proxy;
 pub mod rate_limit;
 pub mod sentinel;
 pub mod sessions;
+pub mod shutdown;
 pub mod spec_verify;
 pub mod store;
 pub mod supervisor;

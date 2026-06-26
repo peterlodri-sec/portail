@@ -21,6 +21,9 @@ const MAX_EVENTS: usize = 2000;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
+    // ── v2.0: production panic hook ──
+    portail::shutdown::install_panic_hook();
+
     tracing_subscriber::fmt()
         .with_env_filter(EnvFilter::from_default_env())
         .json()

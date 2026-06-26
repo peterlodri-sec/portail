@@ -253,6 +253,7 @@ mod v0_2_integration {
             enabled: true,
             db_path: ":memory:".into(),
             retention_days: 0,
+            ..Default::default()
         })
         .expect("open in-memory event store")
     }

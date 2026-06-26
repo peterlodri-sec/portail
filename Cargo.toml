@@ -67,6 +67,9 @@ base64 = "0.22"
 # v0.2 — persistent event store
 rusqlite = { version = "0.33", features = ["bundled"] }
 
+# v2.0 — Turso/libSQL distributed event store (optional)
+libsql = { version = "0.6", optional = true, features = ["default"] }
+
 # v0.2 — OpenTelemetry OTLP
 opentelemetry = "0.27"
 opentelemetry_sdk = { version = "0.27", features = ["rt-tokio"] }
@@ -77,6 +80,10 @@ tracing-opentelemetry = "0.28"
 # v0.6 — GraphQL API
 async-graphql = "7"
 async-stream = "0.3"
+
+[features]
+default = []
+store-turso = ["dep:libsql"]
 
 [profile.release]
 opt-level = 3
@@ -99,6 +106,7 @@ debug = false
 
 [dev-dependencies]
 criterion = { version = "0.5", features = ["html_reports", "async_tokio"] }
+proptest = "1"
 
 [[bench]]
 name = "hot_paths"
