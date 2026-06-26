@@ -173,9 +173,20 @@ v2.1  [NEXT]     2026-07-03  contributor DX: guide, e2e env, package research �
 v2.2             2026-07-10  documentation + OSS release (crates.io, Homebrew, AUR, blog)
 v2.3             2026-07-17  stability: 80% coverage, benchmarks, bug bash, final release
 v2.5             TBD         release-audit + project-wide simplification (~1700 lines dead code removed)
-v2.6             TBD         portail-agents crate: nullclaw + CI agents on ADK-Rust
+v2.6             TBD         portail-agents crate: nullclaw + CI agents
 v2.7             TBD         RE deep-audit: Ghidra + Ghidra MCP + RE-agent-fleet on devcx53
-v3.0             2026-08-01  AI-native: Go+Rust+Wasm hybrid, Arrow IPC, Extism agents
+v3.0  [NEXT]     2026-08-01  AI-native bridge — see docs/architecture/V3_ROADMAP.md
+  P0              Jul 28     Connection upgrader (HTTP→WS, raw fd handoff)
+  P1              Jul 31     WASM MCP sidecar (Extism/Wasmtime, no Python)
+  P2              Aug 04     BOW secret store (encrypted SQLite, auto-unlock)
+  P3              Aug 07     Capability graph (DAG-based config lowering)
+  P4              Aug 11     Rust AI stack (mistral.rs + candle local inference)
+v4.0  [PLAN]      2026-09-01  VKID integrity kernel, .vaked plugin system
+  P0              Aug 18     portail-plugin-sdk crate + PortailPlugin trait
+  P1              Aug 21     portail-vaked crate: parse, validate, lower to Nix
+  P2              Aug 25     vaked CLI (list, load, lower, build)
+  P3              Aug 28     First official plugin + hook example
+  P4              Sep 01     users send .vaked files → full e2e Nix system
 ```
 
 ### Package Integration Research

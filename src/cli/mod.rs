@@ -1,6 +1,7 @@
 pub mod amberify;
 pub mod complexity;
 pub mod dashboard;
+pub mod dev;
 pub mod doctor;
 pub mod guide;
 pub mod init;
@@ -45,6 +46,12 @@ pub enum OutputFormat {
 pub enum Commands {
     /// Start the proxy server
     Serve,
+
+    /// Developer/contributor entry point — dev dashboard, check, test, lint, build, audit
+    Dev {
+        #[command(subcommand)]
+        action: DevAction,
+    },
 
     /// Show current status and health
     Status,
@@ -206,6 +213,12 @@ pub enum Commands {
         action: McpAction,
     },
 
+    /// Manage .vaked plugins (list, load, lower, build)
+    Vaked {
+        #[command(subcommand)]
+        action: VakedAction,
+    },
+
     /// Process Interception Tracker — watch /proc, log all processes
     Pit {
         /// One-shot scan instead of continuous watch
@@ -300,6 +313,37 @@ pub enum TargetAction {
 }
 
 #[derive(Subcommand, Debug, Clone)]
+pub enum DevAction {
+    /// Interactive dev dashboard (TUI)
+    #[command(name = "dashboard")]
+    Dashboard,
+    /// Cargo check across all allocator variants
+    Check,
+    /// Run tests (all suites)
+    Test,
+    /// Lint: clippy + fmt check
+    Lint,
+    /// Build release binary
+    Build {
+        /// Use fat LTO instead of thin (slower, smaller binary)
+        #[arg(long)]
+        max: bool,
+    },
+    /// Full release audit: verify, SBOM, report, stamp
+    Audit {
+        /// Release version string
+        #[arg(short, long)]
+        version: String,
+    },
+    /// Run the full CI pipeline (check → lint → test → audit)
+    Ci {
+        /// Release version for audit step
+        #[arg(short, long)]
+        version: Option<String>,
+    },
+}
+
+#[derive(Subcommand, Debug, Clone)]
 pub enum McpAction {
     /// List all MCP servers (built-in + registry)
     List,
@@ -309,4 +353,16 @@ pub enum McpAction {
     Config { name: String },
     /// List built-in MCP server templates
     Builtins,
+}
+
+#[derive(Subcommand, Debug, Clone)]
+pub enum VakedAction {
+    /// List loaded .vaked plugins
+    List,
+    /// Load a .vaked file
+    Load { path: PathBuf },
+    /// Show the lowered Nix/NixOS output
+    Lower { path: PathBuf },
+    /// Build a .vaked plugin to WASM
+    Build { path: PathBuf },
 }

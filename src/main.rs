@@ -726,9 +726,43 @@ async fn dispatch_cli(cmd: &cli::Commands, cli: &cli::Cli) -> anyhow::Result<()>
             }
             Ok(())
         }
+        cli::Commands::Vaked { action } => {
+            match action {
+                cli::VakedAction::List => {
+                    let mut registry = portail_vaked::PluginRegistry::new(
+                        std::path::PathBuf::from("vaked"),
+                    );
+                    registry.scan_dir().ok();
+                    println!("{}", portail_vaked::format_plugin_list(&registry));
+                }
+                cli::VakedAction::Load { path } => {
+                    let mut registry = portail_vaked::PluginRegistry::new(
+                        path.parent().unwrap_or(std::path::Path::new(".")).to_path_buf(),
+                    );
+                    match registry.load_vaked(path) {
+                        Ok(name) => println!("Loaded .vaked plugin: {name}"),
+                        Err(e) => println!("Error: {e}"),
+                    }
+                }
+                cli::VakedAction::Lower { path } => {
+                    let raw = std::fs::read_to_string(path)?;
+                    let vaked = portail_plugin_sdk::VakedFile::from_toml(&raw)?;
+                    let nix = vaked.lower_to_nix();
+                    println!("{nix}");
+                }
+                cli::VakedAction::Build { path } => {
+                    portail_vaked::build_vaked(path)?;
+                }
+            }
+            Ok(())
+        }
         cli::Commands::ReleaseAudit { dir, version, out } => {
             let out_dir = out.clone().unwrap_or_else(|| dir.join("audit"));
             portail::release_audit::run_pipeline(dir, version, &out_dir)?;
+            Ok(())
+        }
+        cli::Commands::Dev { action } => {
+            cli::dev::run_dev(action)?;
             Ok(())
         }
         cli::Commands::Serve => unreachable!(),

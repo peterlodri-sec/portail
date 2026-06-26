@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = [".", "creative_tui", "crates/portail-agents"]
+members = [".", "creative_tui", "crates/portail-agents", "crates/portail-plugin-sdk", "crates/portail-vaked"]
 
 [workspace.package]
 edition = "2024"
@@ -46,6 +46,8 @@ metrics-exporter-prometheus = "=0.16.2"
 mimalloc = "=0.1.52"
 tikv-jemallocator = { version = "=0.6.1", optional = true }
 portail-agents = { path = "crates/portail-agents" }
+portail-plugin-sdk = { path = "crates/portail-plugin-sdk" }
+portail-vaked = { path = "crates/portail-vaked" }
 rustc-hash = "=2.1.2"
 ratatui = "=0.29.0"
 crossterm = { version = "=0.28.1", features = ["event-stream"] }
