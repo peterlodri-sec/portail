@@ -59,7 +59,7 @@ use std::sync::Arc;
 
 // ── Configuration ────────────────────────────────────────────────
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct IoUringConfig {
     pub enabled: bool,
     pub ring_size: u32,
@@ -84,7 +84,7 @@ impl Default for IoUringConfig {
 
 // ── io_uring Operation Types ─────────────────────────────────────
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub enum IoUringOp {
     Read {
         fd: i32,
@@ -114,7 +114,7 @@ pub enum IoUringOp {
 
 // ── io_uring Completion ──────────────────────────────────────────
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct IoUringResult {
     pub op: IoUringOp,
     pub result: i32,
@@ -123,7 +123,7 @@ pub struct IoUringResult {
 
 // ── io_uring Stats ───────────────────────────────────────────────
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct IoUringStats {
     pub operations_submitted: u64,
     pub operations_completed: u64,

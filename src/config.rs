@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct Config {
     #[serde(default = "default_listen")]
     pub listen: String,
@@ -31,7 +31,7 @@ fn default_mcp_socket() -> String { "/run/portail/mcp.sock".into() }
 fn default_cache_dir() -> String { "/var/cache/portail".into() }
 fn default_cache_size() -> String { "10g".into() }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct AiGatewayConfig {
     #[serde(default = "default_true")]
     pub enabled: bool,
@@ -43,7 +43,7 @@ pub struct AiGatewayConfig {
 fn default_true() -> bool { true }
 fn default_upstream() -> String { "http://127.0.0.1:4000".into() }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct McpConfig {
     #[serde(default = "default_true")]
     pub enabled: bool,
@@ -52,7 +52,7 @@ pub struct McpConfig {
     pub server_registry: Option<Vec<McpServerEntry>>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct McpServerEntry {
     pub name: String,
     pub transport: String,
@@ -61,7 +61,7 @@ pub struct McpServerEntry {
     pub args: Option<Vec<String>>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct CdnConfig {
     #[serde(default = "default_false")]
     pub enabled: bool,

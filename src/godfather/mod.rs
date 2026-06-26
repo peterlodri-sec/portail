@@ -52,7 +52,7 @@ fn now_millis() -> u64 {
 
 // ── Configuration ────────────────────────────────────────────────
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct GodfatherConfig {
     pub enabled: bool,
     pub heartbeat_interval_secs: u64,
@@ -75,7 +75,7 @@ impl Default for GodfatherConfig {
 
 // ── Service Status ───────────────────────────────────────────────
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct ServiceStatus {
     pub name: String,
     pub status: ServiceState,
@@ -85,7 +85,7 @@ pub struct ServiceStatus {
     pub last_heartbeat: Option<u64>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "snake_case")]
 pub enum ServiceState {
     Running,
@@ -96,7 +96,7 @@ pub enum ServiceState {
 
 // ── Resource Stats ───────────────────────────────────────────────
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct ResourceStats {
     pub memory_used_bytes: u64,
     pub memory_total_bytes: u64,
@@ -111,7 +111,7 @@ pub struct ResourceStats {
 
 // ── Network Stats ────────────────────────────────────────────────
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct NetworkStats {
     pub active_connections: u64,
     pub total_requests: u64,

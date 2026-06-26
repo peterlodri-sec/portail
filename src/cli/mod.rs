@@ -98,6 +98,16 @@ pub enum Commands {
         ci_report_path: PathBuf,
     },
 
+    /// Capture/replay production traffic for regression detection
+    DriftDetect {
+        #[command(subcommand)]
+        command: crate::drift::DriftCommand,
+
+        /// CI mode: write report to file, always exit 0
+        #[arg(long)]
+        ci: bool,
+    },
+
     /// Install portail (binary, cargo, or nix)
     Install {
         /// Installation method

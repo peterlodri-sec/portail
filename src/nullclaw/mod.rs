@@ -56,7 +56,7 @@ use rustc_hash::FxHashMap;
 
 // ── Configuration ────────────────────────────────────────────────
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct NullClawConfig {
     pub enabled: bool,
     pub heartbeat_interval_secs: u64,
@@ -79,7 +79,7 @@ impl Default for NullClawConfig {
 
 // ── Heartbeat Data ───────────────────────────────────────────────
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct Heartbeat {
     pub agent: String,
     pub heartbeat_type: String,
@@ -96,13 +96,13 @@ pub struct Heartbeat {
     pub network: NetworkInfo,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct Topology {
     pub nodes: Vec<String>,
     pub edges: Vec<(String, String)>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct MemoryInfo {
     pub event_log_size: usize,
     pub trace_count: usize,
@@ -110,7 +110,7 @@ pub struct MemoryInfo {
     pub cache_keys: usize,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct NetworkInfo {
     pub dns_queries: u64,
     pub dns_cache_hits: u64,

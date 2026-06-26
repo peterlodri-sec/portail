@@ -44,7 +44,7 @@ const MAX_URL_LENGTH: usize = 4096;
 
 // ── Types ────────────────────────────────────────────────────────
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct TinyUrlEntry {
     pub id: String,
     pub original_url: String,
@@ -56,7 +56,7 @@ pub struct TinyUrlEntry {
     pub last_accessed: Option<Instant>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct TinyUrlConfig {
     pub enabled: bool,
     pub base_url: String,
@@ -181,7 +181,7 @@ impl TinyUrlStore {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct TinyUrlStats {
     pub total_entries: usize,
     pub active_entries: usize,

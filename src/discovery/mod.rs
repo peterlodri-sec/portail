@@ -44,7 +44,7 @@ use rustc_hash::FxHashMap;
 
 // ── Types ────────────────────────────────────────────────────────
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct NetworkNode {
     pub id: String,
     pub name: String,
@@ -71,7 +71,7 @@ pub enum NodeType {
     Custom(String),
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "snake_case")]
 pub enum Protocol {
     Http,
@@ -82,7 +82,7 @@ pub enum Protocol {
     Grpc,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "snake_case")]
 pub enum NodeStatus {
     Online,
@@ -91,7 +91,7 @@ pub enum NodeStatus {
     Unknown,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct DiscoveryConfig {
     pub enabled: bool,
     pub heartbeat_interval_secs: u64,
@@ -190,7 +190,7 @@ impl DiscoveryStore {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct DiscoveryStats {
     pub total_nodes: usize,
     pub online_nodes: usize,

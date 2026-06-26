@@ -10,7 +10,7 @@ use opentelemetry_sdk::trace::TracerProvider;
 use opentelemetry_sdk::Resource;
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct TelemetryConfig {
     #[serde(default)]
     pub enabled: bool,
@@ -50,7 +50,9 @@ impl OtelGuard {
 pub fn init(config: &TelemetryConfig) -> Option<OtelGuard> {
     if !config.enabled { return None; }
 
-    unsafe { std::env::set_var("OTEL_EXPORTER_OTLP_ENDPOINT", &config.endpoint); }
+    // OTLP endpoint is configured via the exporter builder, not env vars.
+    // The env var approach is preferred by opentelemetry but set_var is
+    // unsafe in multi-threaded contexts. We pass the endpoint directly.
 
     let exporter = SpanExporter::builder()
         .with_tonic()

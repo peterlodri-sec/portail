@@ -6,7 +6,7 @@ use std::str::FromStr;
 
 // ── DNS Configuration ────────────────────────────────────────────
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct DnsConfig {
     pub enabled: bool,
     pub listen: String,
@@ -42,7 +42,7 @@ impl Default for DnsConfig {
 
 // ── DNS Hooks ────────────────────────────────────────────────────
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct DnsHook {
     pub id: String,
     pub name: String,
@@ -51,7 +51,7 @@ pub struct DnsHook {
     pub enabled: bool,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "snake_case")]
 pub enum DnsHookAction {
     Block,
@@ -63,14 +63,14 @@ pub enum DnsHookAction {
 
 // ── DNS Record Types ─────────────────────────────────────────────
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct DnsQuery {
     pub name: String,
     pub record_type: DnsRecordType,
     pub source: IpAddr,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub enum DnsRecordType {
     A,
     AAAA,
@@ -98,14 +98,14 @@ impl FromStr for DnsRecordType {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct DnsResponse {
     pub answers: Vec<DnsAnswer>,
     pub ttl: u32,
     pub authoritative: bool,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct DnsAnswer {
     pub name: String,
     pub record_type: DnsRecordType,
@@ -247,7 +247,7 @@ impl DohClient {
 
 // ── Network Isolation ────────────────────────────────────────────
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct NetworkIsolation {
     pub enabled: bool,
     pub allowed_domains: Vec<String>,

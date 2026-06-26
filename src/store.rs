@@ -24,7 +24,7 @@ use tokio::sync::Mutex;
 
 // ─── config ───────────────────────────────────────────────────────
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct StoreConfig {
     /// Enable persistent event store
     #[serde(default)]
@@ -57,7 +57,7 @@ fn default_retention() -> u32 {
 
 // ─── event model ──────────────────────────────────────────────────
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct StoredEvent {
     pub id: Option<i64>,
     pub agent_id: String,

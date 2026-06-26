@@ -27,6 +27,7 @@ pub mod constants;
 pub mod discovery;
 pub mod dns;
 pub mod dpdk;
+pub mod drift;
 pub mod ebpf;
 pub mod events;
 pub mod gateway;

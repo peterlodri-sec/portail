@@ -52,7 +52,7 @@ use std::sync::Arc;
 
 // ── Configuration ────────────────────────────────────────────────
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct HyperConfig {
     pub enabled: bool,
     pub http2_only: bool,
@@ -83,7 +83,7 @@ impl Default for HyperConfig {
 
 // ── Hyper Stats ──────────────────────────────────────────────────
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct HyperStats {
     pub active_connections: u64,
     pub total_connections: u64,

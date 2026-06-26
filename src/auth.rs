@@ -24,7 +24,7 @@ use serde::{Deserialize, Serialize};
 
 // ─── config ───────────────────────────────────────────────────────
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct AuthConfig {
     /// Enable authentication
     #[serde(default)]
@@ -40,7 +40,7 @@ pub struct AuthConfig {
     pub bypass_paths: Vec<String>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct ApiKeyEntry {
     /// Human-readable label (for audit)
     pub label: String,
@@ -49,7 +49,7 @@ pub struct ApiKeyEntry {
     pub scopes: Vec<String>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct JwtConfig {
     /// Supported algorithms: "RS256", "ES256", "HS256"
     pub algorithms: Vec<String>,

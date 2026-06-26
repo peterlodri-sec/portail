@@ -46,7 +46,7 @@ use redis::Commands;
 
 // ── Configuration ────────────────────────────────────────────────
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct RedisCacheConfig {
     pub enabled: bool,
     pub url: String,
@@ -69,7 +69,7 @@ impl Default for RedisCacheConfig {
 
 // ── Cache Entry ──────────────────────────────────────────────────
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct CacheEntry<T: Serialize> {
     pub key: String,
     pub value: T,
@@ -217,7 +217,7 @@ impl RedisCache {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct CacheStats {
     pub connected: bool,
     pub used_memory_bytes: u64,

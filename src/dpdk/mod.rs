@@ -46,7 +46,7 @@ use std::sync::Arc;
 
 // ── Configuration ────────────────────────────────────────────────
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct DpdkConfig {
     pub enabled: bool,
     pub pci_address: String,
@@ -57,7 +57,7 @@ pub struct DpdkConfig {
     pub burst_size: u32,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub enum HugepageSize {
     Size2MB,
     Size1GB,
@@ -79,7 +79,7 @@ impl Default for DpdkConfig {
 
 // ── DPDK Stats ───────────────────────────────────────────────────
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct DpdkStats {
     pub packets_received: u64,
     pub packets_sent: u64,

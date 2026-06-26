@@ -30,7 +30,7 @@ use serde::{Deserialize, Serialize};
 
 // ─── config ───────────────────────────────────────────────────────
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct RateLimitConfig {
     /// Enable rate limiting
     #[serde(default = "default_true")]
@@ -61,13 +61,13 @@ impl Default for RateLimitConfig {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct EndpointLimit {
     pub burst: u32,
     pub per_second: f64,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct ApiKeyLimit {
     pub burst: u32,
     pub per_second: f64,

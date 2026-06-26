@@ -293,6 +293,10 @@ async fn dispatch_cli(cmd: &cli::Commands, cli: &cli::Cli) -> anyhow::Result<()>
             }
             Ok(())
         }
+        cli::Commands::DriftDetect { command, ci } => {
+            portail::drift::run(command, *ci)?;
+            Ok(())
+        }
         cli::Commands::Install { method, dir } => {
             let install_method = match method {
                 cli::InstallMethod::Auto => cli_install::InstallMethod::Auto,

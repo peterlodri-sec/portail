@@ -51,7 +51,7 @@ use std::sync::Arc;
 
 // ── Configuration ────────────────────────────────────────────────
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct EbpfConfig {
     pub enabled: bool,
     pub trace_syscalls: bool,
@@ -76,7 +76,7 @@ impl Default for EbpfConfig {
 
 // ── eBPF Event Types ─────────────────────────────────────────────
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct EbpfEvent {
     pub timestamp: u64,
     pub event_type: EbpfEventType,
@@ -86,7 +86,7 @@ pub struct EbpfEvent {
     pub data: EbpfEventData,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "snake_case")]
 pub enum EbpfEventType {
     Syscall,
@@ -95,7 +95,7 @@ pub enum EbpfEventType {
     MemoryAllocation,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub enum EbpfEventData {
     Syscall {
         syscall_nr: u32,
@@ -124,7 +124,7 @@ pub enum EbpfEventData {
 
 // ── eBPF Stats ───────────────────────────────────────────────────
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct EbpfStats {
     pub events_processed: u64,
     pub syscalls_traced: u64,
