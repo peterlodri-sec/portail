@@ -4001,6 +4001,7 @@ dependencies = [
  "async-graphql",
  "async-nats",
  "async-stream",
+ "async-trait",
  "aws-lc-rs",
  "axum 0.8.9",
  "base64 0.22.1",

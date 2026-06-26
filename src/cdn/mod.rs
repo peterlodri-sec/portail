@@ -1,6 +1,9 @@
 mod cache;
 mod purge;
 
+mod backend;
+mod backends;
+
 pub use cache::CacheManager;
 pub use cache::stats_logger;
 pub use purge::purge_loop;
