@@ -358,6 +358,21 @@ async fn route_to_ai_gateway(State(state): State<Arc<AppState>>, req: Request) -
     let path = req.uri().path().to_string();
     let matching_hooks = state.hooks.match_message(&path);
 
+    // Call .vaked plugin hooks (pre_request)
+    let plugin_result = crate::plugin_hooks::call_plugin_hooks(
+        &state.plugin_registry,
+        portail_plugin_sdk::HookPoint::PreRequest,
+        &path,
+        provider.as_deref(),
+        None,
+        None,
+        std::collections::HashMap::new(),
+    );
+    if let Some(status) = plugin_result.abort_status {
+        return (StatusCode::from_u16(status).unwrap_or(StatusCode::FORBIDDEN),
+                plugin_result.abort_message.unwrap_or_default()).into_response();
+    }
+
     let result = if matching_hooks.is_empty() {
         gateway::forward(&upstream, req).await
     } else {
@@ -542,6 +557,9 @@ mod tests {
             supervisor: std::sync::Arc::new(crate::supervisor::Supervisor::new(
                 std::sync::Arc::new(crate::events::EventLog::new(100)),
             )),
+            plugin_registry: crate::plugin_hooks::init_plugin_registry(
+                &std::path::Path::new("vaked"),
+            ),
         })
     }
 

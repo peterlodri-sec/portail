@@ -48,6 +48,9 @@ mod v0_2_integration {
             supervisor: std::sync::Arc::new(portail::supervisor::Supervisor::new(
                 std::sync::Arc::new(portail::events::EventLog::new(100)),
             )),
+            plugin_registry: portail::plugin_hooks::init_plugin_registry(
+                &std::path::Path::new("vaked"),
+            ),
         }
     }
 

@@ -42,6 +42,7 @@ pub mod hooks;
 pub mod mcp;
 pub mod nats_bridge;
 pub mod plugins;
+pub mod plugin_hooks;
 pub mod proxy;
 pub mod rate_limit;
 pub mod release_audit;
@@ -57,7 +58,9 @@ pub mod test_utils;
 pub mod types;
 
 pub use config::Config;
+use portail_vaked::PluginRegistry;
 
+use std::path::PathBuf;
 use std::sync::Arc;
 use std::sync::RwLock;
 
@@ -83,4 +86,5 @@ pub struct AppState {
     pub session_store: sessions::SessionStore,
     pub file_cache: file_cache::FileCache,
     pub supervisor: Arc<supervisor::Supervisor>,
+    pub plugin_registry: Arc<std::sync::Mutex<PluginRegistry>>,
 }

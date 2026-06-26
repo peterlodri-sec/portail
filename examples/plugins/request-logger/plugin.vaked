@@ -1,0 +1,30 @@
+# request-logger — first official Portail .vaked plugin
+#
+# Logs all upstream AI requests and responses.
+# Deploy: portail vaked load plugin.vaked
+# Lower:  portail vaked lower plugin.vaked → NixOS module
+#
+# Build WASM: cargo build --target wasm32-wasip1 --release
+
+[plugin]
+name = "request-logger"
+version = "1.0.0"
+description = "Logs all upstream requests and responses"
+language = "rust"
+
+[build]
+type = "wasm"
+entry = "src/lib.rs"
+
+[hooks]
+pre_request = ["log_request"]
+post_response = ["log_response"]
+on_error = ["log_error"]
+
+[capabilities]
+requires = []
+grants = ["log", "observe"]
+
+[target]
+nixos_module = false
+env = ["LOG_LEVEL=info"]

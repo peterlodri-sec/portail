@@ -168,6 +168,9 @@ async fn main() -> anyhow::Result<()> {
         ),
         config_watcher: config_watcher.clone(),
         supervisor: Arc::new(portail::supervisor::Supervisor::new(Arc::clone(&event_log))),
+        plugin_registry: portail::plugin_hooks::init_plugin_registry(
+            &std::path::Path::new("vaked"),
+        ),
     });
 
     // ── v2.0: session TTL eviction (1h) ──
