@@ -60,6 +60,19 @@ tasks:
     cmds:
       - cargo clean
 
+  clean-all:
+    desc: Deep clean (build artifacts + Nix store garbage)
+    cmds:
+      - cargo clean
+      - nix-collect-garbage -d 2>/dev/null || echo "nix-collect-garbage not available"
+      - rm -rf .sccache
+      - echo "All build artifacts removed"
+
+  clean-nix:
+    desc: Clean Nix store garbage (keeps last 3 generations)
+    cmds:
+      - nix-collect-garbage --delete-older-than 7d 2>/dev/null || echo "nix not available"
+
   # ── Amber ──────────────────────────────────────────────────────
 
   amberify:
@@ -258,6 +271,28 @@ tasks:
     desc: Run end-to-end test suite
     cmds:
       - bash scripts/e2e-test.sh
+
+  ramdisk:
+    desc: Mount RAM disk at target/ for instant compilation
+    cmds:
+      - |
+        if [ "$(uname)" = "Linux" ]; then
+          sudo mkdir -p target && sudo mount -t tmpfs -o size=8G tmpfs ./target
+        elif [ "$(uname)" = "Darwin" ]; then
+          diskutil erasevolume HFS+ 'RustRAM' $(hdiutil attach -nomount ram://16777216) 2>/dev/null || true
+          ln -sf /Volumes/RustRAM target
+        fi
+        echo "RAM disk ready at ./target"
+
+  test-fast:
+    desc: Run tests in parallel (nextest)
+    cmds:
+      - cargo nextest run
+
+  build-cranelift:
+    desc: Build with Cranelift backend (30%+ faster)
+    cmds:
+      - cargo +nightly build -Zcodegen-backend=cranelift
 
   # ── Help ───────────────────────────────────────────────────────
 

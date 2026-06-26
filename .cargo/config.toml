@@ -1,22 +1,23 @@
+# Portail — Hyper-Optimized Cargo Configuration
+# Nix-first, native performance.
+
+# ── Linux: wild linker (unbelievably fast) ─────────────────────
 [target.x86_64-unknown-linux-gnu]
 linker = "clang"
-rustflags = ["-C", "link-arg=-fuse-ld=mold"]
+rustflags = ["-C", "link-arg=-fuse-ld=wild"]
 
-[target.aarch64-apple-darwin]
-rustflags = []
+[target.aarch64-unknown-linux-gnu]
+linker = "clang"
+rustflags = ["-C", "link-arg=-fuse-ld=wild"]
 
-# ── Nightly: fast compile + better diagnostics ───────────────────
+# ── Nightly compiler flags ─────────────────────────────────────
 [build]
-rustflags = [
-    "-Zshare-generics=y",
-    "-Zthreads=0",
-    "-Zmacro-backtrace",
-]
+rustflags = ["-Zshare-generics=y", "-Zthreads=0"]
 
 [rustdoc]
 rustflags = ["-Zunstable-options", "--generate-link-to-definition"]
 
-# ── Release ─────────────────────────────────────────────────────
+# ── Profiles ───────────────────────────────────────────────────
 [profile.release]
 opt-level = 3
 lto = "fat"
@@ -24,7 +25,6 @@ codegen-units = 1
 strip = "symbols"
 debug = false
 
-# ── Dev: fast compilation ────────────────────────────────────────
 [profile.dev]
 opt-level = 0
 debug = false
@@ -32,22 +32,16 @@ split-debuginfo = "off"
 incremental = true
 codegen-units = 256
 
-# ── Dev-test: optimized but debuggable ───────────────────────────
-[profile.dev-test]
-inherits = "dev"
+[profile.dev.package."*"]
+opt-level = 3
+debug = false
+
+[profile.test]
 opt-level = 0
 debug = false
 incremental = true
 codegen-units = 256
 
-# ── Bench ────────────────────────────────────────────────────────
-[profile.bench]
-opt-level = 3
-lto = "fat"
-codegen-units = 1
-debug = false
-
-# ── Fast checkout (CI) ───────────────────────────────────────────
 [profile.ci]
 inherits = "dev"
 opt-level = 1
@@ -55,7 +49,12 @@ debug = false
 incremental = false
 codegen-units = 128
 
-# ── Test config ──────────────────────────────────────────────────
+[profile.bench]
+opt-level = 3
+lto = "fat"
+codegen-units = 1
+debug = false
+
 [lib]
 test = true
 doctest = true

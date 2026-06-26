@@ -64,6 +64,11 @@ governor = { version = "0.7", features = ["std"] }
 jsonwebtoken = "9"
 base64 = "0.22"
 
+# v2.x — SSL: AWS-LC (optimized, FIPS-compliant). Replaces OpenSSL.
+# Enable with: cargo build --features aws-lc
+# Or set env: AWS_LC_SYS_STATIC=1 for static linking
+aws-lc-rs = { version = "1", optional = true }
+
 # v0.2 — persistent event store
 rusqlite = { version = "0.33", features = ["bundled"] }
 
@@ -85,11 +90,7 @@ async-stream = "0.3"
 [features]
 default = []
 store-nats = []
-
-# Nightly features (enabled when using nightly toolchain)
-# - portable-simd: stable SIMD intrinsics for blake3/sha2
-# - allocator_api: custom allocator integration
-nightly = []
+aws-lc = ["dep:aws-lc-rs"]
 
 [profile.release]
 opt-level = 3
