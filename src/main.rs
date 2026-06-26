@@ -146,6 +146,7 @@ async fn main() -> anyhow::Result<()> {
         auth_state,
         event_store,
         session_store: portail::sessions::SessionStore::new(100),
+        file_cache: portail::file_cache::FileCache::new(&portail::file_cache::FileCacheConfig::default()),
     });
 
     tokio::spawn({

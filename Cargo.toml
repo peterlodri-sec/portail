@@ -54,6 +54,9 @@ dirs = "5"
 # v0.6 — system resource monitor (Godfather)
 sysinfo = "0.32"
 
+# v0.6 — file cache (content-addressable, ~500MB fort)
+cacache = { version = "13", features = ["mmap"] }
+
 # v0.2 — rate limiting
 governor = { version = "0.7", features = ["std"] }
 

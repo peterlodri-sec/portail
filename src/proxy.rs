@@ -61,6 +61,7 @@ pub fn build_router(state: Arc<AppState>) -> Router {
         .merge(crate::iouring::router())
         .merge(crate::hyper_engine::router())
         .merge(crate::graphql::router())
+        .merge(crate::file_cache::router_with_state())
         .route("/sessions", axum::routing::get(sessions_handler))
         .route("/sessions/{id}", axum::routing::get(session_detail_handler))
         .fallback(route_to_ai_gateway)
@@ -415,6 +416,7 @@ mod tests {
             auth_state: None,
             event_store: None,
             session_store: crate::sessions::SessionStore::new(20),
+            file_cache: crate::file_cache::FileCache::new(&crate::file_cache::FileCacheConfig { path: "/tmp/portail-test-cache".into(), ..Default::default() }),
         })
     }
 

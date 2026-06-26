@@ -419,6 +419,7 @@ mod tests {
             auth_state: None,
             event_store: None,
             session_store: crate::sessions::SessionStore::new(20),
+            file_cache: crate::file_cache::FileCache::new(&crate::file_cache::FileCacheConfig { path: "/tmp/portail-test-cache".into(), ..Default::default() }),
         }
     }
 }

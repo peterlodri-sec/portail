@@ -40,6 +40,7 @@ mod v0_2_integration {
             auth_state: None,
             event_store: None,
             session_store: sessions::SessionStore::new(20),
+            file_cache: portail::file_cache::FileCache::new(&portail::file_cache::FileCacheConfig { path: "/tmp/portail-test-cache".into(), ..Default::default() }),
         }
     }
 

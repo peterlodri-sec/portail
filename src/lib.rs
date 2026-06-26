@@ -30,6 +30,7 @@ pub mod dpdk;
 pub mod drift;
 pub mod ebpf;
 pub mod events;
+pub mod file_cache;
 pub mod fuzz_route;
 pub mod gateway;
 pub mod godfather;
@@ -46,6 +47,7 @@ pub mod sentinel;
 pub mod sessions;
 pub mod spec_verify;
 pub mod store;
+pub mod supervisor;
 pub mod telemetry;
 pub mod test_utils;
 
@@ -78,4 +80,5 @@ pub struct AppState {
     pub auth_state: Option<auth::AuthState>,
     pub event_store: Option<store::EventStore>,
     pub session_store: sessions::SessionStore,
+    pub file_cache: file_cache::FileCache,
 }
