@@ -158,5 +158,5 @@ v1.2  [SHIPPED]  2026-06-26  dashboard endpoint, rate/auth counters
 v1.3  [SHIPPED]  2026-06-26  type hardening, BoundedMeta
 v1.4  [SHIPPED]  2026-06-26  chore-bot, NATS bridge
 v1.4r [SHIPPED]  2026-06-26  release v1.4.0 (crates.io, homebrew, docker)
-v2.0  [NEXT]     2026-07-01  first production-stable (4-week plan)
+v2.0  [NEXT]     2026-08-01  first prod-stable: Turso, DPDK/io_uring promo, abstractions, DX, hardening (230+ tests)
 ```
