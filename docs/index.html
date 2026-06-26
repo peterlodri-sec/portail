@@ -237,6 +237,30 @@ portail</code></pre>
         </div>
     </section>
 
+    <section>
+        <div class="container">
+            <h2>Performance Engines</h2>
+            <div class="features">
+                <div class="feature">
+                    <h3>eBPF</h3>
+                    <p>Kernel-level observability. Trace syscalls, measure network latency, monitor scheduler — all without modifying application code.</p>
+                </div>
+                <div class="feature">
+                    <h3>io_uring</h3>
+                    <p>Async I/O engine (Linux 5.1+). Single syscall for batch submissions, zero-copy reads, reduced context switches.</p>
+                </div>
+                <div class="feature">
+                    <h3>DPDK</h3>
+                    <p>Kernel bypass for extreme performance. Direct NIC access via Poll Mode Driver. Requires dedicated NIC + hugepages.</p>
+                </div>
+                <div class="feature">
+                    <h3>Hyper</h3>
+                    <p>Low-level HTTP engine. Direct control over HTTP/2 settings, connection pooling, flow control. Skip axum overhead.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
     <footer>
         <div class="container">
             <p>Portail is open source under the MIT license</p>

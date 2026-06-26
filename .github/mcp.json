@@ -1,0 +1,64 @@
+{
+  "servers": {
+    "portail": {
+      "command": "cargo",
+      "args": ["run", "--", "serve"],
+      "env": {
+        "PORTAIL_LISTEN": "127.0.0.1:8787",
+        "PORTAIL_CONFIG": "portail.toml"
+      },
+      "description": "Portail proxy server"
+    },
+    "portail-tui": {
+      "command": "cargo",
+      "args": ["run"],
+      "description": "Portail TUI dashboard"
+    },
+    "portail-learn": {
+      "command": "cargo",
+      "args": ["run", "--", "learn"],
+      "description": "Portail network guide"
+    }
+  },
+  "tools": {
+    "portail_status": {
+      "command": "cargo",
+      "args": ["run", "--", "status"],
+      "description": "Show portail status"
+    },
+    "portail_health": {
+      "command": "cargo",
+      "args": ["run", "--", "health"],
+      "description": "Run health check"
+    },
+    "portail_events": {
+      "command": "cargo",
+      "args": ["run", "--", "events"],
+      "description": "Show recent events"
+    },
+    "portail_hooks": {
+      "command": "cargo",
+      "args": ["run", "--", "hooks", "list"],
+      "description": "List hooks"
+    },
+    "portail_complexity": {
+      "command": "cargo",
+      "args": ["run", "--", "complexity"],
+      "description": "Analyze time complexity"
+    }
+  },
+  "resources": {
+    "portail_config": {
+      "uri": "file://portail.toml",
+      "description": "Portail configuration file"
+    },
+    "portail_design": {
+      "uri": "file://DESIGN.md",
+      "description": "Architecture documentation"
+    },
+    "portail_start_here": {
+      "uri": "file://START_HERE.md",
+      "description": "Getting started guide"
+    }
+  }
+}

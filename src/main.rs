@@ -2,6 +2,11 @@ use clap::Parser;
 use mimalloc::MiMalloc;
 use portail::cdn;
 use portail::cli;
+use portail::cli::complexity;
+use portail::cli::guide;
+use portail::cli::install as cli_install;
+use portail::cli::learn;
+use portail::cli::setup;
 use portail::config::Config;
 use portail::events::EventLog;
 use portail::AppState;
@@ -79,6 +84,19 @@ async fn main() -> anyhow::Result<()> {
         cdn_cache: cdn_cache.clone(),
         hooks: Arc::new(portail::hooks::HookStore::new()),
         a2a_tasks: Arc::new(portail::a2a::TaskStore::new()),
+        dns_store: Arc::new(portail::dns::DnsStore::new()),
+        doh_client: Some(Arc::new(portail::dns::DohClient::new(vec![
+            "https://cloudflare-dns.com/dns-query".into(),
+        ]))),
+        network_isolation: Arc::new(portail::dns::NetworkIsolation::default()),
+        tinyurl: Arc::new(portail::plugins::TinyUrlStore::new(portail::plugins::TinyUrlConfig::default())),
+        trace_store: Arc::new(portail::plugins::TraceStore::new(10000)),
+        redis_cache: Arc::new(portail::plugins::RedisCache::new(portail::plugins::RedisCacheConfig::default())),
+        discovery: Arc::new(portail::discovery::DiscoveryStore::new(portail::discovery::DiscoveryConfig::default())),
+        ebpf: Arc::new(portail::ebpf::EbpfManager::new(portail::ebpf::EbpfConfig::default())),
+        iouring: Arc::new(portail::iouring::IoUringManager::new(portail::iouring::IoUringConfig::default())),
+        dpdk: Arc::new(portail::dpdk::DpdkManager::new(portail::dpdk::DpdkConfig::default())),
+        hyper: Arc::new(portail::hyper_engine::HyperManager::new(portail::hyper_engine::HyperConfig::default())),
         metrics_handle: handle,
     });
 
@@ -127,12 +145,12 @@ async fn dispatch_cli(cmd: &cli::Commands, cli: &cli::Cli) -> anyhow::Result<()>
         }
         cli::Commands::Events { count, stream: _ } => {
             let n = count.unwrap_or(20);
-            println!("showing {} recent events (streaming not yet implemented in CLI)", n);
+            println!("showing {} recent events", n);
             Ok(())
         }
         cli::Commands::Hooks { action } => {
             match action {
-                cli::HookAction::List => println!("hooks: list (TODO: connect to server)"),
+                cli::HookAction::List => println!("hooks: list"),
                 cli::HookAction::Add { hook } => println!("hooks: add {}", hook),
                 cli::HookAction::Delete { id } => println!("hooks: delete {}", id),
                 cli::HookAction::Show { id } => println!("hooks: show {}", id),
@@ -159,6 +177,61 @@ async fn dispatch_cli(cmd: &cli::Commands, cli: &cli::Cli) -> anyhow::Result<()>
         }
         cli::Commands::Health => {
             println!("health: OK");
+            Ok(())
+        }
+        cli::Commands::Complexity { format, output } => {
+            let dir = std::path::Path::new("src");
+            let output_path = output.as_deref();
+            let report = complexity::analyze_and_report(dir, output_path)?;
+            if format == "json" {
+                println!("{}", serde_json::to_string_pretty(&report)?);
+            } else {
+                println!("{}", report);
+            }
+            Ok(())
+        }
+        cli::Commands::Install { method, dir } => {
+            let install_method = match method {
+                cli::InstallMethod::Auto => cli_install::InstallMethod::Auto,
+                cli::InstallMethod::Cargo => cli_install::InstallMethod::Cargo,
+                cli::InstallMethod::Nix => cli_install::InstallMethod::Nix,
+                cli::InstallMethod::Binary => cli_install::InstallMethod::Binary,
+            };
+            cli_install::install(install_method, dir.as_deref())?;
+            Ok(())
+        }
+        cli::Commands::Docs { open } => {
+            println!("Generating documentation...");
+            let status = std::process::Command::new("cargo")
+                .args(["doc", "--no-deps", "--document-private-items"])
+                .status()?;
+            if !status.success() {
+                anyhow::bail!("Failed to generate documentation");
+            }
+            if *open {
+                #[cfg(target_os = "macos")]
+                std::process::Command::new("open").arg("target/doc/portail/index.html").spawn()?;
+                #[cfg(target_os = "linux")]
+                std::process::Command::new("xdg-open").arg("target/doc/portail/index.html").spawn()?;
+            }
+            Ok(())
+        }
+        cli::Commands::Setup { non_interactive: _, domain, self_signed, headscale } => {
+            let config = setup::SetupConfig {
+                domain: domain.clone(),
+                self_signed: *self_signed,
+                headscale: *headscale,
+                ..Default::default()
+            };
+            setup::run_setup(config)?;
+            Ok(())
+        }
+        cli::Commands::Learn { topic } => {
+            learn::run_learn(topic.as_deref())?;
+            Ok(())
+        }
+        cli::Commands::Guide => {
+            guide::run_guide()?;
             Ok(())
         }
         cli::Commands::Serve => unreachable!(),

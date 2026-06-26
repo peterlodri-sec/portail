@@ -35,7 +35,7 @@ impl EventLog {
                 .map(|d| d.as_millis() as u64)
                 .unwrap_or(0);
         }
-        let mut ring = self.ring.lock().unwrap();
+        let mut ring = self.ring.lock().unwrap_or_else(|e| e.into_inner());
         if ring.len() >= self.max_events {
             ring.pop_front();
         }
@@ -48,8 +48,12 @@ impl EventLog {
     }
 
     pub fn recent(&self, n: usize) -> Vec<AgentEvent> {
-        let ring = self.ring.lock().unwrap();
+        let ring = self.ring.lock().unwrap_or_else(|e| e.into_inner());
         ring.iter().rev().take(n).cloned().collect()
+    }
+
+    pub fn count(&self) -> usize {
+        self.ring.lock().unwrap_or_else(|e| e.into_inner()).len()
     }
 }
 

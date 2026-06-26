@@ -7,7 +7,7 @@ use crate::AppState;
 pub use cdn::CacheManager;
 use axum::body::Body;
 use axum::extract::{Request, State};
-use axum::http::StatusCode;
+use axum::http::{Method, StatusCode};
 use axum::middleware::{self, Next};
 use axum::response::{IntoResponse, Response};
 use axum::routing::{any, delete, get};
@@ -16,8 +16,11 @@ use metrics::{counter, histogram};
 use serde_json::json;
 use std::sync::Arc;
 use std::time::Instant;
-use tower_http::cors::CorsLayer;
+use tower_http::cors::{Any, CorsLayer};
+use tower_http::limit::RequestBodyLimitLayer;
 use tower_http::trace::TraceLayer;
+
+const MAX_BODY_BYTES: usize = 10 * 1024 * 1024; // 10MB
 
 pub fn build_router(state: Arc<AppState>) -> Router {
     Router::new()
@@ -49,6 +52,7 @@ pub fn build_router(state: Arc<AppState>) -> Router {
         .fallback(route_to_ai_gateway)
         .layer(middleware::from_fn(request_id_middleware))
         .layer(middleware::from_fn(metrics_middleware))
+        .layer(RequestBodyLimitLayer::new(MAX_BODY_BYTES))
         .layer(
             TraceLayer::new_for_http()
                 .on_request(|req: &Request<Body>, _span: &tracing::Span| {
@@ -62,7 +66,12 @@ pub fn build_router(state: Arc<AppState>) -> Router {
                     );
                 }),
         )
-        .layer(CorsLayer::permissive())
+        .layer(
+            CorsLayer::new()
+                .allow_origin(Any)
+                .allow_methods([Method::GET, Method::POST, Method::DELETE, Method::OPTIONS])
+                .allow_headers(Any),
+        )
         .with_state(state)
 }
 
@@ -84,7 +93,7 @@ async fn request_id_middleware(mut req: Request, next: Next) -> Response {
 async fn metrics_middleware(req: Request, next: Next) -> Response {
     let start = Instant::now();
     let method = req.method().to_string();
-    let path = req.uri().path().to_string();
+    let path = normalize_path(req.uri().path());
     let resp = next.run(req).await;
     let status = resp.status().as_u16();
     let latency = start.elapsed().as_secs_f64();
@@ -92,6 +101,22 @@ async fn metrics_middleware(req: Request, next: Next) -> Response {
     counter!("http_requests_total", "method" => method, "path" => path.clone(), "status" => status_s).increment(1);
     histogram!("http_request_duration_seconds", "path" => path).record(latency);
     resp
+}
+
+fn normalize_path(path: &str) -> String {
+    // Normalize dynamic path segments to reduce cardinality
+    let segments: Vec<&str> = path.split('/').collect();
+    let normalized: Vec<String> = segments.iter().map(|s| {
+        // Replace UUIDs and long IDs with placeholders
+        if s.len() > 20 && s.contains('-') && s.chars().all(|c| c.is_alphanumeric() || c == '-') {
+            "{id}".to_string()
+        } else if s.len() > 32 && s.chars().all(|c| c.is_alphanumeric()) {
+            "{hash}".to_string()
+        } else {
+            s.to_string()
+        }
+    }).collect();
+    normalized.join("/")
 }
 
 async fn healthz() -> &'static str {
@@ -210,17 +235,7 @@ mod tests {
     use super::*;
     use axum::body::Body;
     use std::sync::RwLock;
-    use std::sync::OnceLock;
     use tower::ServiceExt;
-
-    fn global_metrics() -> &'static metrics_exporter_prometheus::PrometheusHandle {
-        static HANDLE: OnceLock<metrics_exporter_prometheus::PrometheusHandle> = OnceLock::new();
-        HANDLE.get_or_init(|| {
-            metrics_exporter_prometheus::PrometheusBuilder::new()
-                .install_recorder()
-                .expect("install metrics recorder")
-        })
-    }
 
     fn test_state() -> Arc<AppState> {
         Arc::new(AppState {
@@ -229,7 +244,18 @@ mod tests {
             cdn_cache: None,
             hooks: Arc::new(crate::hooks::HookStore::new()),
             a2a_tasks: Arc::new(crate::a2a::TaskStore::new()),
-            metrics_handle: global_metrics().clone(),
+            dns_store: Arc::new(crate::dns::DnsStore::new()),
+            doh_client: None,
+            network_isolation: Arc::new(crate::dns::NetworkIsolation::default()),
+            tinyurl: Arc::new(crate::plugins::TinyUrlStore::new(crate::plugins::TinyUrlConfig::default())),
+            trace_store: Arc::new(crate::plugins::TraceStore::new(100)),
+            redis_cache: Arc::new(crate::plugins::RedisCache::new(crate::plugins::RedisCacheConfig::default())),
+            discovery: Arc::new(crate::discovery::DiscoveryStore::new(crate::discovery::DiscoveryConfig::default())),
+            ebpf: Arc::new(crate::ebpf::EbpfManager::new(crate::ebpf::EbpfConfig::default())),
+            iouring: Arc::new(crate::iouring::IoUringManager::new(crate::iouring::IoUringConfig::default())),
+            dpdk: Arc::new(crate::dpdk::DpdkManager::new(crate::dpdk::DpdkConfig::default())),
+            hyper: Arc::new(crate::hyper_engine::HyperManager::new(crate::hyper_engine::HyperConfig::default())),
+            metrics_handle: crate::test_utils::global_metrics().clone(),
         })
     }
 

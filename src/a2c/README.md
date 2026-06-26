@@ -1,0 +1,62 @@
+# A2C Module (Agent-to-Consumer)
+
+## Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    A2C Chat Flow                                │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│   Consumer Request                                              │
+│        │                                                        │
+│        ▼                                                        │
+│   ┌────────────┐     ┌────────────┐     ┌────────────┐         │
+│   │  /a2c/chat │────▶│  Apply     │────▶│  Forward   │         │
+│   │            │     │  Hooks     │     │  to        │         │
+│   │            │     │            │     │  Upstream  │         │
+│   └────────────┘     └────────────┘     └────────────┘         │
+│                                              │                  │
+│                                              ▼                  │
+│                                       ┌────────────┐            │
+│                                       │  LiteLLM   │            │
+│                                       │  / OpenAI  │            │
+│                                       └────────────┘            │
+│                                              │                  │
+│                                              ▼                  │
+│                                       ┌────────────┐            │
+│                                       │  Response  │            │
+│                                       │  (stream)  │            │
+│                                       └────────────┘            │
+│                                                                 │
+├─────────────────────────────────────────────────────────────────┤
+│   Chat Request Format                                           │
+│                                                                 │
+│   {                                                             │
+│     "messages": [                                               │
+│       { "role": "user", "content": "Hello" }                    │
+│     ],                                                          │
+│     "model": "gpt-4",                                           │
+│     "stream": true,                                             │
+│     "temperature": 0.7                                          │
+│   }                                                             │
+│                                                                 │
+├─────────────────────────────────────────────────────────────────┤
+│   Tool Calls (MCP Integration)                                  │
+│                                                                 │
+│   {                                                             │
+│     "id": "call_123",                                           │
+│     "tool_name": "read_file",                                   │
+│     "arguments": { "path": "/tmp/test.txt" }                    │
+│   }                                                             │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+## Hot Paths
+
+1. **handle_chat()** - Serialize request, forward, return - O(1)
+2. **forward_with_url()** - HTTP request to upstream - O(1)
+
+## Endpoints
+
+- `POST /a2c/chat` - Chat completion request

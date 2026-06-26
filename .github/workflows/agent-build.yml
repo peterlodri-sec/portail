@@ -1,0 +1,59 @@
+name: Agent Build
+
+# This workflow allows agents to trigger builds via repository_dispatch.
+# Only maintainers can create repository_dispatch events.
+# Use this for automated builds triggered by AI agents.
+
+on:
+  repository_dispatch:
+    types: [agent-build, agent-test, agent-deploy]
+
+env:
+  CARGO_TERM_COLOR: always
+  RUSTFLAGS: -D warnings
+
+jobs:
+  # ── Security Gate ─────────────────────────────────────────────
+  verify-agent:
+    runs-on: ubuntu-latest
+    outputs:
+      agent-id: ${{ steps.verify.outputs.agent_id }}
+    steps:
+      - name: Verify agent identity
+        id: verify
+        run: |
+          # Only allow specific agent IDs
+          AGENT_ID="${{ github.event.client_payload.agent_id }}"
+          ALLOWED_AGENTS="claude-code opencode codex copilot"
+          
+          if echo "$ALLOWED_AGENTS" | grep -qw "$AGENT_ID"; then
+            echo "agent_id=$AGENT_ID" >> $GITHUB_OUTPUT
+            echo "✓ Agent $AGENT_ID is authorized"
+          else
+            echo "::error::Unauthorized agent: $AGENT_ID"
+            exit 1
+          fi
+
+  # ── Build Job ─────────────────────────────────────────────────
+  build:
+    needs: verify-agent
+    runs-on: self-hosted
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install Rust toolchain
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+
+      - name: Build
+        run: cargo build --release
+
+      - name: Test
+        run: cargo test
+
+      - name: Report result
+        if: always()
+        run: |
+          echo "Agent: ${{ needs.verify-agent.outputs.agent-id }}"
+          echo "Event: ${{ github.event_name }}"
+          echo "Action: ${{ github.event.action }}"
+          echo "Status: ${{ job.status }}"

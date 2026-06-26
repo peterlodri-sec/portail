@@ -1,0 +1,27 @@
+name: portail
+base: core22
+version: '0.1.0'
+summary: Unified proxy/gateway for AI, MCP, and CDN
+description: |
+  Portail is a unified proxy and gateway for AI services, MCP tools,
+  and CDN caching. Built in Rust with zero-copy I/O, SIMD-optimized
+  hashing, and a live TUI dashboard.
+
+grade: stable
+confinement: classic
+
+parts:
+  portail:
+    plugin: rust
+    source: .
+    rust-channel: stable
+    build-packages:
+      - pkg-config
+      - libssl-dev
+
+apps:
+  portail:
+    command: bin/portail
+    plugs:
+      - network
+      - network-bind

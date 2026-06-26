@@ -94,7 +94,7 @@ pub async fn forward_with_body(
         Err(e) => {
             warn!(%upstream_url, error = %e, "upstream unreachable");
             counter!("ai_gateway_errors").increment(1);
-            (StatusCode::BAD_GATEWAY, format!("upstream unreachable: {e}")).into_response()
+            (StatusCode::BAD_GATEWAY, "upstream unavailable").into_response()
         }
     }
 }
@@ -102,7 +102,13 @@ pub async fn forward_with_body(
 /// Forward a complete request to upstream.
 pub async fn forward(upstream: &str, req: Request) -> Response {
     let (parts, body) = req.into_parts();
-    let body_bytes = axum::body::to_bytes(body, 10_000_000).await.unwrap_or_default();
+    let body_bytes = match axum::body::to_bytes(body, 10_000_000).await {
+        Ok(bytes) => bytes,
+        Err(e) => {
+            warn!(error = %e, "failed to read request body");
+            return (StatusCode::PAYLOAD_TOO_LARGE, "request body too large or unreadable").into_response();
+        }
+    };
     forward_with_body(upstream, parts, body_bytes).await
 }
 

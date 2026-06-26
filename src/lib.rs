@@ -1,14 +1,43 @@
+//! Portail - Unified Proxy/Gateway
+//!
+//! Architecture:
+//!
+//!   Client -> axum router -> middleware -> handler -> upstream
+//!                   |
+//!                   +-- /v1/chat/*  -> hooks.inject -> gateway.forward
+//!                   +-- /mcp/*     -> mcp.proxy -> unix socket
+//!                   +-- /cdn/*     -> cdn.lookup -> cache/origin
+//!                   +-- /events/*  -> event_log -> SSE
+//!                   +-- /hooks/*   -> hook_store CRUD
+//!                   +-- /a2a/*     -> task lifecycle
+//!                   +-- /a2c/*     -> chat API
+//!                   +-- /dns/*     -> dns.resolve
+//!                   +-- /tinyurl/* -> url shortening
+//!                   +-- /traces/*  -> request tracing
+//!                   +-- /cache/*   -> redis cache
+
 pub mod a2a;
 pub mod a2c;
 pub mod cdn;
 pub mod cli;
 pub mod config;
+pub mod constants;
+pub mod discovery;
+pub mod dns;
+pub mod dpdk;
+pub mod ebpf;
 pub mod events;
 pub mod gateway;
+pub mod godfather;
 pub mod hooks;
+pub mod hyper_engine;
+pub mod iouring;
 pub mod mcp;
+pub mod nullclaw;
+pub mod plugins;
 pub mod proxy;
 pub mod sentinel;
+pub mod test_utils;
 
 pub use config::Config;
 
@@ -21,5 +50,16 @@ pub struct AppState {
     pub cdn_cache: Option<Arc<cdn::CacheManager>>,
     pub hooks: Arc<hooks::HookStore>,
     pub a2a_tasks: Arc<a2a::TaskStore>,
+    pub dns_store: Arc<dns::DnsStore>,
+    pub doh_client: Option<Arc<dns::DohClient>>,
+    pub network_isolation: Arc<dns::NetworkIsolation>,
+    pub tinyurl: Arc<plugins::TinyUrlStore>,
+    pub trace_store: Arc<plugins::TraceStore>,
+    pub redis_cache: Arc<plugins::RedisCache>,
+    pub discovery: Arc<discovery::DiscoveryStore>,
+    pub ebpf: Arc<ebpf::EbpfManager>,
+    pub iouring: Arc<iouring::IoUringManager>,
+    pub dpdk: Arc<dpdk::DpdkManager>,
+    pub hyper: Arc<hyper_engine::HyperManager>,
     pub metrics_handle: metrics_exporter_prometheus::PrometheusHandle,
 }

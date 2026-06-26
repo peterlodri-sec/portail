@@ -1,10 +1,11 @@
 name: Release
 
-# Architecture: Triggered on version tags (v*). Builds release binaries
-# for x86_64-linux (self-hosted) and aarch64-darwin (GitHub-hosted).
-# Each target: build → UPX compress → sha256sum → cosign sign → upload artifact.
-# Then: download all artifacts → verify signatures → create GitHub Release → publish to crates.io.
-# The self-hosted runner on dev-cx53 handles Linux builds with mold linker and LTO.
+# Security: Release workflow only runs on version tags.
+# Self-hosted runners are used for Linux builds.
+# macOS builds use GitHub-hosted runners.
+#
+# IMPORTANT: Only maintainers can push tags.
+# Configure branch protection rules to enforce this.
 
 on:
   push:
@@ -16,20 +17,30 @@ env:
   CARGO_INCREMENTAL: 0
 
 jobs:
-  release:
+  # ── Security Gate ─────────────────────────────────────────────
+  verify-tag:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - name: Verify tag format
+        id: version
+        run: |
+          TAG="${{ github.ref_name }}"
+          if [[ ! "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::Invalid tag format. Must be vX.Y.Z"
+            exit 1
+          fi
+          echo "version=${TAG#v}" >> $GITHUB_OUTPUT
+
+  # ── Linux Build (self-hosted) ─────────────────────────────────
+  release-linux:
+    needs: verify-tag
+    runs-on: self-hosted
     strategy:
-      fail-fast: false
       matrix:
-        include:
-          - os: self-hosted
-            target: x86_64-unknown-linux-gnu
-            upx_args: --best --lzma
-            label: linux
-          - os: macos-latest
-            target: aarch64-apple-darwin
-            upx_args: --best
-            label: macos
-    runs-on: ${{ matrix.os }}
+        target:
+          - x86_64-unknown-linux-gnu
     steps:
       - uses: actions/checkout@v7
 
@@ -49,7 +60,7 @@ jobs:
       - name: Compress with UPX
         run: |
           binary="target/${{ matrix.target }}/release/portail"
-          upx ${{ matrix.upx_args }} "$binary"
+          upx --best --lzma "$binary"
           mv "$binary" "portail-${{ matrix.target }}"
 
       - name: Generate checksums
@@ -67,13 +78,6 @@ jobs:
             --output-certificate portail-${{ matrix.target }}.pem \
             portail-${{ matrix.target }}
 
-      - name: Sign checksum with cosign (keyless)
-        run: |
-          cosign sign-blob --yes \
-            --output-signature portail-${{ matrix.target }}.sha256.sig \
-            --output-certificate portail-${{ matrix.target }}.sha256.pem \
-            portail-${{ matrix.target }}.sha256
-
       - uses: actions/upload-artifact@v7
         with:
           name: portail-${{ matrix.target }}
@@ -82,11 +86,53 @@ jobs:
             portail-${{ matrix.target }}.sha256
             portail-${{ matrix.target }}.sig
             portail-${{ matrix.target }}.pem
-            portail-${{ matrix.target }}.sha256.sig
-            portail-${{ matrix.target }}.sha256.pem
 
+  # ── macOS Build (GitHub-hosted) ───────────────────────────────
+  release-macos:
+    needs: verify-tag
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install Rust toolchain
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          target: aarch64-apple-darwin
+
+      - name: Build release binary
+        run: cargo build --release --target aarch64-apple-darwin --bin portail
+
+      - name: Compress with UPX
+        run: |
+          # UPX doesn't support macOS arm64, just rename
+          mv target/aarch64-apple-darwin/release/portail portail-aarch64-apple-darwin
+
+      - name: Generate checksums
+        run: |
+          sha256sum portail-aarch64-apple-darwin > portail-aarch64-apple-darwin.sha256
+
+      - name: Install cosign
+        uses: sigstore/cosign-installer@v4
+
+      - name: Sign binary with cosign (keyless)
+        run: |
+          cosign sign-blob --yes \
+            --output-signature portail-aarch64-apple-darwin.sig \
+            --output-certificate portail-aarch64-apple-darwin.pem \
+            portail-aarch64-apple-darwin
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: portail-aarch64-apple-darwin
+          path: |
+            portail-aarch64-apple-darwin
+            portail-aarch64-apple-darwin.sha256
+            portail-aarch64-apple-darwin.sig
+            portail-aarch64-apple-darwin.pem
+
+  # ── GitHub Release ────────────────────────────────────────────
   github-release:
-    needs: [release]
+    needs: [release-linux, release-macos]
     runs-on: self-hosted
     permissions:
       contents: write
@@ -127,6 +173,7 @@ jobs:
             SHA256SUMS.pem
           generate_release_notes: true
 
+  # ── Publish to crates.io ──────────────────────────────────────
   crates-io:
     needs: [github-release]
     runs-on: self-hosted

@@ -59,9 +59,19 @@ clean-release:
 # ── Full CI pipeline ───────────────────────────────────────────────────
 ci: check lint test
 
+# ── CLI ────────────────────────────────────────────────────────────────
+complexity:
+    cargo run -- complexity
+
+docs:
+    cargo run -- docs --open
+
+install:
+    cargo run -- install
+
 # ── Nix ────────────────────────────────────────────────────────────────
 nix-check:
-    nix flake check --impulse
+    nix flake check --impure
 
 nix-build:
     nix build .#portail
@@ -87,6 +97,16 @@ publish-dry:
 
 publish:
     cargo publish
+
+# ── Package ────────────────────────────────────────────────────────────
+deb:
+    cargo deb
+
+rpm:
+    rpmbuild -ba packaging/rpm/portail.spec
+
+snap:
+    snapcraft
 
 # ── Release ────────────────────────────────────────────────────────────
 release-dist: release
@@ -126,10 +146,16 @@ help:
     @echo "  audit          cargo audit"
     @echo "  deny           cargo deny check"
     @echo "  ci             check + lint + test"
+    @echo "  complexity     analyze time complexity (Big O)"
+    @echo "  docs           generate and open documentation"
+    @echo "  install        install portail"
     @echo "  docker-build   build Docker image"
     @echo "  docker-run     build + run on :8787"
     @echo "  docker-slim    check compressed binary size"
-    @echo "  login          setup crates.io credentials (cargo-credential-pass)"
+    @echo "  login          setup crates.io credentials"
     @echo "  publish-dry    cargo publish --dry-run"
     @echo "  publish        cargo publish to crates.io"
-    @echo "  nix-check      nix flake check --impulse"
+    @echo "  deb            build Debian package"
+    @echo "  rpm            build RPM package"
+    @echo "  snap           build Snap package"
+    @echo "  nix-check      nix flake check"

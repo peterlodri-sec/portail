@@ -38,11 +38,11 @@ impl HookStore {
         if hook.id.is_empty() {
             hook.id = uuid::Uuid::new_v4().to_string();
         }
-        self.hooks.write().unwrap().push(hook);
+        self.hooks.write().unwrap_or_else(|e| e.into_inner()).push(hook);
     }
 
     pub fn remove(&self, id: &str) -> bool {
-        let mut hooks = self.hooks.write().unwrap();
+        let mut hooks = self.hooks.write().unwrap_or_else(|e| e.into_inner());
         let pos = hooks.iter().position(|h| h.id == id);
         if let Some(p) = pos {
             hooks.remove(p);
@@ -53,18 +53,18 @@ impl HookStore {
     }
 
     pub fn list(&self) -> Vec<Hook> {
-        self.hooks.read().unwrap().clone()
+        self.hooks.read().unwrap_or_else(|e| e.into_inner()).clone()
     }
 
     pub fn match_message(&self, path: &str) -> Vec<Hook> {
-        let hooks = self.hooks.read().unwrap();
+        let hooks = self.hooks.read().unwrap_or_else(|e| e.into_inner());
         hooks
             .iter()
             .filter(|h| h.enabled)
             .filter(|h| {
                 h.match_event_type.is_none()
                     && match &h.match_path {
-                        Some(p) => path.contains(p.as_str()) || p == "*",
+                        Some(p) => path.starts_with(p.as_str()) || p == "*",
                         None => true,
                     }
             })
@@ -73,7 +73,7 @@ impl HookStore {
     }
 
     pub fn match_event(&self, agent_id: &str, event_type: &str) -> Vec<Hook> {
-        let hooks = self.hooks.read().unwrap();
+        let hooks = self.hooks.read().unwrap_or_else(|e| e.into_inner());
         hooks
             .iter()
             .filter(|h| h.enabled)
@@ -83,7 +83,7 @@ impl HookStore {
                     None => true,
                 }) && (match &h.match_event_type {
                     Some(t) => event_type.contains(t.as_str()) || t == "*",
-                    None => false,
+                    None => true,
                 })
             })
             .cloned()
@@ -169,8 +169,8 @@ mod tests {
     #[test]
     fn match_message_by_path() {
         let store = HookStore::new();
-        store.add(test_hook("h1", None, Some("/chat"), None));
-        store.add(test_hook("h2", None, Some("/embed"), None));
+        store.add(test_hook("h1", None, Some("/v1/chat"), None));
+        store.add(test_hook("h2", None, Some("/v1/embed"), None));
 
         assert_eq!(store.match_message("/v1/chat/completions").len(), 1);
         assert_eq!(store.match_message("/v1/embeddings").len(), 1);

@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>com.peterlodri.portail</id>
+  <metadata_license>MIT</metadata_license>
+  <project_license>MIT</project_license>
+  <name>Portail</name>
+  <summary>Unified proxy/gateway for AI, MCP, and CDN</summary>
+  <description>
+    <p>
+      Portail is a unified proxy and gateway for AI services, MCP tools,
+      and CDN caching. Built in Rust with zero-copy I/O, SIMD-optimized
+      hashing, and a live TUI dashboard.
+    </p>
+  </description>
+  <url type="homepage">https://github.com/peterlodri-sec/portail</url>
+  <url type="bugtracker">https://github.com/peterlodri-sec/portail/issues</url>
+  <developer_name>Peter Lodri</developer_name>
+  <provides>
+    <binary>portail</binary>
+  </provides>
+</component>

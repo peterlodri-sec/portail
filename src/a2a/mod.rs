@@ -165,6 +165,10 @@ impl TaskStore {
         task.artifacts.push(artifact);
         Some(task.clone())
     }
+
+    pub fn get_all(&self) -> Vec<Task> {
+        self.tasks.read().unwrap().values().cloned().collect()
+    }
 }
 
 // ── HTTP handlers ────────────────────────────────────────────────

@@ -1,4 +1,9 @@
+pub mod complexity;
 pub mod dashboard;
+pub mod guide;
+pub mod install;
+pub mod learn;
+pub mod setup;
 
 use clap::{Parser, Subcommand};
 use std::path::PathBuf;
@@ -72,6 +77,71 @@ pub enum Commands {
 
     /// Run health check
     Health,
+
+    /// Analyze time complexity (Big O) across the codebase
+    Complexity {
+        /// Output format (text or json)
+        #[arg(long, default_value = "text")]
+        format: String,
+
+        /// Save report to file
+        #[arg(short, long)]
+        output: Option<PathBuf>,
+    },
+
+    /// Install portail (binary, cargo, or nix)
+    Install {
+        /// Installation method
+        #[arg(long, default_value = "auto")]
+        method: InstallMethod,
+
+        /// Installation directory (for binary install)
+        #[arg(long)]
+        dir: Option<PathBuf>,
+    },
+
+    /// Generate documentation
+    Docs {
+        /// Open docs in browser after generation
+        #[arg(long)]
+        open: bool,
+    },
+
+    /// Setup portail: domain, DNS, certificates
+    Setup {
+        /// Skip interactive prompts and use defaults
+        #[arg(long)]
+        non_interactive: bool,
+
+        /// Domain name (e.g., portail.example.com)
+        #[arg(long)]
+        domain: Option<String>,
+
+        /// Use self-signed certificates instead of Let's Encrypt
+        #[arg(long)]
+        self_signed: bool,
+
+        /// Setup Headscale for mesh networking
+        #[arg(long)]
+        headscale: bool,
+    },
+
+    /// Learn about networking and security concepts
+    Learn {
+        /// Topic to learn about (dns, tcp, tls, doh, vpn, proxy, firewall, dnssec, zero-trust, headscale)
+        topic: Option<String>,
+    },
+
+    /// Interactive guide for branch protection setup
+    Guide,
+}
+
+#[derive(Debug, Clone, clap::ValueEnum)]
+pub enum InstallMethod {
+    Auto,
+    Cargo,
+    Nix,
+    Binary,
 }
 
 #[derive(Subcommand, Debug, Clone)]

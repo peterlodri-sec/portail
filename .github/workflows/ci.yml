@@ -1,9 +1,12 @@
 name: CI
 
-# Architecture: This workflow runs on every push to main and every PR.
-# Self-hosted runner on dev-cx53 (x86_64-linux) handles Linux jobs.
-# macOS jobs use GitHub-hosted runners (no self-hosted macOS available).
-# Tests, clippy, and format checks run in parallel across both platforms.
+# Security: Self-hosted runners are ONLY used for:
+# 1. Pushes to main (from maintainers/agents)
+# 2. PRs from the same repo (not forks)
+# 3. PRs from authorized users (via label or approval)
+#
+# Fork PRs use GitHub-hosted runners (ubuntu-latest) for safety.
+# This prevents arbitrary code execution on our self-hosted runners.
 
 on:
   push:
@@ -17,16 +20,31 @@ env:
   CARGO_INCREMENTAL: 0
 
 jobs:
-  check:
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - os: self-hosted
-            label: linux
-          - os: macos-latest
-            label: macos
-    runs-on: ${{ matrix.os }}
+  # ── Security Gate ─────────────────────────────────────────────
+  check-permissions:
+    runs-on: ubuntu-latest
+    outputs:
+      can-use-self-hosted: ${{ steps.check.outputs.allowed }}
+    steps:
+      - name: Check if PR is from same repo (not a fork)
+        id: check
+        run: |
+          if [ "${{ github.event_name }}" == "push" ]; then
+            # Pushes to main are always allowed (maintainers/agents)
+            echo "allowed=true" >> $GITHUB_OUTPUT
+          elif [ "${{ github.event.pull_request.head.repo.full_name }}" == "${{ github.repository }}" ]; then
+            # PRs from the same repo are allowed
+            echo "allowed=true" >> $GITHUB_OUTPUT
+          else
+            # Fork PRs are NOT allowed on self-hosted runners
+            echo "allowed=false" >> $GITHUB_OUTPUT
+            echo "::warning::Fork PR detected. Using GitHub-hosted runners for safety."
+          fi
+
+  # ── Linux Build (self-hosted or GitHub-hosted) ────────────────
+  check-linux:
+    needs: check-permissions
+    runs-on: ${{ needs.check-permissions.outputs.can-use-self-hosted == 'true' && 'self-hosted' || 'ubuntu-latest' }}
     steps:
       - uses: actions/checkout@v7
       - uses: actions-rust-lang/setup-rust-toolchain@v1
@@ -39,8 +57,8 @@ jobs:
           path: |
             ~/.cargo/registry
             ~/.cargo/git
-          key: ${{ matrix.label }}-cargo-registry-${{ hashFiles('Cargo.lock') }}
-          restore-keys: ${{ matrix.label }}-cargo-registry-
+          key: linux-cargo-registry-${{ hashFiles('Cargo.lock') }}
+          restore-keys: linux-cargo-registry-
 
       - name: Check
         run: cargo check --locked
@@ -54,15 +72,34 @@ jobs:
       - name: Format
         run: cargo fmt --check
 
+  # ── macOS Build (always GitHub-hosted) ────────────────────────
+  check-macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          components: clippy, rustfmt
+
+      - name: Check
+        run: cargo check --locked
+
+      - name: Test
+        run: cargo test --locked
+
+  # ── Nix Build (self-hosted or GitHub-hosted) ──────────────────
   nix:
-    runs-on: self-hosted
+    needs: check-permissions
+    runs-on: ${{ needs.check-permissions.outputs.can-use-self-hosted == 'true' && 'self-hosted' || 'ubuntu-latest' }}
     steps:
       - uses: actions/checkout@v7
       - name: Flake check
         run: nix flake check --impure
 
+  # ── Python Lint (self-hosted or GitHub-hosted) ────────────────
   python:
-    runs-on: self-hosted
+    needs: check-permissions
+    runs-on: ${{ needs.check-permissions.outputs.can-use-self-hosted == 'true' && 'self-hosted' || 'ubuntu-latest' }}
     defaults:
       run:
         working-directory: plugins/portail-mcp

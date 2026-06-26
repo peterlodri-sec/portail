@@ -19,8 +19,8 @@ readme = "README.md"
 axum = { version = "0.8", features = ["macros"] }
 tokio = { version = "1", features = ["full"] }
 tower = { version = "0.5", features = ["util"] }
-tower-http = { version = "0.6", features = ["cors", "trace"] }
-reqwest = { version = "0.12", features = ["json", "http2"] }
+tower-http = { version = "0.6", features = ["cors", "trace", "limit"] }
+reqwest = { version = "0.12", features = ["json", "http2", "blocking"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 toml = "0.8"
@@ -42,6 +42,10 @@ rustc-hash = "2"
 ratatui = "0.29"
 crossterm = { version = "0.28", features = ["event-stream"] }
 chrono = { version = "0.4", features = ["serde"] }
+regex = "1"
+walkdir = "2"
+which = "7"
+redis = { version = "0.27", features = ["tokio-comp", "connection-manager"] }
 
 [profile.release]
 opt-level = 3
@@ -68,3 +72,23 @@ criterion = { version = "0.5", features = ["html_reports", "async_tokio"] }
 [[bench]]
 name = "hot_paths"
 harness = false
+
+[package.metadata.deb]
+maintainer = "Peter Lodri <peterlodri-sec@github.com>"
+copyright = "2026, Peter Lodri <peterlodri-sec@github.com>"
+license-file = ["LICENSE", "4"]
+extended-description = """\
+Portail is a unified proxy and gateway for AI services, MCP tools, \
+and CDN caching. Built in Rust with zero-copy I/O, SIMD-optimized \
+hashing, and a live TUI dashboard."""
+depends = "$auto"
+section = "net"
+priority = "optional"
+assets = [
+    ["target/release/portail", "usr/bin/", "755"],
+    ["README.md", "usr/share/doc/portail/README", "644"],
+    ["LICENSE", "usr/share/doc/portail/LICENSE", "644"],
+]
+
+[package.metadata.deb.systemd-units]
+enable = true
