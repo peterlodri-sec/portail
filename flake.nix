@@ -36,6 +36,8 @@
             just
             upx
             cosign
+            cargo-credential-pass
+            cargo-release
           ] ++ lib.optionals pkgs.stdenv.isLinux [
             mold-wrapped
             gdb
@@ -53,6 +55,8 @@
             echo "   cargo watch     — auto-build on changes"
             echo "   just bench      — criterion benchmarks"
             echo "   just release    — LTO release build"
+            echo "   just login      — setup crates.io credentials"
+            echo "   just publish    — release to crates.io"
           '';
         };
 

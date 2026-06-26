@@ -125,8 +125,12 @@ rustPlatform.buildRustPackage {
 
 ## TODOs
 
-- [ ] Publish `v0.1.0` (tag + crates.io + GitHub Release)
-- [x] Dockerfile + multi-arch ghcr.io builds (waiting on v0.1.0 tag trigger)
+- [x] v0.1.0 release prep: CHANGELOG, cargo-credential-pass, just login/publish
+- [ ] **Publish v0.1.0** (see [RELEASE.md](./RELEASE.md))
+  - [ ] `cargo login` (uses cargo-credential-pass, stores in macOS Keychain)
+  - [ ] `nix flake check` (ensure CI passes)
+  - [ ] `git tag v0.1.0 && git push --tags` (triggers release + docker workflows)
+  - [ ] Verify GitHub Release, Docker push, crates.io publish
 - [ ] OpenTelemetry export (OTLP)
 - [ ] Headroom compression for cache storage
 - [ ] Rate limiting (token bucket per key/IP)

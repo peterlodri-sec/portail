@@ -78,6 +78,16 @@ docker-slim:
     @echo "Binary size:"
     docker run --rm portail:slim ls -lh /build/target/release/portail
 
+# ── Credentials ────────────────────────────────────────────────────────
+login:
+    cargo login --credential-provider cargo-credential-pass
+
+publish-dry:
+    cargo publish --dry-run
+
+publish:
+    cargo publish
+
 # ── Release ────────────────────────────────────────────────────────────
 release-dist: release
     upx --best --lzma target/release/portail
@@ -119,4 +129,7 @@ help:
     @echo "  docker-build   build Docker image"
     @echo "  docker-run     build + run on :8787"
     @echo "  docker-slim    check compressed binary size"
+    @echo "  login          setup crates.io credentials (cargo-credential-pass)"
+    @echo "  publish-dry    cargo publish --dry-run"
+    @echo "  publish        cargo publish to crates.io"
     @echo "  nix-check      nix flake check --impulse"
