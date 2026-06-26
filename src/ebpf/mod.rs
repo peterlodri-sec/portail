@@ -46,6 +46,8 @@
  *   └─────────────────────────────────────────────────────────────┘
  */
 
+#![allow(dead_code)] // Skeleton module — fields will be used when implemented
+
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 

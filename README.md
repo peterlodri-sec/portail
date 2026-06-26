@@ -2,24 +2,34 @@
   <img src="docs/logo.svg" width="200" alt="Portail Logo">
 </p>
 
+<!-- [media_suggestion:::prompt:```A clean, modern hero banner for "Portail" — a Rust-based unified AI/MCP/CDN proxy. Wide 1600x500 image, dark navy background with neon-cyan and magenta accent lines forming a stylised network gateway (ports, packets, arrows). Minimal geometric style, subtle grid, the word "PORTAIL" centred in a bold sans-serif. No people, no logos.```] -->
+
 # Portail
 
 **Unified proxy/gateway: AI Gateway + MCP Gateway + CDN cache + Agent-to-Agent protocol**
 
 <p align="center">
-  <a href="https://portail.vaked.dev"><img src="https://portail.vaked.dev/ci/badge" alt="CI Status"></a>
-  <a href="https://github.com/peterlodri-sec/portail/actions"><img src="https://github.com/peterlodri-sec/portail/actions/workflows/ci.yml/badge.svg" alt="GitHub CI"></a>
+  <a href="https://github.com/peterlodri-sec/portail/actions/workflows/ci.yml"><img src="https://github.com/peterlodri-sec/portail/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
   <a href="https://crates.io/crates/portail"><img src="https://img.shields.io/crates/v/portail" alt="Crates.io"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License: MIT"></a>
+  <a href="https://github.com/peterlodri-sec/portail/blob/main/CONTRIBUTING.md"><img src="https://img.shields.io/badge/PRs-welcome-brightgreen.svg" alt="PRs welcome"></a>
 </p>
 
 <p align="center">
-  <a href="https://pocoo.vaked.dev">Blog</a> · <a href="https://github.com/peterlodri-sec">GitHub</a> · <a href="https://x.com/0xp3t3rl">X/Twitter</a> · <a href="https://patreon.com/vaked">Patreon</a> · <a href="https://chat.vaked.dev">Chat</a> · <a href="https://music.vaked.dev">Music</a>
+  <a href="START_HERE.md">Start Here</a> ·
+  <a href="CONTRIBUTING.md">Contributing</a> ·
+  <a href="DESIGN.md">Design</a> ·
+  <a href="CHANGELOG.md">Changelog</a> ·
+  <a href="SECURITY.md">Security</a>
 </p>
 
-> **Live CI status** from portail.vaked.dev — updates automatically on every build.
+> The optional live build badge from `portail.vaked.dev/ci/badge` is served by a
+> self-hosted Portail instance (see [CI/Webhook](#ciwebhook)); enable it once
+> you have your own deployment.
 
 Portail is a high-performance, self-hosted proxy and gateway for AI services, MCP tools, and CDN caching. Built in Rust with zero-copy I/O, SIMD-optimized hashing, and a live TUI dashboard.
+
+<!-- [media_suggestion:::prompt:```Animated terminal recording (GIF, ~10s, 900x500): a developer runs `portail serve`, the TUI dashboard appears with live sparklines for requests/sec, cache hit rate and AI gateway latency, then they press `q` to quit. Dark terminal, monospace font, cyan and green accent colors. No audio.```] -->
 
 ## Features
 
@@ -122,6 +132,8 @@ cache_dir = "/var/cache/portail"
 
 ## Architecture
 
+<!-- [media_suggestion:::prompt:```A high-resolution architectural diagram (1600x900, SVG-style flat illustration) showing Portail at the centre as a rounded rectangle, with four inbound channels on the left (HTTP client, MCP client, CDN edge, A2A agent) and four outbound channels on the right (OpenAI, Anthropic, LiteLLM, local Ollama). Inside the rectangle show six labelled blocks: Proxy (axum), Cache (moka+redis), Hooks, Events, Sentinel, Discovery. Dark navy background, neon-cyan strokes, white text. Minimal, technical, no people.```] -->
+
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │                      portail binary                         │
@@ -195,17 +207,22 @@ This will:
 
 ### Badge
 
+Once you have your own Portail deployment running with the webhook configured:
+
 ```markdown
-![CI](https://portail.vaked.dev/ci/badge)
+![CI](https://<your-portail-host>/ci/badge)
 ```
+
+The default GitHub Actions badge above (at the top of this README) works
+without any extra setup.
 
 ## Development
 
 ```bash
-# Build
+# Build (debug)
 cargo build
 
-# Test
+# Test (93+ unit + integration tests)
 cargo test
 
 # Lint
@@ -221,6 +238,22 @@ cargo bench
 cargo run
 ```
 
+> **Tip:** the `mold` linker speeds up incremental Linux builds noticeably.
+> It is **optional** — see comments in `.cargo/config.toml` for how to opt in.
+
+## Contributing
+
+We love contributions of every size — code, docs, bug reports, ideas.
+
+1. Read [CONTRIBUTING.md](CONTRIBUTING.md) for the workflow (humans and AI agents are both first-class contributors).
+2. Pick an open issue, or open a new one to discuss large changes first.
+3. Run `cargo test` and `cargo clippy -- -D warnings` before pushing.
+4. Sign your commits and follow [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md).
+
+Reporting a security issue? Please follow [SECURITY.md](SECURITY.md) instead of opening a public issue.
+
+<!-- [media_suggestion:::prompt:```A friendly "Contributors welcome" badge-style illustration (800x400): stylised circular avatars (no real faces — abstract geometric shapes in cyan, magenta, lime) arranged in a half-circle around a Portail logo, with the text "Built by the community" below in clean sans-serif. Dark background. Inclusive, modern, no text in the avatars themselves.```] -->
+
 ## License
 
-MIT
+MIT — see [LICENSE](LICENSE).

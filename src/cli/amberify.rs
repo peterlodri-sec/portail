@@ -1,5 +1,5 @@
 use anyhow::Result;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::fs;
 
 /// Convert a shell script to Amber language
@@ -18,10 +18,10 @@ pub fn amberify(input: &Path) -> Result<String> {
     // Convert shell constructs to Amber
     let lines: Vec<&str> = content.lines().collect();
     let mut in_function = false;
-    let mut in_loop = false;
-    let mut in_if = false;
+    let mut _in_loop = false;
+    let mut _in_if = false;
     
-    for (i, line) in lines.iter().enumerate() {
+    for (_i, line) in lines.iter().enumerate() {
         let trimmed = line.trim();
         
         // Skip shebang
@@ -85,7 +85,7 @@ pub fn amberify(input: &Path) -> Result<String> {
         
         // Convert if statements
         if trimmed.starts_with("if ") {
-            in_if = true;
+            _in_if = true;
             let condition = trimmed
                 .strip_prefix("if ")
                 .unwrap()
@@ -117,14 +117,14 @@ pub fn amberify(input: &Path) -> Result<String> {
         
         // Convert fi
         if trimmed == "fi" || trimmed == "fi;" {
-            in_if = false;
+            _in_if = false;
             output.push_str("}\n");
             continue;
         }
         
         // Convert for loops
         if trimmed.starts_with("for ") {
-            in_loop = true;
+            _in_loop = true;
             let parts: Vec<&str> = trimmed.split_whitespace().collect();
             if parts.len() >= 4 && parts[2] == "in" {
                 let var_name = parts[1];
@@ -136,7 +136,7 @@ pub fn amberify(input: &Path) -> Result<String> {
         
         // Convert done
         if trimmed == "done" || trimmed == "done;" {
-            in_loop = false;
+            _in_loop = false;
             output.push_str("}\n");
             continue;
         }

@@ -1,26 +1,14 @@
-[target.x86_64-unknown-linux-gnu]
-linker = "clang"
-rustflags = ["-C", "link-arg=-fuse-ld=mold"]
-
-[target.aarch64-apple-darwin]
-rustflags = []
-
-[profile.release]
-opt-level = 3
-lto = "fat"
-codegen-units = 1
-strip = "symbols"
-debug = false
-
-[profile.dev]
-opt-level = 0
-debug = true
-split-debuginfo = "unpacked"
-incremental = true
-codegen-units = 256
-
-[profile.bench]
-opt-level = 3
-lto = "fat"
-codegen-units = 1
-debug = false
+# Cargo configuration for Portail.
+#
+# Note: Build profiles ([profile.*]) belong in Cargo.toml — Cargo silently
+# ignores them when set here, so they are intentionally not duplicated.
+#
+# The `mold` linker is recommended for fast local rebuilds on Linux but is
+# optional. To opt in, install mold (`apt install mold` / `brew install mold`)
+# and uncomment the block below, or set the env var:
+#
+#   RUSTFLAGS="-C link-arg=-fuse-ld=mold" cargo build
+#
+# [target.x86_64-unknown-linux-gnu]
+# linker = "clang"
+# rustflags = ["-C", "link-arg=-fuse-ld=mold"]

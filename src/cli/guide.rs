@@ -231,7 +231,7 @@ pub fn run_guide() -> io::Result<()> {
                     println!("\n⚠ Enter a number.\n");
                 }
             }
-            "l" | "list" => {
+            "ls" | "list" => {
                 println!("\nBlocks:");
                 for (i, (title, _)) in BLOCKS.iter().enumerate() {
                     let marker = if i == current { "▶" } else { " " };
@@ -264,9 +264,9 @@ fn print_block(current: usize, total: usize) {
     println!("{}", content);
     println!("─────────────────────────────────────────────────────────────");
     if current < total - 1 {
-        println!("  [Enter] next  [p] prev  [j] jump  [l] list  [h] help  [q] exit");
+        println!("  [Enter] next  [p] prev  [j] jump  [ls] list [h] help  [q] exit");
     } else {
-        println!("  [p] prev  [j] jump  [l] list  [h] help  [q] exit");
+        println!("  [p] prev  [j] jump  [ls] list [h] help  [q] exit");
     }
 }
 
@@ -280,7 +280,7 @@ fn print_help() {
     println!("│  f, first        — First block                              │");
     println!("│  l, last         — Last block                               │");
     println!("│  j, jump         — Jump to block number                     │");
-    println!("│  l, list         — List all blocks                          │");
+    println!("│  ls, list        — List all blocks                          │");
     println!("│  h, help, ?      — Show this help                           │");
     println!("│  q, exit, quit   — Exit guide                               │");
     println!("│                                                             │");

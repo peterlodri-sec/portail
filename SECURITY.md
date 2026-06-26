@@ -11,8 +11,8 @@
 
 If you discover a security vulnerability, please report it privately:
 
-1. **GitHub**: Open a private security advisory
-2. **Email**: (add your email)
+1. **GitHub Security Advisory** (preferred): https://github.com/peterlodri-sec/portail/security/advisories/new
+2. **Email**: open a private security advisory on GitHub and request an email channel if needed.
 
 Do NOT open a public issue for security vulnerabilities.
 

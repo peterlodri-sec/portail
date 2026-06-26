@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use std::collections::HashMap;
-use std::net::{IpAddr, SocketAddr};
+use std::net::IpAddr;
 use std::str::FromStr;
 
 // ── DNS Configuration ────────────────────────────────────────────

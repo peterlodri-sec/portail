@@ -34,7 +34,7 @@
 
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
-use std::time::{Duration, Instant};
+use std::time::Instant;
 use rustc_hash::FxHashMap;
 use axum::response::IntoResponse;
 
@@ -62,8 +62,19 @@ pub struct TinyUrlConfig {
     pub base_url: String,
     pub ttl_secs: u64,
     pub max_entries: usize,
+    /// HMAC secret used when signing short-URL identifiers.
+    ///
+    /// **Security:** the [`Default`] value is a well-known placeholder and is
+    /// only intended for local development and tests. Override it via
+    /// configuration (e.g. `tinyurl.secret` in `portail.toml`) before
+    /// exposing the service to untrusted networks. A warning is logged at
+    /// startup if the default is detected.
     pub secret: String,
 }
+
+/// Well-known placeholder secret used by [`TinyUrlConfig::default`].
+/// Override in production — see the field docs on [`TinyUrlConfig::secret`].
+pub const DEFAULT_INSECURE_SECRET: &str = "portail-tinyurl-secret";
 
 impl Default for TinyUrlConfig {
     fn default() -> Self {
@@ -72,7 +83,7 @@ impl Default for TinyUrlConfig {
             base_url: "http://localhost:8787".into(),
             ttl_secs: DEFAULT_TTL_SECS,
             max_entries: 100_000,
-            secret: "portail-tinyurl-secret".into(),
+            secret: DEFAULT_INSECURE_SECRET.into(),
         }
     }
 }
@@ -86,6 +97,13 @@ pub struct TinyUrlStore {
 
 impl TinyUrlStore {
     pub fn new(config: TinyUrlConfig) -> Self {
+        if config.secret == DEFAULT_INSECURE_SECRET {
+            tracing::warn!(
+                target: "portail::tinyurl",
+                "TinyUrl is using the default placeholder secret; \
+                 override `tinyurl.secret` in your config before production use"
+            );
+        }
         Self {
             entries: std::sync::RwLock::new(FxHashMap::default()),
             config,

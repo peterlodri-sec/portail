@@ -41,7 +41,6 @@
 
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
-use std::time::Duration;
 use redis::Commands;
 
 // ── Configuration ────────────────────────────────────────────────
