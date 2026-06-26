@@ -25,10 +25,19 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      - uses: actions-rust-lang/setup-rust-toolchain@v1
+      - name: Install Rust toolchain
+        run: |
+          rustup set profile minimal
+          rustup toolchain install nightly --component rustfmt --component clippy
+          rustup default nightly
+      - uses: actions/cache@v4
         with:
-          components: clippy, rustfmt
-          cache-workspaces: true
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: cargo-${{ hashFiles('Cargo.lock') }}
+          restore-keys: cargo-
       - run: cargo check --locked --all-targets --workspace
       - run: cargo test --locked --workspace
       - run: cargo clippy --locked --all-targets -- --deny warnings
@@ -39,9 +48,16 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      - uses: actions-rust-lang/setup-rust-toolchain@v1
+      - name: Install Rust
+        run: rustup set profile minimal && rustup toolchain install nightly && rustup default nightly
+      - uses: actions/cache@v4
         with:
-          cache-workspaces: true
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: cargo-profile-${{ hashFiles('Cargo.lock') }}
+          restore-keys: cargo-profile-
       - run: cargo install cargo-bloat --locked
       - run: |
           echo "## Binary Profile" >> $GITHUB_STEP_SUMMARY

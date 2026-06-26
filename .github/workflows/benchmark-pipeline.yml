@@ -1,0 +1,70 @@
+name: Benchmark Pipeline
+
+on:
+  schedule:
+    - cron: '0 */2 * * *'
+  release:
+    types: [published]
+  workflow_dispatch:
+
+env:
+  CARGO_TERM_COLOR: always
+  RUSTFLAGS: -D warnings
+
+jobs:
+  bench:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Install Rust
+        run: |
+          rustup set profile minimal
+          rustup toolchain install nightly --component llvm-tools
+          rustup default nightly
+
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: async-bench-${{ hashFiles('Cargo.lock') }}
+          restore-keys: async-bench-
+
+      - name: Build benchmarks
+        run: cargo build --benches --locked 2>&1
+
+      - name: Run benchmarks
+        run: |
+          cargo bench --locked 2>&1 | tee /tmp/bench-output.txt
+
+      - name: Extract key metrics
+        id: metrics
+        run: |
+          echo '## Benchmark Results' > /tmp/bench-report.md
+          echo '' >> /tmp/bench-report.md
+          echo '| Benchmark | Time |' >> /tmp/bench-report.md
+          echo '|---|---|' >> /tmp/bench-report.md
+          grep -E '^[a-z_]+[[:space:]]+time:' /tmp/bench-output.txt 2>/dev/null | \
+            sed 's/\(.*\)time:\[\(.*\)\]/| \1 | \2 |/' >> /tmp/bench-report.md || \
+            echo 'No structured results' >> /tmp/bench-report.md
+          echo '' >> /tmp/bench-report.md
+          echo 'Generated at: $(date -u)' >> /tmp/bench-report.md
+
+      - name: Create GitHub issue
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const report = fs.readFileSync('/tmp/bench-report.md', 'utf8');
+            const date = new Date().toISOString().split('T')[0];
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `bench: performance report — ${date}`,
+              body: report,
+              labels: ['benchmark', 'automation']
+            });
