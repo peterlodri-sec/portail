@@ -20,6 +20,44 @@ use std::sync::Arc;
 use tokio::sync::RwLock;
 use tracing::{info, warn};
 
+// ── Gateway bridge (called by provider handler) ────────────────────
+
+/// Placeholder chat completion for gateway integration.
+/// Returns stub response until real mistral.rs engine is wired.
+pub async fn chat_completion_placeholder(
+    req: ChatCompletionRequest,
+) -> anyhow::Result<ChatCompletionResponse> {
+    let id = format!("chatcmpl-local-{}", uuid::Uuid::new_v4());
+    let model = if req.model.is_empty() {
+        "local-model".into()
+    } else {
+        req.model
+    };
+    let content = format!(
+        "[local inference placeholder] model={model}, prompt_len={}",
+        req.messages.iter().map(|m| m.content.len()).sum::<usize>()
+    );
+    Ok(ChatCompletionResponse {
+        id,
+        object: "chat.completion".into(),
+        created: chrono::Utc::now().timestamp(),
+        model,
+        choices: vec![Choice {
+            index: 0,
+            message: ChatMessage {
+                role: "assistant".into(),
+                content,
+            },
+            finish_reason: "stop".into(),
+        }],
+        usage: Usage {
+            prompt_tokens: 0,
+            completion_tokens: 0,
+            total_tokens: 0,
+        },
+    })
+}
+
 // ── Config ────────────────────────────────────────────────────────
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
