@@ -1,6 +1,6 @@
 # Portail Loop State — v0.2 → v3.0
 
-**Principle:** CI agents are advisory only. Report, recommend, never block. CI gates opt-in.
+**Principle:** CI agents advisory only. Report, recommend, never block. CI gates opt-in.
 
 ```
 LOOP: plan → implement → test → review → ship → repeat
@@ -28,12 +28,12 @@ OPEN:   #27, #28, #29, #30, #31, #33, #34, #35, #1 super devnote (HUMAN ONLY)
 ## v0.3 — Complexity Bot (advisory only)        ✅ SHIPPED
 **Target:** 2026-07-01  **Effort:** 1 day
 
-- Refactor `cli/complexity.rs`: never exit with non-zero
-- Output format: TOML report, JSON for machines
+- Refactor `cli/complexity.rs`: never exit non-zero
+- Output: TOML report, JSON for machines
 - CI mode: `--ci` flag writes report to file, always exits 0
 - Report key: per-function Big-O, total project complexity score
-- Integration: GitHub Actions step that posts comment on PR
-- **Rule:** `complexity-enforcer` is a reporter, not a gate
+- Integration: GitHub Actions step posts PR comment
+- **Rule:** `complexity-enforcer` reporter, not gate
 
 ## v0.4 — Drift Detect (CI agent 1)            ✅ SHIPPED
 **Target:** 2026-07-08  **Effort:** 3 days
@@ -63,16 +63,16 @@ OPEN:   #27, #28, #29, #30, #31, #33, #34, #35, #1 super devnote (HUMAN ONLY)
 - Assert: no panics, no 500s on malformed input, proper error codes
 - Property: "proxy must not crash on any input"
 - CI integration: `gh pr comment` with crash report
-- **Rule:** non-zero exit only if a panic/crash is detected (critical bug)
+- **Rule:** non-zero exit only on panic/crash (critical bug)
 
 ---
 
 ## v1.0 — One-Command Gateway (DX)              ✅ SHIPPED
 **Target:** 2026-06-26  **Effort:** 1 day
 
-- `nix run github:peterlodri-sec/portail -- serve` is production-ready
+- `nix run github:peterlodri-sec/portail -- serve` production-ready
 - Sensible defaults: rate limiting (30 burst), auth disabled, OTLP off
-- Config-less startup: all features work without a config file
+- Config-less startup: all features work without config file
 - `portail init` wizard: generates portail.toml interactively
 - Verified on: x86_64-linux, aarch64-linux, aarch64-darwin
 - CI: Nix flake check + binary smoke test on all 3 platforms
@@ -84,7 +84,7 @@ OPEN:   #27, #28, #29, #30, #31, #33, #34, #35, #1 super devnote (HUMAN ONLY)
 **Target:** 2026-08-08  **Effort:** 3 days
 
 - `inotify` (Linux) / `kqueue` (macOS) config file watcher
-- Auto-reload on file change (no SIGHUP needed)
+- Auto-reload on change (no SIGHUP needed)
 - Validate before apply: parse new config, if invalid → keep old, log error
 - Config versioning: store last N valid configs, rollback command
 - TUI indicator: green dot = config healthy, red = last reload failed
@@ -97,7 +97,7 @@ OPEN:   #27, #28, #29, #30, #31, #33, #34, #35, #1 super devnote (HUMAN ONLY)
   - Rate-limit exhaustion counter per key
   - Auth-failure tally per endpoint
   - OTLP trace sampling rate
-- Alert mode: when something breaks, highlight + show one-line fix
+- Alert mode: on break, highlight + show one-line fix
 - Keyboard shortcuts: `r` = reload config, `c` = clear alerts, `q` = quit
 - Works in 80x24 terminal minimum
 
