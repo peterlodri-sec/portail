@@ -1,0 +1,70 @@
+name: Nix
+
+# CI gate: nix flake check + build a derivation on every PR/push that
+# touches the Nix surface. Keeps the flake honest without forcing a
+# long Rust build on every commit. See issue #28 (v2.2 release).
+#
+# Two jobs, both blocking:
+#   1. nix-check  — `nix flake check --no-build` on linux + darwin
+#   2. nix-build  — `nix build .#portail --no-link` on linux + darwin
+#
+# No Cachix: project has no CACHIX_AUTH_TOKEN secret. Re-evaluate
+# when packaging lands in v2.2.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'flake.nix'
+      - 'flake.lock'
+      - 'nix/**'
+      - 'nushell/**'
+      - '.github/workflows/nix.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'flake.nix'
+      - 'flake.lock'
+      - 'nix/**'
+      - 'nushell/**'
+      - '.github/workflows/nix.yml'
+
+concurrency:
+  group: nix-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  nix-check:
+    name: flake check (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: cachix/install-nix-action@v31
+        with:
+          extra-nix-config: |
+            experimental-features = nix-command flakes
+      - name: nix flake check --no-build
+        run: nix flake check --no-build --show-trace 2>&1 | tail -200
+
+  nix-build:
+    name: build portail (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 25
+    needs: nix-check
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: cachix/install-nix-action@v31
+        with:
+          extra-nix-config: |
+            experimental-features = nix-command flakes
+      - name: nix build .#portail --no-link
+        run: nix build .#portail --no-link --print-out-paths 2>&1 | tail -50

@@ -29,6 +29,7 @@
 pub mod a2a;
 pub mod a2c;
 pub mod auth;
+pub mod bow;
 pub mod cdn;
 pub mod ci;
 pub mod cli;
@@ -43,11 +44,12 @@ pub mod gateway;
 pub mod godfather;
 pub mod graphql;
 pub mod hooks;
+pub mod local_inference;
 pub mod mcp;
 pub mod nats_bridge;
 pub mod orchestrator;
-pub mod plugins;
 pub mod plugin_hooks;
+pub mod plugins;
 pub mod proxy;
 pub mod rate_limit;
 pub mod release_audit;
@@ -55,9 +57,9 @@ pub mod sentinel;
 pub mod sessions;
 pub mod shutdown;
 pub mod spec_verify;
-pub mod target_router;
 pub mod store;
 pub mod supervisor;
+pub mod target_router;
 pub mod telemetry;
 pub mod test_utils;
 pub mod types;
@@ -95,5 +97,6 @@ pub struct AppState {
     pub plugin_registry: Arc<std::sync::Mutex<PluginRegistry>>,
     pub loop_manager: Arc<LoopStateManager>,
     pub loop_runner: loopeng::SharedLoopEngine,
+    pub inference_engine: Option<Arc<local_inference::InferenceEngine>>,
     pub pkg_ctx_memory: tokio::sync::Mutex<pkg_ctx::memory::PkgCtxMemory>,
 }

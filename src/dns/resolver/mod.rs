@@ -19,6 +19,6 @@ pub trait DnsResolver: Send + Sync + 'static {
     fn name(&self) -> &'static str;
 }
 
+pub mod blocky;
 pub mod doh;
 pub mod system;
-pub mod blocky;

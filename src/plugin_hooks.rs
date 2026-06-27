@@ -90,16 +90,15 @@ pub fn call_plugin_hooks(
 fn plugin_hook_list(plugin: &LoadedPlugin) -> Vec<String> {
     match plugin {
         LoadedPlugin::Native(p) => p.manifest().hooks.clone(),
-        LoadedPlugin::Vaked(v) => {
-            v.hooks
-                .as_ref()
-                .map(|h| {
-                    h.values()
-                        .flat_map(|v| v.iter().cloned())
-                        .collect::<Vec<_>>()
-                })
-                .unwrap_or_default()
-        }
+        LoadedPlugin::Vaked(v) => v
+            .hooks
+            .as_ref()
+            .map(|h| {
+                h.values()
+                    .flat_map(|v| v.iter().cloned())
+                    .collect::<Vec<_>>()
+            })
+            .unwrap_or_default(),
     }
 }
 
@@ -119,9 +118,9 @@ mod tests {
 
     #[test]
     fn test_call_plugins_empty_registry() {
-        let registry = Arc::new(Mutex::new(PluginRegistry::new(
-            std::path::PathBuf::from("/tmp/nonexistent"),
-        )));
+        let registry = Arc::new(Mutex::new(PluginRegistry::new(std::path::PathBuf::from(
+            "/tmp/nonexistent",
+        ))));
         let result = call_plugin_hooks(
             &registry,
             HookPoint::PreRequest,

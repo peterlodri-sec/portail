@@ -10,7 +10,7 @@
 //! ```
 
 use crate::types::BoundedMeta;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::watch;
@@ -45,7 +45,7 @@ impl RestartPolicy {
 
 // ─── supervisor ───────────────────────────────────────────────────
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TaskStatus {
     pub name: String,
     pub status: String, // "running" | "crashed" | "restarting" | "stopped"
@@ -200,4 +200,122 @@ pub fn router() -> axum::Router<Arc<Supervisor>> {
         "/supervisor/status",
         axum::routing::get(handle_supervisor_status),
     )
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn restart_policy_constructors() {
+        assert!(matches!(RestartPolicy::always(), RestartPolicy::Always));
+        assert!(matches!(RestartPolicy::never(), RestartPolicy::Never));
+        assert!(matches!(
+            RestartPolicy::transient(),
+            RestartPolicy::Transient
+        ));
+        let perm = RestartPolicy::permanent();
+        match perm {
+            RestartPolicy::Permanent {
+                max_restarts,
+                within,
+            } => {
+                assert_eq!(max_restarts, 5);
+                assert_eq!(within, Duration::from_secs(60));
+            }
+            _ => panic!("expected Permanent"),
+        }
+    }
+
+    #[test]
+    fn supervisor_new_creates_empty_task_list() {
+        let log = Arc::new(crate::events::EventLog::new(100));
+        let sup = Supervisor::new(log);
+        assert!(sup.status().is_empty());
+    }
+
+    #[test]
+    fn supervisor_tasks_handle_is_shared() {
+        let log = Arc::new(crate::events::EventLog::new(100));
+        let sup = Supervisor::new(log);
+        let handle = sup.tasks_handle();
+        assert_eq!(handle.read().unwrap().len(), sup.status().len());
+    }
+
+    #[tokio::test]
+    async fn supervisor_spawn_successful_task() {
+        let log = Arc::new(crate::events::EventLog::new(100));
+        let sup = Arc::new(Supervisor::new(log));
+
+        sup.spawn(
+            "test-task",
+            RestartPolicy::never(),
+            |_rx| async move { Ok(()) },
+        );
+
+        tokio::time::sleep(Duration::from_millis(50)).await;
+
+        let statuses = sup.status();
+        assert_eq!(statuses.len(), 1);
+        assert_eq!(statuses[0].name, "test-task");
+    }
+
+    #[tokio::test]
+    async fn supervisor_spawn_failing_task_crashes_with_never_policy() {
+        let log = Arc::new(crate::events::EventLog::new(100));
+        let sup = Arc::new(Supervisor::new(log));
+
+        sup.spawn("crashing-task", RestartPolicy::never(), |_rx| async move {
+            Err(anyhow::anyhow!("intentional crash"))
+        });
+
+        tokio::time::sleep(Duration::from_millis(100)).await;
+
+        let statuses = sup.status();
+        let task = statuses.iter().find(|t| t.name == "crashing-task").unwrap();
+        assert_eq!(task.status, "crashed");
+        assert_eq!(task.restarts, 1);
+        assert!(
+            task.last_error
+                .as_ref()
+                .unwrap()
+                .contains("intentional crash")
+        );
+    }
+
+    #[tokio::test]
+    async fn supervisor_spawn_with_always_policy_restarts() {
+        let log = Arc::new(crate::events::EventLog::new(100));
+        let sup = Arc::new(Supervisor::new(log));
+
+        sup.spawn(
+            "restarting-task",
+            RestartPolicy::always(),
+            |_rx| async move { Err(anyhow::anyhow!("boom")) },
+        );
+
+        tokio::time::sleep(Duration::from_secs(1)).await;
+
+        let statuses = sup.status();
+        let task = statuses
+            .iter()
+            .find(|t| t.name == "restarting-task")
+            .unwrap();
+        assert!(task.restarts >= 1);
+    }
+
+    #[test]
+    fn task_status_serialization() {
+        let status = TaskStatus {
+            name: "test".into(),
+            status: "running".into(),
+            restarts: 0,
+            last_error: None,
+        };
+        let json = serde_json::to_string(&status).unwrap();
+        assert!(json.contains("test"));
+        assert!(json.contains("running"));
+        let deser: TaskStatus = serde_json::from_str(&json).unwrap();
+        assert_eq!(deser.name, "test");
+    }
 }

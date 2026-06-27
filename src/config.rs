@@ -1,4 +1,7 @@
-use figment::{Figment, providers::{Format, Toml, Env, Serialized}};
+use figment::{
+    Figment,
+    providers::{Env, Format, Serialized, Toml},
+};
 use serde::{Deserialize, Serialize};
 use std::path::Path;
 
@@ -37,6 +40,7 @@ pub struct Config {
     pub ai_gateway: Option<AiGatewayConfig>,
     pub mcp: Option<McpConfig>,
     pub cdn: Option<CdnConfig>,
+    pub local_inference: Option<crate::local_inference::LocalInferenceConfig>,
 
     /// Upstream target templates — create, reuse, share
     #[serde(default)]
@@ -88,6 +92,9 @@ pub struct McpConfig {
     pub enabled: bool,
     #[serde(default = "default_mcp_socket")]
     pub socket_path: String,
+    /// MCP backend: "python" (legacy uv sidecar) or "wasm" (v4+ Extism)
+    #[serde(default)]
+    pub backend: crate::mcp::McpBackend,
     pub server_registry: Option<Vec<McpServerEntry>>,
 }
 
@@ -119,8 +126,12 @@ pub struct TargetConfig {
     pub description: Option<String>,
 }
 
-fn default_provider() -> String { "openai".into() }
-fn default_target_rps() -> f64 { 10.0 }
+fn default_provider() -> String {
+    "openai".into()
+}
+fn default_target_rps() -> f64 {
+    10.0
+}
 
 impl Default for TargetConfig {
     fn default() -> Self {
@@ -146,7 +157,10 @@ pub fn builtin_targets() -> Vec<TargetConfig> {
             provider: "anthropic".into(),
             base_url: "https://api.anthropic.com/v1".into(),
             api_key: Some("$ANTHROPIC_API_KEY".into()),
-            models: vec!["claude-sonnet-4-20250514".into(), "claude-haiku-3-20250313".into()],
+            models: vec![
+                "claude-sonnet-4-20250514".into(),
+                "claude-haiku-3-20250313".into(),
+            ],
             rps: 10.0,
             tags: vec!["built-in".into(), "fast".into()],
             description: Some("Anthropic Claude fast models (Sonnet, Haiku)".into()),
@@ -234,7 +248,11 @@ pub fn builtin_mcp_servers() -> Vec<McpServerEntry> {
             name: "filesystem".into(),
             transport: "stdio".into(),
             command: Some("npx".into()),
-            args: Some(vec!["-y".into(), "@modelcontextprotocol/server-filesystem".into(), "/".into()]),
+            args: Some(vec![
+                "-y".into(),
+                "@modelcontextprotocol/server-filesystem".into(),
+                "/".into(),
+            ]),
             tags: vec!["built-in".into(), "code".into()],
             description: Some("Local filesystem access — read, write, search files".into()),
             autostart: false,
@@ -244,7 +262,10 @@ pub fn builtin_mcp_servers() -> Vec<McpServerEntry> {
             name: "github".into(),
             transport: "stdio".into(),
             command: Some("npx".into()),
-            args: Some(vec!["-y".into(), "@modelcontextprotocol/server-github".into()]),
+            args: Some(vec![
+                "-y".into(),
+                "@modelcontextprotocol/server-github".into(),
+            ]),
             tags: vec!["built-in".into(), "git".into()],
             description: Some("GitHub API — repos, PRs, issues, search".into()),
             autostart: false,
@@ -256,7 +277,9 @@ pub fn builtin_mcp_servers() -> Vec<McpServerEntry> {
             command: Some("npx".into()),
             args: Some(vec!["-y".into(), "@playwright/mcp".into()]),
             tags: vec!["built-in".into(), "browser".into()],
-            description: Some("Chrome DevTools / Playwright — browser automation, screenshots, inspection".into()),
+            description: Some(
+                "Chrome DevTools / Playwright — browser automation, screenshots, inspection".into(),
+            ),
             autostart: false,
             ..Default::default()
         },
@@ -264,7 +287,10 @@ pub fn builtin_mcp_servers() -> Vec<McpServerEntry> {
             name: "fetch".into(),
             transport: "stdio".into(),
             command: Some("npx".into()),
-            args: Some(vec!["-y".into(), "@modelcontextprotocol/server-fetch".into()]),
+            args: Some(vec![
+                "-y".into(),
+                "@modelcontextprotocol/server-fetch".into(),
+            ]),
             tags: vec!["built-in".into(), "web".into()],
             description: Some("HTTP fetch — download web pages, APIs, JSON".into()),
             autostart: false,
@@ -274,7 +300,10 @@ pub fn builtin_mcp_servers() -> Vec<McpServerEntry> {
             name: "brave-search".into(),
             transport: "stdio".into(),
             command: Some("npx".into()),
-            args: Some(vec!["-y".into(), "@modelcontextprotocol/server-brave-search".into()]),
+            args: Some(vec![
+                "-y".into(),
+                "@modelcontextprotocol/server-brave-search".into(),
+            ]),
             tags: vec!["built-in".into(), "search".into()],
             description: Some("Web search via Brave Search API".into()),
             autostart: false,
@@ -284,7 +313,11 @@ pub fn builtin_mcp_servers() -> Vec<McpServerEntry> {
             name: "sqlite".into(),
             transport: "stdio".into(),
             command: Some("npx".into()),
-            args: Some(vec!["-y".into(), "@modelcontextprotocol/server-sqlite".into(), "./data.db".into()]),
+            args: Some(vec![
+                "-y".into(),
+                "@modelcontextprotocol/server-sqlite".into(),
+                "./data.db".into(),
+            ]),
             tags: vec!["built-in".into(), "database".into()],
             description: Some("SQLite database — query, schema, insert".into()),
             autostart: false,
@@ -294,7 +327,10 @@ pub fn builtin_mcp_servers() -> Vec<McpServerEntry> {
             name: "sequential-thinking".into(),
             transport: "stdio".into(),
             command: Some("npx".into()),
-            args: Some(vec!["-y".into(), "@modelcontextprotocol/server-sequential-thinking".into()]),
+            args: Some(vec![
+                "-y".into(),
+                "@modelcontextprotocol/server-sequential-thinking".into(),
+            ]),
             tags: vec!["built-in".into(), "reasoning".into()],
             description: Some("Step-by-step reasoning chains for complex problems".into()),
             autostart: false,
@@ -353,6 +389,7 @@ impl Default for Config {
             ai_gateway: None,
             mcp: None,
             cdn: None,
+            local_inference: None,
             targets: vec![],
             rate_limit: crate::rate_limit::RateLimitConfig::default(),
             auth: crate::auth::AuthConfig::default(),
@@ -377,6 +414,7 @@ impl Default for McpConfig {
         Self {
             enabled: true,
             socket_path: default_mcp_socket(),
+            backend: crate::mcp::McpBackend::default(),
             server_registry: Some(builtin_mcp_servers()),
         }
     }

@@ -6,8 +6,8 @@
 
 use std::net::IpAddr;
 
-use super::{DnsRecordType, DnsResolver};
 use super::doh::DohResolver;
+use super::{DnsRecordType, DnsResolver};
 
 pub struct BlockyResolver {
     doh: DohResolver,
@@ -16,7 +16,10 @@ pub struct BlockyResolver {
 
 impl BlockyResolver {
     pub fn new(local_url: String) -> Self {
-        Self { doh: DohResolver::default(), local_url }
+        Self {
+            doh: DohResolver::default(),
+            local_url,
+        }
     }
 }
 
@@ -32,5 +35,7 @@ impl DnsResolver for BlockyResolver {
         self.doh.resolve(name, record_type).await
     }
 
-    fn name(&self) -> &'static str { "blocky" }
+    fn name(&self) -> &'static str {
+        "blocky"
+    }
 }

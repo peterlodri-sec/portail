@@ -6,7 +6,6 @@
 //! if upgrade conditions aren't met.
 //!
 //! Used by:
-//!   - A2A WebSocket handler (/a2a/ws)
 //!   - MCP sidecar socket handoff
 //!   - Future: STARTTLS, h2c upgrade
 

@@ -174,7 +174,8 @@ fn bench_pkg_ctx_memory(c: &mut Criterion) {
             content: format!("document {i} about authentication and middleware"),
             tokens: 10,
             has_code: false,
-        }).ok();
+        })
+        .ok();
     }
     c.bench_function("pkg_ctx_search", |b| {
         b.iter(|| {

@@ -20,16 +20,16 @@ use std::time::Duration;
 
 use serde::{Deserialize, Serialize};
 
-pub mod queries;
-pub mod schema;
-pub mod rusqlite_backend;
-pub mod sqlx_backend;
 pub mod nats_backend;
+pub mod queries;
+pub mod rusqlite_backend;
+pub mod schema;
+pub mod sqlx_backend;
 
-pub use rusqlite_backend::RusqliteBackend;
-pub use sqlx_backend::SqlxBackend;
 #[cfg(feature = "store-nats")]
 pub use nats_backend::NatsReplicatedBackend;
+pub use rusqlite_backend::RusqliteBackend;
+pub use sqlx_backend::SqlxBackend;
 
 // ─── Config ───────────────────────────────────────────────────────
 
@@ -56,9 +56,15 @@ impl Default for StoreConfig {
     }
 }
 
-fn default_db_path() -> String { "/var/lib/portail/events.db".into() }
-fn default_retention() -> u32 { 30 }
-fn default_provider() -> String { "sqlx".into() }
+fn default_db_path() -> String {
+    "/var/lib/portail/events.db".into()
+}
+fn default_retention() -> u32 {
+    30
+}
+fn default_provider() -> String {
+    "sqlx".into()
+}
 
 // ─── Event Model ──────────────────────────────────────────────────
 
@@ -77,8 +83,11 @@ pub struct StoredEvent {
 pub trait StoreBackend: Send + Sync + 'static {
     fn insert(&self, event: &StoredEvent) -> Result<i64, String>;
     fn query(
-        &self, agent_id: Option<&str>, event_type: Option<&str>,
-        since: Option<i64>, limit: Option<usize>,
+        &self,
+        agent_id: Option<&str>,
+        event_type: Option<&str>,
+        since: Option<i64>,
+        limit: Option<usize>,
     ) -> Result<Vec<StoredEvent>, String>;
     fn count(&self) -> Result<i64, String>;
     fn purge_expired(&self, retention_days: u32) -> Result<usize, String>;
@@ -110,7 +119,10 @@ impl EventStore {
                 Arc::new(RusqliteBackend::open(&config)?)
             }
         };
-        let store = Self { backend, config: config.clone() };
+        let store = Self {
+            backend,
+            config: config.clone(),
+        };
         store.start_retention();
         Ok(store)
     }
@@ -137,12 +149,24 @@ impl EventStore {
         }
     }
 
-    pub fn insert(&self, event: &StoredEvent) -> Result<i64, String> { self.backend.insert(event) }
+    pub fn insert(&self, event: &StoredEvent) -> Result<i64, String> {
+        self.backend.insert(event)
+    }
     pub fn query(
-        &self, a: Option<&str>, e: Option<&str>, s: Option<i64>, l: Option<usize>,
-    ) -> Result<Vec<StoredEvent>, String> { self.backend.query(a, e, s, l) }
-    pub fn count(&self) -> Result<i64, String> { self.backend.count() }
-    pub fn export_json(&self, s: Option<i64>) -> Result<String, String> { self.backend.export_json(s) }
+        &self,
+        a: Option<&str>,
+        e: Option<&str>,
+        s: Option<i64>,
+        l: Option<usize>,
+    ) -> Result<Vec<StoredEvent>, String> {
+        self.backend.query(a, e, s, l)
+    }
+    pub fn count(&self) -> Result<i64, String> {
+        self.backend.count()
+    }
+    pub fn export_json(&self, s: Option<i64>) -> Result<String, String> {
+        self.backend.export_json(s)
+    }
 }
 
 pub(crate) fn expand_tilde(path: &str) -> String {
@@ -192,7 +216,12 @@ mod tests {
     use super::*;
 
     fn test_config() -> StoreConfig {
-        StoreConfig { enabled: true, db_path: ":memory:".into(), retention_days: 0, ..Default::default() }
+        StoreConfig {
+            enabled: true,
+            db_path: ":memory:".into(),
+            retention_days: 0,
+            ..Default::default()
+        }
     }
 
     fn test_store() -> impl StoreBackend {
@@ -203,12 +232,18 @@ mod tests {
     fn insert_and_query() {
         let store = test_store();
         let event = StoredEvent {
-            id: None, agent_id: "test-agent".into(), event_type: "task.completed".into(),
-            severity: "info".into(), timestamp: 1700000000, metadata_json: r#"{"key":"value"}"#.into(),
+            id: None,
+            agent_id: "test-agent".into(),
+            event_type: "task.completed".into(),
+            severity: "info".into(),
+            timestamp: 1700000000,
+            metadata_json: r#"{"key":"value"}"#.into(),
         };
         let id = store.insert(&event).expect("insert");
         assert!(id > 0);
-        let results = store.query(Some("test-agent"), None, None, Some(10)).expect("query");
+        let results = store
+            .query(Some("test-agent"), None, None, Some(10))
+            .expect("query");
         assert_eq!(results.len(), 1);
         assert_eq!(results[0].agent_id, "test-agent");
     }
@@ -217,10 +252,16 @@ mod tests {
     fn count_works() {
         let store = test_store();
         for i in 0..5 {
-            store.insert(&StoredEvent {
-                id: None, agent_id: format!("agent-{}", i), event_type: "test".into(),
-                severity: "info".into(), timestamp: 1700000000 + i, metadata_json: "{}".into(),
-            }).unwrap();
+            store
+                .insert(&StoredEvent {
+                    id: None,
+                    agent_id: format!("agent-{}", i),
+                    event_type: "test".into(),
+                    severity: "info".into(),
+                    timestamp: 1700000000 + i,
+                    metadata_json: "{}".into(),
+                })
+                .unwrap();
         }
         assert_eq!(store.count().unwrap(), 5);
     }

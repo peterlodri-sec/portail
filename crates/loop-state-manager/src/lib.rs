@@ -71,7 +71,7 @@ pub struct LoopTask {
     pub id: String,
     pub phase: LoopPhase,
     pub description: String,
-    pub prompt: Option<String>,       // HITL prompt when human input needed
+    pub prompt: Option<String>, // HITL prompt when human input needed
     pub status: TaskStatus,
     pub created_at: String,
     pub completed_at: Option<String>,
@@ -84,7 +84,7 @@ pub enum TaskStatus {
     InProgress,
     Completed,
     Failed(String),
-    WaitingForHuman,  // HITL — blocked on human decision
+    WaitingForHuman, // HITL — blocked on human decision
 }
 
 /// Human decision in response to a HITL prompt
@@ -104,7 +104,7 @@ pub struct LoopState {
     pub current_task: Option<LoopTask>,
     pub backlog: Vec<LoopTask>,
     pub history: Vec<LoopTask>,
-    pub hitl_pending: Vec<LoopTask>,  // tasks waiting for human
+    pub hitl_pending: Vec<LoopTask>, // tasks waiting for human
     pub updated_at: String,
 }
 
@@ -132,7 +132,12 @@ pub struct HitlChannel {
 impl HitlChannel {
     pub fn new() -> (Self, oneshot::Receiver<HumanDecision>) {
         let (tx, rx) = oneshot::channel();
-        (Self { tx: Mutex::new(Some(tx)) }, rx)
+        (
+            Self {
+                tx: Mutex::new(Some(tx)),
+            },
+            rx,
+        )
     }
 
     pub fn send_decision(&self, decision: HumanDecision) -> Result<(), HumanDecision> {
@@ -179,9 +184,10 @@ impl LoopStateManager {
         let target_phase = phase.unwrap_or(state.current_phase.clone());
 
         // Find first pending task for this phase
-        let pos = state.backlog.iter().position(|t| {
-            t.phase == target_phase && t.status == TaskStatus::Pending
-        });
+        let pos = state
+            .backlog
+            .iter()
+            .position(|t| t.phase == target_phase && t.status == TaskStatus::Pending);
 
         match pos {
             Some(idx) => {
@@ -218,7 +224,11 @@ impl LoopStateManager {
         let mut state = self.state.lock().unwrap();
 
         // Check current task
-        let is_current = state.current_task.as_ref().map(|t| t.id == task_id).unwrap_or(false);
+        let is_current = state
+            .current_task
+            .as_ref()
+            .map(|t| t.id == task_id)
+            .unwrap_or(false);
         if is_current {
             let mut task = state.current_task.take().unwrap();
             task.status = TaskStatus::Completed;
@@ -245,7 +255,11 @@ impl LoopStateManager {
     pub fn wait_for_human(&self, task_id: &str) -> Result<(), LoopError> {
         let mut state = self.state.lock().unwrap();
 
-        let should_block = state.current_task.as_ref().map(|t| t.id == task_id).unwrap_or(false);
+        let should_block = state
+            .current_task
+            .as_ref()
+            .map(|t| t.id == task_id)
+            .unwrap_or(false);
         if should_block {
             let task = state.current_task.as_mut().unwrap();
             task.status = TaskStatus::WaitingForHuman;
@@ -262,7 +276,10 @@ impl LoopStateManager {
     pub fn resolve_human(&self, decision: HumanDecision) -> Result<(), LoopError> {
         let mut state = self.state.lock().unwrap();
 
-        let pos = state.hitl_pending.iter().position(|t| t.id == decision.task_id);
+        let pos = state
+            .hitl_pending
+            .iter()
+            .position(|t| t.id == decision.task_id);
         match pos {
             Some(idx) => {
                 let mut task = state.hitl_pending.remove(idx);
@@ -294,7 +311,9 @@ impl LoopStateManager {
     pub fn get_hitl_prompt(&self) -> Option<(String, String)> {
         let state = self.state.lock().unwrap();
         state.hitl_pending.first().map(|task| {
-            let prompt = task.prompt.clone()
+            let prompt = task
+                .prompt
+                .clone()
                 .unwrap_or_else(|| format!("Approve task: {}", task.description));
             (task.id.clone(), prompt)
         })
@@ -304,7 +323,9 @@ impl LoopStateManager {
     pub fn query(&self, phase_filter: Option<LoopPhase>) -> Vec<LoopTask> {
         let state = self.state.lock().unwrap();
         match phase_filter {
-            Some(phase) => state.history.iter()
+            Some(phase) => state
+                .history
+                .iter()
                 .filter(|t| t.phase == phase)
                 .cloned()
                 .collect(),
@@ -315,7 +336,9 @@ impl LoopStateManager {
     /// Convert state to a JSON oneshot prompt for agents
     pub fn to_task_prompt(&self) -> String {
         let state = self.get_state();
-        let current = state.current_task.as_ref()
+        let current = state
+            .current_task
+            .as_ref()
             .map(|t| format!("Current: {} — {}", t.phase, t.description))
             .unwrap_or_else(|| "No current task".into());
         let backlog_count = state.backlog.len();
@@ -341,7 +364,10 @@ pub enum DyadMessage {
     /// Human → Box: decision on HITL prompt
     HumanDecision(HumanDecision),
     /// Human → Box: command to execute
-    Command { action: String, params: serde_json::Value },
+    Command {
+        action: String,
+        params: serde_json::Value,
+    },
     /// Box → Human: command result
     CommandResult { success: bool, output: String },
     /// Either side: heartbeat / keepalive
@@ -384,8 +410,11 @@ mod tests {
     #[test]
     fn test_hitl_flow() {
         let mgr = LoopStateManager::new("1.0.0");
-        mgr.add_task(LoopPhase::Reviewing, "Review PR #42",
-            Some("Approve the changes? (yes/no)"));
+        mgr.add_task(
+            LoopPhase::Reviewing,
+            "Review PR #42",
+            Some("Approve the changes? (yes/no)"),
+        );
         let task = mgr.get_next_task(Some(LoopPhase::Reviewing)).unwrap();
         mgr.wait_for_human(&task.id).unwrap();
 
@@ -398,7 +427,8 @@ mod tests {
             decision: "yes".into(),
             reason: Some("LGTM".into()),
             approved: true,
-        }).unwrap();
+        })
+        .unwrap();
 
         let state = mgr.get_state();
         assert_eq!(state.current_phase, LoopPhase::Implementing);

@@ -82,7 +82,9 @@ impl PkgCtxMemory {
         let db = Arc::clone(&self.db);
         tokio::task::spawn_blocking(move || -> Result<Vec<SearchResult>> {
             let guard = db.lock().unwrap();
-            guard.search(&query, limit).map_err(|e| anyhow::anyhow!(e.to_string()))
+            guard
+                .search(&query, limit)
+                .map_err(|e| anyhow::anyhow!(e.to_string()))
         })
         .await?
     }
@@ -123,7 +125,8 @@ impl PkgCtxMemory {
                 let mem_db = db.lock().unwrap();
                 let mut file_db = PackageDb::open(&path).map_err(|e| anyhow::anyhow!(e))?;
                 let backup = rusqlite::backup::Backup::new(&mem_db.conn, &mut file_db.conn)?;
-                backup.run_to_completion(5, std::time::Duration::from_millis(100), None)
+                backup
+                    .run_to_completion(5, std::time::Duration::from_millis(100), None)
                     .map_err(|e| anyhow::anyhow!(e))
             })
             .await??;
@@ -138,7 +141,8 @@ impl PkgCtxMemory {
             let mem_db = db.lock().unwrap();
             let mut file_db = PackageDb::open(&path).map_err(|e| anyhow::anyhow!(e))?;
             let backup = rusqlite::backup::Backup::new(&mem_db.conn, &mut file_db.conn)?;
-            backup.run_to_completion(5, std::time::Duration::from_millis(100), None)
+            backup
+                .run_to_completion(5, std::time::Duration::from_millis(100), None)
                 .map_err(|e| anyhow::anyhow!(e))
         })
         .await??;

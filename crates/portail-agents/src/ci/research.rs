@@ -85,7 +85,8 @@ async fn search_duckduckgo(query: &str, max: usize) -> Result<Vec<SearchResult>,
         .build()
         .map_err(|e| e.to_string())?;
 
-    let resp = client.get(&url)
+    let resp = client
+        .get(&url)
         .header("User-Agent", "portail-research-agent/1.0")
         .send()
         .await
@@ -96,11 +97,14 @@ async fn search_duckduckgo(query: &str, max: usize) -> Result<Vec<SearchResult>,
     // Minimal HTML parsing for result links
     let mut results = Vec::new();
     for link in body.split("<a rel=\"nofollow\" href=\"") {
-        if results.len() >= max { break; }
+        if results.len() >= max {
+            break;
+        }
         let href = link.split('\"').next().unwrap_or("");
         let after_href = link.split('>').nth(1).unwrap_or("");
         let title = after_href.split('<').next().unwrap_or("").trim();
-        let snippet = link.split("<a class=\"result-snippet\">")
+        let snippet = link
+            .split("<a class=\"result-snippet\">")
             .nth(1)
             .and_then(|s| s.split('<').next())
             .unwrap_or("")
@@ -122,14 +126,16 @@ async fn search_duckduckgo(query: &str, max: usize) -> Result<Vec<SearchResult>,
 async fn search_brave(query: &str, api_key: &str, max: usize) -> Result<Vec<SearchResult>, String> {
     let url = format!(
         "https://api.search.brave.com/res/v1/web/search?q={}&count={}",
-        urlencoding(query), max
+        urlencoding(query),
+        max
     );
     let client = reqwest::Client::builder()
         .timeout(std::time::Duration::from_secs(15))
         .build()
         .map_err(|e| e.to_string())?;
 
-    let resp = client.get(&url)
+    let resp = client
+        .get(&url)
         .header("Accept", "application/json")
         .header("X-Subscription-Token", api_key)
         .send()
@@ -143,9 +149,21 @@ async fn search_brave(query: &str, api_key: &str, max: usize) -> Result<Vec<Sear
         if let Some(arr) = web.as_array() {
             for item in arr.iter().take(max) {
                 results.push(SearchResult {
-                    title: item.get("title").and_then(|t| t.as_str()).unwrap_or("").to_string(),
-                    url: item.get("url").and_then(|u| u.as_str()).unwrap_or("").to_string(),
-                    snippet: item.get("description").and_then(|d| d.as_str()).unwrap_or("").to_string(),
+                    title: item
+                        .get("title")
+                        .and_then(|t| t.as_str())
+                        .unwrap_or("")
+                        .to_string(),
+                    url: item
+                        .get("url")
+                        .and_then(|u| u.as_str())
+                        .unwrap_or("")
+                        .to_string(),
+                    snippet: item
+                        .get("description")
+                        .and_then(|d| d.as_str())
+                        .unwrap_or("")
+                        .to_string(),
                     source: "brave".into(),
                 });
             }
@@ -154,14 +172,19 @@ async fn search_brave(query: &str, api_key: &str, max: usize) -> Result<Vec<Sear
     Ok(results)
 }
 
-async fn search_linkup(query: &str, api_key: &str, max: usize) -> Result<Vec<SearchResult>, String> {
+async fn search_linkup(
+    query: &str,
+    api_key: &str,
+    max: usize,
+) -> Result<Vec<SearchResult>, String> {
     let url = "https://api.linkup.so/v1/search";
     let client = reqwest::Client::builder()
         .timeout(std::time::Duration::from_secs(15))
         .build()
         .map_err(|e| e.to_string())?;
 
-    let resp = client.post(url)
+    let resp = client
+        .post(url)
         .header("Authorization", format!("Bearer {api_key}"))
         .header("Content-Type", "application/json")
         .json(&serde_json::json!({
@@ -178,9 +201,21 @@ async fn search_linkup(query: &str, api_key: &str, max: usize) -> Result<Vec<Sea
     if let Some(arr) = json.as_array() {
         for item in arr.iter().take(max) {
             results.push(SearchResult {
-                title: item.get("title").and_then(|t| t.as_str()).unwrap_or("").to_string(),
-                url: item.get("url").and_then(|u| u.as_str()).unwrap_or("").to_string(),
-                snippet: item.get("snippet").and_then(|s| s.as_str()).unwrap_or("").to_string(),
+                title: item
+                    .get("title")
+                    .and_then(|t| t.as_str())
+                    .unwrap_or("")
+                    .to_string(),
+                url: item
+                    .get("url")
+                    .and_then(|u| u.as_str())
+                    .unwrap_or("")
+                    .to_string(),
+                snippet: item
+                    .get("snippet")
+                    .and_then(|s| s.as_str())
+                    .unwrap_or("")
+                    .to_string(),
                 source: "linkup".into(),
             });
         }
@@ -189,18 +224,22 @@ async fn search_linkup(query: &str, api_key: &str, max: usize) -> Result<Vec<Sea
 }
 
 fn urlencoding(s: &str) -> String {
-    s.chars().map(|c| match c {
-        'A'..='Z' | 'a'..='z' | '0'..='9' | '-' | '_' | '.' | '~' => c.to_string(),
-        ' ' => "+".to_string(),
-        _ => format!("%{:02X}", c as u8),
-    }).collect()
+    s.chars()
+        .map(|c| match c {
+            'A'..='Z' | 'a'..='z' | '0'..='9' | '-' | '_' | '.' | '~' => c.to_string(),
+            ' ' => "+".to_string(),
+            _ => format!("%{:02X}", c as u8),
+        })
+        .collect()
 }
 
 /// Phase 2: Bulk fetch all collected URLs (stub — returns empty content)
 pub async fn bulk_fetch(urls: &[String]) -> Vec<(String, String, Vec<String>)> {
     // Phase 2 implementation: fetch all URLs in parallel with reqwest
     // For now: return stubs
-    urls.iter().map(|url| (url.clone(), "[stub — fetch in Phase 2]".into(), vec![])).collect()
+    urls.iter()
+        .map(|url| (url.clone(), "[stub — fetch in Phase 2]".into(), vec![]))
+        .collect()
 }
 
 /// Run full research pipeline
