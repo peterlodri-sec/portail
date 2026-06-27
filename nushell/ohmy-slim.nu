@@ -37,15 +37,15 @@ export def "ohmy-slim write-config" [
         return
     }
     let raw = (open --raw $target)
-    let parsed = (try { $raw | from json } | complete)
-    if $parsed.exit_code != 0 {
+    let parsed = try { {raw: ($raw | from json), err: null} } catch { {raw: null, err: ($in | get msg? | default "parse error")} }
+    if $parsed.err != null {
         let backup = $"($target).bak.((date now | format date '%s'))"
         mv $target $backup
         { multiplexer: $MULTIPLEXER_BLOCK } | to json --indent 2 | save --force $target
-        print $"WARN config unparseable, backed up to ($backup) and rewrote from template"
+        print $"(ansi yellow)WARN(ansi reset) config unparseable, backed up to ($backup) and rewrote from template"
         return
     }
-    let existing = $parsed.stdout
+    let existing = $parsed.raw
     let merged = ($existing | merge { multiplexer: ($existing.multiplexer? | default {} | merge $MULTIPLEXER_BLOCK) })
     $merged | to json --indent 2 | save --force $target
     print $"merged multiplexer block into: ($target)"
