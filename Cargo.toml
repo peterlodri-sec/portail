@@ -109,6 +109,13 @@ aws-lc = ["dep:aws-lc-rs"]
 jemalloc = ["dep:tikv-jemallocator"]
 portail_system_alloc = []
 
+[workspace.lints]
+clippy.len_without_is_empty = "allow"
+clippy.needless_pass_by_value = "allow"
+clippy.too_many_arguments = "allow"
+clippy.if_same_then_else = "allow"
+clippy.large_enum_variant = "allow"
+
 [workspace.dependencies]
 serde = { version = "=1.0.228", features = ["derive"] }
 serde_json = "=1.0.150"

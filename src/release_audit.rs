@@ -581,7 +581,7 @@ pub fn generate_markdown_report(report: &AuditReport, manifest_hash: &str) -> St
     // Verification instructions
     md.push_str("## Verification\n\n");
     md.push_str("```bash\n");
-    md.push_str(&"# Verify SHA256 of any artifact\n".to_string());
+    md.push_str("# Verify SHA256 of any artifact\n");
     md.push_str("sha256sum <artifact>\n");
     md.push('\n');
     md.push_str("# Compare against manifest\n");
@@ -657,7 +657,7 @@ mod tests {
     fn test_detect_file_type_pe() {
         let dir = std::env::temp_dir();
         let path = dir.join("test_pe_audit.exe");
-        fs::write(&path, &[b'M', b'Z', 0x90, 0x00]).unwrap();
+        fs::write(&path, [b'M', b'Z', 0x90, 0x00]).unwrap();
         assert!(detect_file_type(&path).contains("PE"));
         let _ = fs::remove_file(&path);
     }

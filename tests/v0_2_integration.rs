@@ -49,7 +49,7 @@ mod v0_2_integration {
                 std::sync::Arc::new(portail::events::EventLog::new(100)),
             )),
             plugin_registry: portail::plugin_hooks::init_plugin_registry(
-                &std::path::Path::new("vaked"),
+                std::path::Path::new("vaked"),
             ),
             loop_manager: std::sync::Arc::new(
                 loop_state_manager::LoopStateManager::new("3.0.0"),
@@ -271,7 +271,6 @@ mod v0_2_integration {
             db_path: ":memory:".into(),
             retention_days: 0,
             provider: "rusqlite".into(),
-            ..Default::default()
         };
         let backend = std::sync::Arc::new(RusqliteBackend::open(&config).expect("open in-memory store"));
         store::EventStore::from_backend(backend, config)

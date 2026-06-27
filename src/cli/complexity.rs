@@ -74,7 +74,7 @@ pub fn analyze_directory(dir: &Path) -> Result<ComplexityReport> {
         *distribution.entry(ann.complexity.clone()).or_insert(0) += 1;
     }
     let mut distribution: Vec<_> = distribution.into_iter().collect();
-    distribution.sort_by(|a, b| b.1.cmp(&a.1));
+    distribution.sort_by_key(|b| std::cmp::Reverse(b.1));
 
     Ok(ComplexityReport {
         files_scanned,

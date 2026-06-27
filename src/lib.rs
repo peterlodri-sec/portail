@@ -20,6 +20,11 @@
 
 #![deny(unsafe_op_in_unsafe_fn)]
 #![forbid(unsafe_code)]
+#![allow(clippy::too_many_arguments, clippy::large_enum_variant)]
+#![allow(clippy::if_same_then_else, clippy::items_after_test_module)]
+#![allow(clippy::new_without_default, clippy::needless_pass_by_value)]
+#![allow(clippy::should_implement_trait, clippy::len_without_is_empty)]
+#![allow(clippy::needless_borrow)]
 
 pub mod a2a;
 pub mod a2c;

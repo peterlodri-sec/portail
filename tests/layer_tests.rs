@@ -49,7 +49,7 @@ mod layer_tests {
                 std::sync::Arc::new(portail::events::EventLog::new(100)),
             )),
             plugin_registry: portail::plugin_hooks::init_plugin_registry(
-                &std::path::Path::new("vaked"),
+                std::path::Path::new("vaked"),
             ),
             loop_manager: std::sync::Arc::new(
                 loop_state_manager::LoopStateManager::new("3.0.0"),

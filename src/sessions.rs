@@ -118,6 +118,7 @@ impl SessionStore {
         }
     }
 
+#[allow(clippy::too_many_arguments)]
     pub fn record_request(
         &self,
         session_id: &str,

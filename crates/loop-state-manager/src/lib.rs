@@ -335,7 +335,7 @@ impl LoopStateManager {
 #[serde(tag = "type")]
 pub enum DyadMessage {
     /// Box → Human: state update
-    StateUpdate(LoopState),
+    StateUpdate(Box<LoopState>),
     /// Box → Human: HITL prompt, waiting for decision
     HitlPrompt { task_id: String, prompt: String },
     /// Human → Box: decision on HITL prompt

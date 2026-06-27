@@ -20,7 +20,7 @@ use tracing::{debug, info};
 /// A loaded plugin (native or WASM)
 pub enum LoadedPlugin {
     Native(Box<dyn portail_plugin_sdk::PortailPlugin>),
-    Vaked(VakedFile),
+    Vaked(Box<VakedFile>),
 }
 
 pub struct PluginRegistry {
@@ -67,7 +67,7 @@ impl PluginRegistry {
         let vaked = VakedFile::from_toml(&raw)?;
         let name = vaked.plugin.name.clone();
         self.plugins
-            .insert(name.clone(), LoadedPlugin::Vaked(vaked));
+            .insert(name.clone(), LoadedPlugin::Vaked(Box::new(vaked)));
         info!(plugin = %name, "loaded .vaked plugin");
         Ok(name)
     }
