@@ -4,7 +4,6 @@
 # Multiplexer JSON template lives at nix/opencode-mux/default.json.
 {
   pkgs,
-  inputs',
   template ? ./opencode-mux/default.json,
 }:
 let
@@ -14,6 +13,7 @@ let
     nushell
     zellij
     jq
+    opencode
   ];
 
   # Wrapper script that runs `ohmy-slim mux-launch` in a clean nushell env.
@@ -30,9 +30,7 @@ let
 
   shell = pkgs.mkShell {
     name = "portail-opencode-mux";
-    packages = sharedPackages ++ [
-      inputs'.llm-agents.packages.opencode
-    ];
+    packages = sharedPackages;
     shellHook = ''
       echo "portail-opencode-mux — nushell + zellij + opencode"
       echo "  ohmy-slim mux-launch   # write config + zellij session"
