@@ -18,14 +18,18 @@ pub struct NatsReplicatedBackend {
 impl NatsReplicatedBackend {
     pub async fn open(config: &StoreConfig) -> Result<Self, String> {
         let local = SqlxBackend::open(config).await?;
-        let nats_url = std::env::var("PORTAIL_NATS_URL")
-            .unwrap_or_else(|_| "nats://localhost:4222".into());
-        let nc = async_nats::connect(&nats_url).await.map_err(|e| e.to_string())?;
+        let nats_url =
+            std::env::var("PORTAIL_NATS_URL").unwrap_or_else(|_| "nats://localhost:4222".into());
+        let nc = async_nats::connect(&nats_url)
+            .await
+            .map_err(|e| e.to_string())?;
 
         let pool = local.pool.clone();
         let sub_nc = nc.clone();
         tokio::spawn(async move {
-            let mut sub = sub_nc.subscribe("portail.store.events".to_string()).await
+            let mut sub = sub_nc
+                .subscribe("portail.store.events".to_string())
+                .await
                 .expect("NATS subscribe for store replication");
             while let Some(msg) = sub.next().await {
                 if let Ok(event) = serde_json::from_slice::<StoredEvent>(&msg.payload) {
@@ -51,7 +55,9 @@ impl NatsReplicatedBackend {
         let nc = self.nc.clone();
         let payload = serde_json::to_vec(event).unwrap_or_default();
         tokio::spawn(async move {
-            let _ = nc.publish("portail.store.events".to_string(), payload.into()).await;
+            let _ = nc
+                .publish("portail.store.events".to_string(), payload.into())
+                .await;
         });
     }
 }
@@ -62,9 +68,22 @@ impl StoreBackend for NatsReplicatedBackend {
         self.publish_to_nats(event);
         Ok(id)
     }
-    fn query(&self, a: Option<&str>, e: Option<&str>, s: Option<i64>, l: Option<usize>)
-        -> Result<Vec<StoredEvent>, String> { self.local.query(a, e, s, l) }
-    fn count(&self) -> Result<i64, String> { self.local.count() }
-    fn purge_expired(&self, d: u32) -> Result<usize, String> { self.local.purge_expired(d) }
-    fn export_json(&self, s: Option<i64>) -> Result<String, String> { self.local.export_json(s) }
+    fn query(
+        &self,
+        a: Option<&str>,
+        e: Option<&str>,
+        s: Option<i64>,
+        l: Option<usize>,
+    ) -> Result<Vec<StoredEvent>, String> {
+        self.local.query(a, e, s, l)
+    }
+    fn count(&self) -> Result<i64, String> {
+        self.local.count()
+    }
+    fn purge_expired(&self, d: u32) -> Result<usize, String> {
+        self.local.purge_expired(d)
+    }
+    fn export_json(&self, s: Option<i64>) -> Result<String, String> {
+        self.local.export_json(s)
+    }
 }

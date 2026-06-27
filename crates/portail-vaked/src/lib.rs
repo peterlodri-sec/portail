@@ -44,7 +44,10 @@ impl PluginRegistry {
             return Ok(loaded);
         }
 
-        for entry in walkdir::WalkDir::new(&dir).into_iter().filter_map(|e| e.ok()) {
+        for entry in walkdir::WalkDir::new(&dir)
+            .into_iter()
+            .filter_map(|e| e.ok())
+        {
             let path = entry.path();
             if path.extension().and_then(|s| s.to_str()) != Some("vaked") {
                 continue;
@@ -96,7 +99,11 @@ impl PluginRegistry {
         // Merge: wrap all in a single nix expression
         let merged = format!(
             "{{ config, pkgs, ... }}:\n{{\n  imports = [\n{}  ];\n}}\n",
-            parts.iter().map(|p| format!("    ({}: ", p)).collect::<Vec<_>>().join("")
+            parts
+                .iter()
+                .map(|p| format!("    ({}: ", p))
+                .collect::<Vec<_>>()
+                .join("")
         );
         merged
     }
@@ -121,12 +128,7 @@ pub fn build_vaked(path: &Path) -> anyhow::Result<()> {
         match build.r#type.as_str() {
             "wasm" => {
                 let status = std::process::Command::new("cargo")
-                    .args([
-                        "build",
-                        "--target",
-                        "wasm32-wasip1",
-                        "--release",
-                    ])
+                    .args(["build", "--target", "wasm32-wasip1", "--release"])
                     .status()?;
                 if !status.success() {
                     anyhow::bail!("WASM build failed for {name}");
@@ -208,20 +210,28 @@ packages = ["ripgrep"]
         let _ = std::fs::create_dir_all(&dir);
 
         let path1 = dir.join("a.vaked");
-        std::fs::write(&path1, r#"[plugin]
+        std::fs::write(
+            &path1,
+            r#"[plugin]
 name = "plugin-a"
 version = "1.0.0"
 [target]
 packages = ["bat"]
-"#).unwrap();
+"#,
+        )
+        .unwrap();
 
         let path2 = dir.join("b.vaked");
-        std::fs::write(&path2, r#"[plugin]
+        std::fs::write(
+            &path2,
+            r#"[plugin]
 name = "plugin-b"
 version = "1.0.0"
 [target]
 packages = ["eza"]
-"#).unwrap();
+"#,
+        )
+        .unwrap();
 
         let mut reg = PluginRegistry::new(dir.clone());
         reg.load_vaked(&path1).unwrap();

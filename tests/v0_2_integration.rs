@@ -18,6 +18,7 @@ mod v0_2_integration {
             event_log: Arc::new(events::EventLog::new(100)),
             cdn_cache: None,
             hooks: Arc::new(hooks::HookStore::new()),
+            base_hooks: Arc::new(portail::base_hooks::default_registry()),
             a2a_tasks: Arc::new(a2a::TaskStore::new()),
             dns_store: Arc::new(dns::DnsStore::new()),
             doh_client: None,
@@ -48,16 +49,16 @@ mod v0_2_integration {
             supervisor: std::sync::Arc::new(portail::supervisor::Supervisor::new(
                 std::sync::Arc::new(portail::events::EventLog::new(100)),
             )),
-            plugin_registry: portail::plugin_hooks::init_plugin_registry(
-                std::path::Path::new("vaked"),
-            ),
-            loop_manager: std::sync::Arc::new(
-                loop_state_manager::LoopStateManager::new("3.0.0"),
-            ),
+            plugin_registry: portail::plugin_hooks::init_plugin_registry(std::path::Path::new(
+                "vaked",
+            )),
+            loop_manager: std::sync::Arc::new(loop_state_manager::LoopStateManager::new("3.0.0")),
             loop_runner: loopeng::SharedLoopEngine::new(loopeng::LoopEngineConfig::default()),
-            pkg_ctx_memory: tokio::sync::Mutex::new(
-                pkg_ctx::memory::PkgCtxMemory::new().unwrap()
-            ),
+            inference_engine: None,
+            pkg_ctx_memory: tokio::sync::Mutex::new(pkg_ctx::memory::PkgCtxMemory::new().unwrap()),
+            tool_registry: Arc::new(std::sync::RwLock::new(
+                portail_claude_plugins::bridge::ToolRegistry::new(),
+            )),
         }
     }
 
@@ -272,7 +273,8 @@ mod v0_2_integration {
             retention_days: 0,
             provider: "rusqlite".into(),
         };
-        let backend = std::sync::Arc::new(RusqliteBackend::open(&config).expect("open in-memory store"));
+        let backend =
+            std::sync::Arc::new(RusqliteBackend::open(&config).expect("open in-memory store"));
         store::EventStore::from_backend(backend, config)
     }
 
@@ -549,5 +551,43 @@ burst = 5
         assert_eq!(cfg.store.retention_days, 30);
         assert_eq!(cfg.telemetry.sampling_ratio, 0.1);
         assert_eq!(cfg.telemetry.service_name, "portail");
+    }
+
+    #[tokio::test]
+    async fn sentinel_hello_test() {
+        let state = Arc::new(base_app_state());
+        let el = state.event_log.clone();
+
+        // Spawn sentinel
+        tokio::spawn(async move {
+            portail::sentinel::run_sentinel(el, None).await;
+        });
+
+        // Wait a bit for sentinel to start and publish its started event
+        tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+
+        // Publish a HELLO event
+        state.event_log.publish(events::AgentEvent {
+            agent_id: "test".into(),
+            event_type: "HELLO".into(),
+            severity: "info".into(),
+            timestamp: 0,
+            metadata: portail::types::BoundedMeta::default(),
+        });
+
+        // Wait for sentinel_hello_success event
+        let mut success = false;
+        for _ in 0..20 {
+            tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+            let events = state.event_log.recent(50);
+            if events
+                .iter()
+                .any(|e| e.event_type == "sentinel_hello_success")
+            {
+                success = true;
+                break;
+            }
+        }
+        assert!(success, "Sentinel did not publish sentinel_hello_success");
     }
 }

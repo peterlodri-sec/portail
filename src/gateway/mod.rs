@@ -1,3 +1,8 @@
+pub mod features;
+pub mod function_calling;
+pub mod handlers;
+pub mod schema;
+
 use axum::extract::Request;
 use axum::http::{HeaderMap, HeaderName, HeaderValue, StatusCode};
 use axum::response::{IntoResponse, Response};
@@ -6,6 +11,8 @@ use metrics::counter;
 use reqwest::Client;
 use std::sync::OnceLock;
 use tracing::{debug, warn};
+
+// Provider handler dispatch — see handlers/mod.rs
 
 const HOP_BY_HOP: &[&str] = &[
     "host",
@@ -72,6 +79,7 @@ pub async fn forward_with_body(
 
     let mut forward_headers = strip_hop_by_hop(&parts.headers);
     add_x_forwarded_for(&mut forward_headers);
+    forward_headers.remove("content-length");
 
     debug!(method = %method, %upstream_url, body_size = body_bytes.len(), "forwarding");
 
@@ -123,6 +131,27 @@ pub async fn forward(upstream: &str, req: Request) -> Response {
     };
     forward_with_body(upstream, parts, body_bytes).await
 }
+
+/// Forward a request with provider-aware schema adaptation.
+/// Dispatches to the provider handler.
+pub async fn forward_adapted(
+    upstream: &str,
+    provider: &str,
+    parts: axum::http::request::Parts,
+    body_bytes: Bytes,
+) -> Response {
+    let handler = handlers::by_name(provider);
+    tracing::debug!(
+        provider = %handler.name(),
+        %upstream,
+        body_size = body_bytes.len(),
+        "dispatching to handler"
+    );
+    handler.handle(upstream, parts, body_bytes).await
+}
+
+// The rest of the gateway functions (forward_raw, adapt_request_body, etc.)
+// moved to `handlers/mod.rs`. Keeping `strip_hop_by_hop` as pub (used externally).
 
 /// Forward a request to a specific path on the upstream with raw body bytes.
 pub async fn forward_with_url(

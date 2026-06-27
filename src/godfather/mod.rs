@@ -460,3 +460,128 @@ pub fn router() -> axum::Router<Arc<crate::AppState>> {
         axum::routing::get(handle_godfather_status),
     )
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn godfather_config_defaults() {
+        let cfg = GodfatherConfig::default();
+        assert!(cfg.enabled);
+        assert_eq!(cfg.heartbeat_interval_secs, 10);
+        assert!(cfg.check_services);
+        assert!(cfg.check_resources);
+        assert!(cfg.check_network);
+        assert!(cfg.alert_webhook_url.is_none());
+    }
+
+    #[test]
+    fn resource_thresholds_defaults() {
+        let thresholds = ResourceThresholds::default();
+        assert_eq!(thresholds.disk_usage_pct, 85);
+        assert_eq!(thresholds.memory_usage_pct, 90);
+        assert_eq!(thresholds.min_free_disk_bytes, 1_073_741_824);
+    }
+
+    #[test]
+    fn service_state_serialization() {
+        let states = vec![
+            (ServiceState::Running, "running"),
+            (ServiceState::Degraded, "degraded"),
+            (ServiceState::Stopped, "stopped"),
+            (ServiceState::Unknown, "unknown"),
+        ];
+        for (state, expected) in states {
+            let json = serde_json::to_string(&state).unwrap();
+            assert!(
+                json.contains(expected),
+                "ServiceState {:?} should serialize to contain '{}'",
+                state,
+                expected
+            );
+        }
+    }
+
+    #[test]
+    fn godfather_new_initializes_tick_count() {
+        let cfg = GodfatherConfig::default();
+        let gf = Godfather::new(cfg);
+        assert_eq!(gf.record_tick(), 1);
+        assert_eq!(gf.record_tick(), 2);
+        assert_eq!(gf.record_tick(), 3);
+    }
+
+    #[test]
+    fn godfather_record_tick_is_monotonic() {
+        let cfg = GodfatherConfig::default();
+        let gf = Godfather::new(cfg);
+        let prev = gf.record_tick();
+        let next = gf.record_tick();
+        assert!(next > prev);
+    }
+
+    #[test]
+    fn godfather_update_service_adds_and_updates() {
+        let cfg = GodfatherConfig::default();
+        let gf = Godfather::new(cfg);
+
+        let svc = ServiceStatus {
+            name: "test-service".into(),
+            status: ServiceState::Running,
+            pid: Some(1234),
+            uptime_secs: Some(60),
+            memory_bytes: Some(1024),
+            last_heartbeat: Some(1000),
+        };
+
+        gf.update_service(svc.clone());
+        let updated = ServiceStatus {
+            name: "test-service".into(),
+            status: ServiceState::Degraded,
+            ..svc
+        };
+        gf.update_service(updated);
+    }
+
+    #[test]
+    fn resource_stats_serialization() {
+        let stats = ResourceStats {
+            memory_used_bytes: 10_000_000,
+            memory_total_bytes: 16_000_000,
+            memory_usage_pct: 62.5,
+            cpu_usage_pct: 15.3,
+            disk_used_bytes: 50_000_000_000,
+            disk_total_bytes: 100_000_000_000,
+            disk_usage_pct: 50.0,
+            system_uptime_secs: 86400,
+            process_memory_bytes: 5_000_000,
+            process_cpu_pct: 2.1,
+            open_files: 128,
+            open_connections: 4,
+        };
+        let json = serde_json::to_string(&stats).unwrap();
+        assert!(json.contains("memory_used_bytes"));
+        assert!(json.contains("cpu_usage_pct"));
+        let deser: ResourceStats = serde_json::from_str(&json).unwrap();
+        assert_eq!(deser.memory_used_bytes, 10_000_000);
+        assert_eq!(deser.cpu_usage_pct, 15.3);
+    }
+
+    #[test]
+    fn network_stats_serialization() {
+        let stats = NetworkStats {
+            active_connections: 42,
+            total_requests: 1000,
+            total_errors: 5,
+            bytes_in: 500_000,
+            bytes_out: 2_000_000,
+            dns_queries: 100,
+            dns_failures: 2,
+        };
+        let json = serde_json::to_string(&stats).unwrap();
+        assert!(json.contains("active_connections"));
+        let deser: NetworkStats = serde_json::from_str(&json).unwrap();
+        assert_eq!(deser.active_connections, 42);
+    }
+}

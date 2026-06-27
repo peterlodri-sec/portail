@@ -87,13 +87,10 @@ pub fn spawn_runner(config: CiRunnerConfig, agents: std::collections::HashMap<St
 }
 
 /// Invoke an agent once, logging the result.
-async fn invoke_agent(
-    agent: &CiAgent,
-    name: &str,
-) -> anyhow::Result<()> {
+async fn invoke_agent(agent: &CiAgent, name: &str) -> anyhow::Result<()> {
     use adk_rust::prelude::*;
     use adk_rust::runner::{InvocationContext, MutableSession};
-    use adk_rust::session::{service::CreateRequest, InMemorySessionService};
+    use adk_rust::session::{InMemorySessionService, service::CreateRequest};
     use futures::StreamExt;
 
     let app_name = "portail";

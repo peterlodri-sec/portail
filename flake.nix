@@ -69,6 +69,10 @@
               ++ pkgs.lib.optionals pkgs.stdenv.isDarwin
                 [ Security SystemConfiguration CoreFoundation ];
           };
+
+          opencodeMux = import ./nix/opencode-mux.nix {
+            inherit pkgs;
+          };
         in
         {
           treefmt = {
@@ -131,33 +135,21 @@
             fmt-pass = craneLib.cargoFmt { inherit src; };
           };
 
-          devShells.default = pkgs.devshell.mkShell {
+          devShells.default = pkgs.mkShell {
             name = "portail-dev-hyper";
 
-            motd = ''
-              {green}===================================================={reset}
-              {cyan}       PORTAIL — RUST + NIX DEV ENVIRONMENT         {reset}
-              {green}===================================================={reset}
-              {bold}Rust target:{reset} ${rustToolchain.version}
-              {bold}Crane cache:{reset} split deps — instant rebuilds
-              {bold}Type{reset} {yellow}menu{reset} for custom commands.
-            '';
-
-            env = [
-              { name = "RUST_LOG"; value = "info"; }
-              { name = "RUST_BACKTRACE"; value = "1"; }
-              { name = "CARGO_BUILD_JOBS"; value = "0"; }
-              { name = "CARGO_INCREMENTAL"; value = "0"; }
-              { name = "SCCACHE_DIR"; value = "${builtins.getEnv "HOME"}/.cache/sccache"; }
-              { name = "RUSTC_WRAPPER"; value = "${pkgs.sccache}/bin/sccache"; }
-              { name = "PKG_CONFIG_PATH"; value = "${pkgs.aws-lc.dev}/lib/pkgconfig:${pkgs.openssl.dev}/lib/pkgconfig"; }
-              {
-                name = "RUSTFLAGS";
-                value = pkgs.lib.concatStringsSep " " (
-                  linkerFlags ++ [ "-Zshare-generics=y" "-Zthreads=0" ]
-                );
-              }
-            ];
+            env = {
+              RUST_LOG = "info";
+              RUST_BACKTRACE = "1";
+              CARGO_BUILD_JOBS = "0";
+              CARGO_INCREMENTAL = "0";
+              SCCACHE_DIR = "${builtins.getEnv "HOME"}/.cache/sccache";
+              RUSTC_WRAPPER = "${pkgs.sccache}/bin/sccache";
+              PKG_CONFIG_PATH = "${pkgs.aws-lc.dev}/lib/pkgconfig:${pkgs.openssl.dev}/lib/pkgconfig";
+              RUSTFLAGS = pkgs.lib.concatStringsSep " " (
+                linkerFlags ++ [ "-Zshare-generics=y" "-Zthreads=0" ]
+              );
+            };
 
             packages = with pkgs; [
               rustToolchain
@@ -169,76 +161,18 @@
               bottom delta doggo gping websocat httpie zellij mosh
             ];
 
-            commands = [
-              {
-                category = "Development";
-                name = "check";
-                help = "Fast compilation check across all targets";
-                command = "cargo check --all-targets --workspace";
-              }
-              {
-                category = "Development";
-                name = "test";
-                help = "Run full test suite (all crates)";
-                command = "cargo test --workspace";
-              }
-              {
-                category = "Development";
-                name = "watch";
-                help = "Continuous re-compile on save";
-                command = "cargo watch -x check -x test";
-              }
-              {
-                category = "Code Quality";
-                name = "fmt";
-                help = "Format all files (Rust + Nix + TOML)";
-                command = "nix fmt";
-              }
-              {
-                category = "Code Quality";
-                name = "lint";
-                help = "Clippy with deny warnings";
-                command = "cargo clippy --all-targets -- --deny warnings";
-              }
-              {
-                category = "Verification";
-                name = "validate";
-                help = "Run all git pre-commit checks via Nix";
-                command = "nix flake check";
-              }
-              {
-                category = "Verification";
-                name = "audit";
-                help = "Security audit of dependencies";
-                command = "cargo audit";
-              }
-              {
-                category = "Build";
-                name = "build";
-                help = "Production build (Nix, cached, thin LTO)";
-                command = "nix build .#portail";
-              }
-              {
-                category = "Build";
-                name = "release";
-                help = "Max optimization build (fat LTO)";
-                command = "nix build .#portail-max";
-              }
-              {
-                category = "Infrastructure";
-                name = "clean";
-                help = "Clean build artifacts";
-                command = "cargo clean";
-              }
-              {
-                category = "Infrastructure";
-                name = "coverage";
-                help = "Generate LLVM coverage report";
-                command = "cargo llvm-cov --workspace --lcov --output-path lcov.info";
-              }
-            ];
-
             shellHook = ''
+              echo "  check: cargo check --all-targets --workspace"
+              echo "  test: cargo test --workspace"
+              echo "  watch: cargo watch -x check -x test"
+              echo "  fmt: nix fmt"
+              echo "  lint: cargo clippy --all-targets -- --deny warnings"
+              echo "  validate: nix flake check"
+              echo "  audit: cargo audit"
+              echo "  build: nix build .#portail"
+              echo "  release: nix build .#portail-max"
+              echo "  clean: cargo clean"
+              echo "  coverage: cargo llvm-cov --workspace --lcov --output-path lcov.info"
               ${config.pre-commit.installationScript}
               echo "   Aliases: check, test, build, lint, fmt, validate, audit"
             '';
@@ -257,6 +191,15 @@
               echo "portail-dev-light — minimal dev shell"
             '';
           };
+
+          apps = {
+            ohmy-mux = opencodeMux.appMux;
+            opencode-mux = opencodeMux.appNoMux;
+          };
+          # Ops shell: nushell + zellij + opencode (no rust toolchain).
+          # `nix develop .#opencode-mux` enters a fast shell ready for
+          # `ohmy-slim mux-launch` or `nix run .#ohmy-mux`.
+          devShells.opencode-mux = opencodeMux.shell;
         };
     };
 }

@@ -14,7 +14,34 @@ use tracing::{debug, info, warn};
 const SOCKET_TIMEOUT_SECS: u64 = 30;
 const MAX_BODY_BYTES: usize = 10_000_000;
 
-pub async fn start_sidecar(socket_path: &str, server_config: Option<&str>) -> anyhow::Result<()> {
+/// MCP backend type — Python (legacy) or WASM (v4+)
+#[derive(Debug, Clone, Default, serde::Deserialize, serde::Serialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum McpBackend {
+    /// Legacy Python sidecar via uv (default for backwards compatibility)
+    #[default]
+    Python,
+    /// WASM sidecar via Extism (v4+)
+    Wasm,
+}
+
+/// Start the MCP sidecar (Python or WASM depending on config)
+pub async fn start_sidecar(
+    socket_path: &str,
+    server_config: Option<&str>,
+    backend: &McpBackend,
+) -> anyhow::Result<()> {
+    match backend {
+        McpBackend::Python => start_python_sidecar(socket_path, server_config).await,
+        McpBackend::Wasm => start_wasm_sidecar(socket_path).await,
+    }
+}
+
+/// Start the legacy Python MCP sidecar via uv
+async fn start_python_sidecar(
+    socket_path: &str,
+    server_config: Option<&str>,
+) -> anyhow::Result<()> {
     let sock = Path::new(socket_path);
     if let Some(parent) = sock.parent() {
         tokio::fs::create_dir_all(parent).await?;
@@ -44,7 +71,7 @@ pub async fn start_sidecar(socket_path: &str, server_config: Option<&str>) -> an
         .spawn()
         .map_err(|e| anyhow::anyhow!("failed to start MCP sidecar: {e}"))?;
 
-    info!(pid = child.id().unwrap_or(0), %socket_path, "MCP sidecar started");
+    info!(pid = child.id().unwrap_or(0), %socket_path, "MCP Python sidecar started");
     tokio::time::sleep(std::time::Duration::from_millis(500)).await;
 
     if !sock.exists() {
@@ -71,6 +98,34 @@ pub async fn start_sidecar(socket_path: &str, server_config: Option<&str>) -> an
             }
         });
     }
+    Ok(())
+}
+
+/// Start the WASM MCP sidecar (spawns a background task)
+async fn start_wasm_sidecar(socket_path: &str) -> anyhow::Result<()> {
+    let sock = Path::new(socket_path);
+    if let Some(parent) = sock.parent() {
+        tokio::fs::create_dir_all(parent).await?;
+    }
+    let _ = tokio::fs::remove_file(socket_path).await;
+
+    let socket_path_owned = socket_path.to_string();
+    tokio::spawn(async move {
+        let server = portail_mcp_wasm::WasmMcpServer::new(&socket_path_owned);
+        if let Err(e) = server.serve().await {
+            tracing::error!(error = %e, "WASM MCP server stopped");
+        }
+    });
+
+    // Wait for socket to appear
+    for _ in 0..10 {
+        tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+        if sock.exists() {
+            info!(%socket_path, "WASM MCP sidecar started");
+            return Ok(());
+        }
+    }
+    warn!("WASM MCP sidecar socket not yet created — will retry on first request");
     Ok(())
 }
 
@@ -252,5 +307,19 @@ mod tests {
         headers.insert("x-foo", "bar".parse().unwrap());
         let map = headers_to_map(&headers);
         assert_eq!(map.get("x-foo").unwrap(), "bar");
+    }
+
+    #[test]
+    fn backend_default_is_python() {
+        assert_eq!(McpBackend::default(), McpBackend::Python);
+    }
+
+    #[test]
+    fn backend_serialization() {
+        let wasm = McpBackend::Wasm;
+        let json = serde_json::to_string(&wasm).unwrap();
+        assert_eq!(json, "\"wasm\"");
+        let parsed: McpBackend = serde_json::from_str("\"python\"").unwrap();
+        assert_eq!(parsed, McpBackend::Python);
     }
 }

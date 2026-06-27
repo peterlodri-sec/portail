@@ -17,6 +17,7 @@
 | v2.0 plan | [`docs/architecture/V2_0_PLAN.md`](docs/architecture/V2_0_PLAN.md) |
 | OSI/network layers | [`docs/layers/README.md`](docs/layers/README.md) |
 | Contribute | [`docs/contributors/CONTRIBUTING.md`](docs/contributors/CONTRIBUTING.md) |
+| OpenCode multiplexer integration | [`docs/contributors/OPENCODE_MUX.md`](docs/contributors/OPENCODE_MUX.md) |
 | Release process | [`docs/contributors/RELEASE.md`](docs/contributors/RELEASE.md) |
 | CI agent design | [`docs/contributors/CHORE_BOT_DESIGN.md`](docs/contributors/CHORE_BOT_DESIGN.md) |
 | V4 plan (ACP + maki + Zed) | [`docs/architecture/V4_PLAN.md`](docs/architecture/V4_PLAN.md) |

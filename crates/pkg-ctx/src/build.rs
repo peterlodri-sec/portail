@@ -40,9 +40,7 @@ pub async fn add_package(
 
     let docs_dir = find_docs_dir(&tmp_dir);
     let chunks = index_docs(&docs_dir)?;
-    let db = PackageDb::open(
-        db_path.to_str().context("invalid db path")?,
-    )?;
+    let db = PackageDb::open(db_path.to_str().context("invalid db path")?)?;
 
     let mut chunk_count = 0;
     for section in &chunks {
@@ -103,13 +101,10 @@ fn find_docs_dir(repo_dir: &Path) -> PathBuf {
 fn index_docs(docs_dir: &Path) -> Result<Vec<DocSection>> {
     let mut all_chunks = Vec::new();
 
-    for entry in WalkDir::new(docs_dir)
-        .into_iter()
-        .filter_entry(|e| {
-            let name = e.file_name().to_str().unwrap_or("");
-            !name.starts_with('.') && name != "node_modules" && name != "target"
-        })
-    {
+    for entry in WalkDir::new(docs_dir).into_iter().filter_entry(|e| {
+        let name = e.file_name().to_str().unwrap_or("");
+        !name.starts_with('.') && name != "node_modules" && name != "target"
+    }) {
         let entry = entry?;
         if !entry.file_type().is_file() {
             continue;
@@ -125,8 +120,8 @@ fn index_docs(docs_dir: &Path) -> Result<Vec<DocSection>> {
             .unwrap_or(path)
             .to_string_lossy()
             .to_string();
-        let content = std::fs::read_to_string(path)
-            .with_context(|| format!("failed to read {path:?}"))?;
+        let content =
+            std::fs::read_to_string(path).with_context(|| format!("failed to read {path:?}"))?;
 
         let cleaned = chunker::strip_mdx_tags(&content);
         let chunks = chunker::chunk_markdown(&rel_path, &cleaned);
@@ -191,7 +186,10 @@ mod tests {
     #[test]
     fn test_infer_name_from_url() {
         assert_eq!(infer_name("https://github.com/vercel/next.js"), "next.js");
-        assert_eq!(infer_name("https://github.com/vercel/next.js.git"), "next.js");
+        assert_eq!(
+            infer_name("https://github.com/vercel/next.js.git"),
+            "next.js"
+        );
         assert_eq!(infer_name("git@github.com:user/repo-docs.git"), "repo");
     }
 }

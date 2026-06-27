@@ -10,7 +10,9 @@ pub struct FuzzConfig {
 
 impl Default for FuzzConfig {
     fn default() -> Self {
-        Self { target_url: "http://localhost:8787".into() }
+        Self {
+            target_url: "http://localhost:8787".into(),
+        }
     }
 }
 
@@ -45,8 +47,11 @@ pub async fn run_fuzz_route(config: &FuzzConfig) -> FuzzReport {
             match client.post(&url).json(payload).send().await {
                 Ok(resp) => {
                     let s = resp.status().as_u16();
-                    if s == 500 { errors.push(format!("{route}: 500 on {payload}")); }
-                    else { passed += 1; }
+                    if s == 500 {
+                        errors.push(format!("{route}: 500 on {payload}"));
+                    } else {
+                        passed += 1;
+                    }
                 }
                 Err(e) => errors.push(format!("{route}: crash {e}")),
             }

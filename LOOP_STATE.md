@@ -1,75 +1,108 @@
-# Portail Loop State — v0.2 → v3.0
+# Portail Loop State — v2.1 → v3.0
 
 **Principle:** CI agents advisory only. Report, recommend, never block. CI gates opt-in.
 
 ```
 LOOP: plan → implement → test → review → ship → repeat
-STATE:  v2.x shipped — 219 tests, Nix SOTA flake, 6 workspace crates, loopeng engine
-NEXT:   v2.2 contributor DX + shell completions (docs, crates.io, Homebrew) — #33
+STATE:  v2.1 shipped — 231 tests, 10 CI agents, ProviderHandler abstraction, Ollama adapter, E2E benchmark
+NEXT:   v2.2 documentation + OSS release (crates.io, Homebrew, AUR, blog) — #33
 THEN:   v2.3 stability + benchmarks (80% coverage, 250+ tests) — #34
 THEN:   v3.0 AI-native hybrid architecture — #30 + #31
 FREEZE: no new features until v3.0. Bug fixes and stability only.
-OPEN:   #27, #28, #29, #30, #31, #33, #34, #35, #1 super devnote (HUMAN ONLY)
+OPEN:   #28, #30, #31, #33, #34, #1 super devnote (HUMAN ONLY) — #33 + #34 active
 ```
 
 ---
 
-## v0.2 — Production Hardening                  ✅ SHIPPED
-- Rate limiting (token bucket, 429 + Retry-After)
-- Auth middleware (API key + JWT, bypass list)
-- Persistent event store (SQLite, retention, JSON export)
-- OTLP trace export (gRPC to Jaeger/Tempo)
-- 12 ghost routers wired, 28 orphaned endpoints recovered
-- godfather + nullclaw background runners spawned
-- 131 tests (15 integration, 101 unit, 15 layer)
+## v2.1 — Contributor Experience (Issue #32)    ✅ SHIPPED
+
+### Scope 1: Comprehensive Contribution Guide
+- **CONTRIBUTING.md** — full rewrite at root (533 lines): architecture map, first-time walkthrough, testing guide, code style, PR process, issue triage, release process, agent section, troubleshooting
+- **docs/architecture/MODULE_MAP.md** — every module with purpose, I/O, deps, key types, dependency graph (465 lines)
+- **docs/architecture/DATA_FLOW.md** — request lifecycle: AI gateway, CDN cache, event system, A2A, A2C, DNS, hook injection, config watcher, rate limiting (378 lines)
+- **docs/architecture/ARCHITECTURE_DECISIONS.md** — 10 ADRs covering key decisions
+
+### Scope 2: Contributor Environment
+- **`.vscode/`** — settings.json, extensions.json, launch.json for Rust IDE setup
+- **`.devcontainer/devcontainer.json`** — GitHub Codespaces instant cloud dev
+- **`.git/hooks/pre-commit`** — installed and verified (fmt + clippy + check)
+- **`scripts/contributor-setup.sh`** — one-command bootstrap: Rust, Nix, direnv, hooks
+- **Taskfile.yml additions** — `setup`, `coverage`, `profile`, `deny`, `audit`, `install-hooks`, `outdated`, `tree`, `udeps`
+- **`nix/ai-services.nix`** — self-contained flake for Ollama + MLX provisioning with hardware-aware model selection (ai-check, ollama-pull-models)
+
+### Scope 3: Tech Debt & Architecture
+- **Provider Handler abstraction** (`src/gateway/handlers/`) — each provider's full lifecycle in one struct, 5 handlers: OpenAI, DeepSeek, Anthropic, Google, Ollama
+- **Feature virtualizer** (`src/gateway/features.rs`) — capability matrix per provider, fallback strategies: Strip, StripWarn, PromptInject, ResponseTransform
+- **Ollama adapter fixes** — path rewrite `/v1/chat/completions` → `/api/chat`, Content-Length fix, qwen3 thinking field promotion
+- **cargo-deny + cargo-audit** — installed, deny.toml migrated to v0.19 format
+- **async-nats upgrade** 0.39 → 0.48 fixing 4 security vulnerabilities
+- **utoipa + utoipa-axum + Scalar UI** — auto-generated OpenAPI 3.1 at `/api-docs/` with interactive docs
+
+### Metrics
+- 231 tests (0 failures), 0 clippy warnings
+- Coverage: ~50% (lib), ~55% excl. main.rs
+- Benchmarks: 10 baselines, sub-µs hot paths
+- deny/advisories: OK (known warnings allowed, 0 vulnerabilities)
+- E2E verified: Ollama (qwen3:8b, qwen2.5-coder:7b) through portail → OpenAI format response
+
+### What's shipped this release
+| Area | Status |
+|---|---|
+| PHILOSOPHY.md | done |
+| pkg-ctx crate (FTS5 SQLite docs MCP server) | done |
+| loopeng real engine (token budget, circuit breaker, escalation) | done |
+| Fleet orchestrator (AgentTool trait, ToolRegistry, FanOutEngine) | done |
+| 3-pane TUI dashboard (banner, log, agent matrix) | done |
+| A2C commands (/research, /code, /review, /register) | done |
+| SOTA Nix flake (flake-parts, devshell, treefmt, git-hooks) | done |
+| Shell completions (portail completions bash/zsh/fish) | done |
+| deny.toml | done |
+| /api-docs/openapi.json | done |
+| spawn_blocking for SQLite ops | done |
+| CI: green, simple, fast | done |
+| Provider handler abstraction | done |
+| Feature virtualizer | done |
+| Ollama adapter + E2E test | done |
+| Utoipa + Scalar UI | done |
+| AI services Nix flake | done |
+| VS Code settings + Codespaces | done |
+| OpenCode Sentinel MCP integration | done |
 
 ---
 
-## v0.3 — Complexity Bot (advisory only)        ✅ SHIPPED
-**Target:** 2026-07-01  **Effort:** 1 day
+## v2.2 — Documentation + OSS Release (Issue #33)  🚧 NEXT
+**Target:** 2026-07-10
 
-- Refactor `cli/complexity.rs`: never exit non-zero
-- Output: TOML report, JSON for machines
-- CI mode: `--ci` flag writes report to file, always exits 0
-- Report key: per-function Big-O, total project complexity score
-- Integration: GitHub Actions step posts PR comment
-- **Rule:** `complexity-enforcer` reporter, not gate
+### Scope
+- Architecture docs: system diagram, module map, data flow, ADRs (shipped in v2.1)
+- API reference: all endpoints documented with examples
+- Operator manual: deploy, configure, monitor, troubleshoot
+- OSS release: crates.io publish, Homebrew formula, AUR package, Docker
+- Blog post at pocoo.vaked.dev
 
-## v0.4 — Drift Detect (CI agent 1)            ✅ SHIPPED
-**Target:** 2026-07-08  **Effort:** 3 days
-
-- `portail drift-detect` CLI subcommand
-- Capture mode: record real request/response pairs → compressed `.drift` files
-- Replay mode: send recorded requests to proxy, compare SHA-256 of responses
-- Diff report: which endpoints changed behavior, by how much
-- CI integration: `gh pr comment` with drift report
-- **Rule:** advisory only — posts report, never fails CI
-
-## v0.5 — Spec Verify (CI agent 2)              ✅ SHIPPED
-**Target:** 2026-07-15  **Effort:** 3 days
-
-- `portail spec-verify` CLI subcommand
-- Generate: introspect `Router` → OpenAPI 3.1 JSON via `utoipa` or manual walker
-- Golden file: `spec.openapi.json` committed to repo
-- Diff mode: compare generated vs golden, report additions/removals/changes
-- CI integration: `gh pr comment` with spec diff
-- **Rule:** advisory only — posts diff, never fails CI
-
-## v0.6 — Fuzz Route (CI agent 3)               ✅ SHIPPED
-**Target:** 2026-07-22  **Effort:** 3 days
-
-- `portail fuzz-route` CLI subcommand
-- Feed fuzzed HTTP to every registered route
-- Assert: no panics, no 500s on malformed input, proper error codes
-- Property: "proxy must not crash on any input"
-- CI integration: `gh pr comment` with crash report
-- **Rule:** non-zero exit only on panic/crash (critical bug)
+### Remaining
+- [ ] API reference docs for 60+ endpoints (utoipa annotations incremental)
+- [x] Architecture docs (shipped)
+- [x] ADRs (shipped)
+- [ ] crates.io publish verified
+- [ ] Homebrew formula submitted
+- [ ] AUR package submitted
+- [ ] Docker multi-arch verified
+- [ ] Blog post + social announcement
 
 ---
 
-## v1.0 — One-Command Gateway (DX)              ✅ SHIPPED
-**Target:** 2026-06-26  **Effort:** 1 day
+## v2.3 — Stability + Polish (Issue #34)  🚧 NEXT
+**Target:** 2026-07-17
 
+### Scope
+- 80%+ line coverage, cargo-llvm-cov, HTML reports
+- Integration tests for every public API endpoint
+- Fuzz targets for hot-path parsing
+- Property tests for all abstractions
+- Benchmark baseline published
+- Bug bash: clippy, audit, deny, unsafe review
+- Tag v2.3.0: 200+ tests, 10 CI agents
 - `nix run github:peterlodri-sec/portail -- serve` production-ready
 - Sensible defaults: rate limiting (30 burst), auth disabled, OTLP off
 - Config-less startup: all features work without config file
@@ -80,17 +113,33 @@ OPEN:   #27, #28, #29, #30, #31, #33, #34, #35, #1 super devnote (HUMAN ONLY)
 - 6 new A2A tests: 3 JSON serialization + 3 HTTP integration (144 total)
 - AgentGateway interop complete — A2A spec compliance verified
 
-## v1.1 — Self-Healing Config (IX)              🚧 PLANNED
-**Target:** 2026-08-08  **Effort:** 3 days
+### Done
+- [x] Coverage baseline: ~50% lib, cargo-llvm-cov installed
+- [x] Benchmark baselines captured (10 benchmarks, sub-µs hot paths)
+- [x] 231 tests passing
+- [x] 0 clippy warnings, deny/advisories OK
+- [x] Bug bash: async-nats upgrade (4 CVEs), Content-Length panic fix
+- [x] Supervisor tests: 7 new tests (3% → 90%+ coverage)
+- [x] Godfather config/tick/service tests: 8 new tests (0% → 80% coverage)
+- [x] Target router tests: 6 new tests (85% → 95% coverage)
+- [x] Schema adapter tests: 2 new thinking tests + all 13 pass
+- [x] E2E benchmark: docs/E2E_BENCHMARK.md
 
+### Remaining
+- [ ] Property tests for StoreBackend, CacheBackend, DnsResolver
+- [ ] Fuzz targets for hot-path parsing (headers, JSON, TOML)
+- [ ] cargo-llvm-cov HTML report generation
+- [ ] Benchmark baseline published in docs
 - `inotify` (Linux) / `kqueue` (macOS) config file watcher
 - Auto-reload on change (no SIGHUP needed)
 - Validate before apply: parse new config, if invalid → keep old, log error
 - Config versioning: store last N valid configs, rollback command
 - TUI indicator: green dot = config healthy, red = last reload failed
 
-## v1.2 — Progressive Disclosure TUI (UX)       🚧 PLANNED
-**Target:** 2026-08-15  **Effort:** 4 days
+---
+
+## v3.0 — AI-Native Hybrid Architecture (Issues #30 + #31)  🚧 PLANNED
+**Target:** 2026-08-01
 
 - Live overlays on existing TUI dashboard:
   - Cache-hit rate sparkline (60s window)
@@ -101,35 +150,7 @@ OPEN:   #27, #28, #29, #30, #31, #33, #34, #35, #1 super devnote (HUMAN ONLY)
 - Keyboard shortcuts: `r` = reload config, `c` = clear alerts, `q` = quit
 - Works in 80x24 terminal minimum
 
-## v1.3 — Polish & Docs                         🚧 PLANNED
-**Target:** 2026-08-22  **Effort:** 2 days
-
-- 90%+ test coverage target (currently ~78%)
-- `portail docs` generates full API reference + architecture guide
-- CONTRIBUTING.md updated with all CLI agent workflows
-- CHANGELOG.md consolidated for v1.0 release
-- Performance benchmark baseline published
-
-## v1.4 — Chore Bot (CI agent 5)                ✅ SHIPPED
-**Target:** 2026-06-26  **Effort:** 1 day
-
-- Rust Chore CI Agent — mechanical cleanup automation
-- NATS event bridge — distributed publish/subscribe (portail.events.*)
-- Type hardening — BoundedMeta replaces FxHashMap on hot paths (max 16 entries, key≤128B, val≤512B)
-- /dashboard HTTP endpoint — config health, rate/auth/cdn counters
-- TUI config health indicator (green/red dot)
-- Enhanced Taskfile — chore-check/fix/verify/report, dev shortcuts (c, t, w, counts)
-- GitHub workflow: `.github/workflows/chore-bot.yml`
-- 156 tests pass, 0 errors
-
-## v1.4 — Release                               🚧 PLANNED
-**Target:** 2026-07-01  **Effort:** 1 day
-
-- Tag `v1.4.0`
-- All CI green (131+ tests, advisory agents posting comments)
-- crates.io publish
-- Homebrew formula, AUR package, Docker multi-arch
-- Release blog post
+See docs/architecture/V3_ROADMAP.md
 
 ## v2.1 — Contributor DX + Agent-Native Foundation       🚧 WIP
 **Target:** 2026-07-03  **Effort:** 2 weeks
@@ -159,19 +180,19 @@ OPEN:   #27, #28, #29, #30, #31, #33, #34, #35, #1 super devnote (HUMAN ONLY)
 
 ## CI Agent Policy
 
-| Agent | Blocks CI? | Exit code | Output |
+| Agent | Blocks CI? | Exit Code | Output |
 |-------|-----------|-----------|--------|
-| complexity (v0.3) | ❌ never | always 0 | TOML report → PR comment |
-| drift-detect (v0.4) | ❌ never | always 0 | diff report → PR comment |
-| spec-verify (v0.5) | ❌ never | always 0 | spec diff → PR comment |
-| fuzz-route (v0.6) | ⚠️ only on panic | 1 on crash, 0 otherwise | crash report → PR comment |
-| chore-bot (v1.4) | ❌ never | always 0 | fix report → PR comment |
-| arch-helper (v2.x) | ❌ never | always 0 | drift report → issue |
-| trending-packages (v2.x) | ❌ never | always 0 | weekly report → issue |
-| pr-governance (v2.x) | ❌ never | always 0 | template check → label |
-| ralph-loop (v2.x) | ❌ never | always 0 | version decision → issue + PR |
-| clippy (existing) | ✅ always | 1 on warning | inline annotations |
-| test (existing) | ✅ always | 1 on failure | inline annotations |
+| complexity | ❌ never | always 0 | TOML report → PR comment |
+| drift-detect | ❌ never | always 0 | diff report → PR comment |
+| spec-verify | ❌ never | always 0 | spec diff → PR comment |
+| fuzz-route | ⚠️ only on panic | 1 on crash, 0 otherwise | crash report → PR comment |
+| chore-bot | ❌ never | always 0 | fix report → PR comment |
+| arch-helper | ❌ never | always 0 | drift report → issue |
+| trending-packages | ❌ never | always 0 | weekly report → issue |
+| pr-governance | ❌ never | always 0 | template check → label |
+| ralph-loop | ❌ never | always 0 | version decision → issue + PR |
+| clippy | ✅ always | 1 on warning | inline annotations |
+| test | ✅ always | 1 on failure | inline annotations |
 
 ---
 
@@ -190,24 +211,14 @@ v1.3  [SHIPPED]  2026-06-26  type hardening, BoundedMeta
 v1.4  [SHIPPED]  2026-06-26  chore-bot, NATS bridge
 v1.4r [SHIPPED]  2026-06-26  release v1.4.0
 v2.0  [SHIPPED]  2026-06-26  production-stable (174 tests, 10 CI agents)
-v2.1  [WIP]      2026-07-03  contributor DX + agent-native foundation — docs/V2_1_V2_3_PLAN.md
-v2.2             2026-07-10  documentation + OSS release (crates.io, Homebrew, AUR, blog)
-v2.3             2026-07-17  stability: 80% coverage, benchmarks, bug bash, final release
+v2.1  [SHIPPED]  2026-07-03  contributor DX + agent-native foundation — docs/V2_1_V2_3_PLAN.md
+v2.2  [NEXT]     2026-07-10  documentation + OSS release (crates.io, Homebrew, AUR, blog)
+v2.3  [NEXT]     2026-07-17  stability: 80% coverage, benchmarks, bug bash, final release
 v2.5             TBD         release-audit + project-wide simplification (~1700 lines dead code removed)
 v2.6             TBD         portail-agents crate: nullclaw + CI agents
-v2.7             TBD         RE deep-audit: Ghidra + Ghidra MCP + RE-agent-fleet on devcx53
-v3.0  [NEXT]     2026-08-01  AI-native bridge — see docs/architecture/V3_ROADMAP.md
-  P0              Jul 28     Connection upgrader (HTTP→WS, raw fd handoff)
-  P1              Jul 31     WASM MCP sidecar (Extism/Wasmtime, no Python)
-  P2              Aug 04     BOW secret store (encrypted SQLite, auto-unlock)
-  P3              Aug 07     Capability graph (DAG-based config lowering)
-  P4              Aug 11     Rust AI stack (mistral.rs + candle local inference)
-v4.0  [PLAN]      2026-09-01  VKID integrity kernel, .vaked plugin system
-  P0              Aug 18     portail-plugin-sdk crate + PortailPlugin trait
-  P1              Aug 21     portail-vaked crate: parse, validate, lower to Nix
-  P2              Aug 25     vaked CLI (list, load, lower, build)
-  P3              Aug 28     First official plugin + hook example
-  P4              Sep 01     users send .vaked files → full e2e Nix system
+v2.7             TBD         RE deep-audit: Ghidra + Ghidra MCP + RE-agent-fleet
+v3.0  [PLANNED]  2026-08-01  AI-native bridge — see V3_ROADMAP.md
+v4.0  [PLANNED]  2026-09-01  VKID integrity kernel, .vaked plugin system
 ```
 
 ### Package Integration Research

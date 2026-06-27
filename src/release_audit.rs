@@ -178,8 +178,7 @@ fn check_stripped(path: &Path) -> Option<bool> {
     if full.len() <= shstrndx_offset + 2 {
         return None;
     }
-    let shstrndx =
-        u16::from_le_bytes([full[shstrndx_offset], full[shstrndx_offset + 1]]) as usize;
+    let shstrndx = u16::from_le_bytes([full[shstrndx_offset], full[shstrndx_offset + 1]]) as usize;
 
     // Parse section header table
     let shoff_offset: usize = if is_64bit { 0x28 } else { 0x20 };
@@ -261,12 +260,14 @@ fn check_stripped(path: &Path) -> Option<bool> {
         if sh_off + shent_size > full.len() {
             break;
         }
-        let name_off = u32::from_le_bytes([full[sh_off], full[sh_off + 1], full[sh_off + 2], full[sh_off + 3]]) as usize;
+        let name_off = u32::from_le_bytes([
+            full[sh_off],
+            full[sh_off + 1],
+            full[sh_off + 2],
+            full[sh_off + 3],
+        ]) as usize;
         if name_off < strtab_size {
-            let name_end = strtab[name_off..]
-                .iter()
-                .position(|&b| b == 0)
-                .unwrap_or(0);
+            let name_end = strtab[name_off..].iter().position(|&b| b == 0).unwrap_or(0);
             let name = std::str::from_utf8(&strtab[name_off..name_off + name_end]).unwrap_or("");
             if name.starts_with(".debug_") || name == ".symtab" || name == ".strtab" {
                 return Some(false);
@@ -280,9 +281,7 @@ fn scan_suspicious_strings(path: &Path) -> Vec<String> {
     let mut warnings = Vec::new();
 
     // Try `strings` command
-    let output = std::process::Command::new("strings")
-        .arg(path)
-        .output();
+    let output = std::process::Command::new("strings").arg(path).output();
     let stdout = match output {
         Ok(o) if o.status.success() => String::from_utf8_lossy(&o.stdout).to_string(),
         _ => return warnings,
@@ -291,7 +290,9 @@ fn scan_suspicious_strings(path: &Path) -> Vec<String> {
     // Check for absolute build paths
     let build_paths: Vec<&str> = stdout
         .lines()
-        .filter(|l| l.starts_with("/build/") || l.starts_with("/Users/") || l.contains("/home/runner/"))
+        .filter(|l| {
+            l.starts_with("/build/") || l.starts_with("/Users/") || l.contains("/home/runner/")
+        })
         .collect();
     if !build_paths.is_empty() {
         warnings.push(format!(
@@ -317,8 +318,11 @@ fn scan_suspicious_strings(path: &Path) -> Vec<String> {
         .lines()
         .filter(|l| {
             let lower = l.to_lowercase();
-            (lower.contains("api_key") || lower.contains("apikey") || lower.contains("secret")
-                || lower.contains("token") || lower.contains("password"))
+            (lower.contains("api_key")
+                || lower.contains("apikey")
+                || lower.contains("secret")
+                || lower.contains("token")
+                || lower.contains("password"))
                 && (lower.contains('=') || lower.contains(':'))
         })
         .count();
@@ -422,9 +426,15 @@ pub fn audit_directory(dir: &Path, version: &str) -> Result<AuditReport> {
 
     // Phase 2: Compute summary
     let total = artifacts.len();
-    let passed = artifacts.iter().filter(|a| a.checks.iter().all(|c| c.passed)).count();
+    let passed = artifacts
+        .iter()
+        .filter(|a| a.checks.iter().all(|c| c.passed))
+        .count();
     let failed = total - passed;
-    let checks_passed: usize = artifacts.iter().map(|a| a.checks.iter().filter(|c| c.passed).count()).sum();
+    let checks_passed: usize = artifacts
+        .iter()
+        .map(|a| a.checks.iter().filter(|c| c.passed).count())
+        .sum();
     let checks_total: usize = artifacts.iter().map(|a| a.checks.len()).sum();
     let warnings: usize = artifacts.iter().map(|a| a.warnings.len()).sum();
 
@@ -512,16 +522,25 @@ pub fn generate_markdown_report(report: &AuditReport, manifest_hash: &str) -> St
 
     md.push_str(&format!("# Release Audit Report — v{}\n\n", report.version));
     md.push_str(&format!("**Generated:** {}\n", report.created_at));
-    md.push_str(&format!("**Artifacts audited:** {}\n\n", report.summary.total_artifacts));
+    md.push_str(&format!(
+        "**Artifacts audited:** {}\n\n",
+        report.summary.total_artifacts
+    ));
 
     // Summary table
     md.push_str("## Summary\n\n");
     md.push_str("| Metric | Value |\n");
     md.push_str("|--------|-------|\n");
-    md.push_str(&format!("| Artifacts | {} |\n", report.summary.total_artifacts));
+    md.push_str(&format!(
+        "| Artifacts | {} |\n",
+        report.summary.total_artifacts
+    ));
     md.push_str(&format!("| Passed | {} |\n", report.summary.passed));
     md.push_str(&format!("| Failed | {} |\n", report.summary.failed));
-    md.push_str(&format!("| Checks | {}/{} passed |\n", report.summary.checks_passed, report.summary.checks_total));
+    md.push_str(&format!(
+        "| Checks | {}/{} passed |\n",
+        report.summary.checks_passed, report.summary.checks_total
+    ));
     md.push_str(&format!("| Warnings | {} |\n", report.summary.warnings));
     md.push('\n');
     md.push_str(&format!("**Manifest hash:** `{}`\n\n", manifest_hash));
@@ -550,19 +569,30 @@ pub fn generate_markdown_report(report: &AuditReport, manifest_hash: &str) -> St
     md.push_str("| Path | Type | Size | SHA256 | Checks | Warnings |\n");
     md.push_str("|------|------|------|--------|--------|----------|\n");
     for art in &report.artifacts {
-        let status = if art.checks.iter().all(|c| c.passed) { "✅" } else { "❌" };
+        let status = if art.checks.iter().all(|c| c.passed) {
+            "✅"
+        } else {
+            "❌"
+        };
         let size_str = if art.size_bytes < 1_000_000 {
             format!("{:.1} KiB", art.size_bytes as f64 / 1024.0)
         } else {
             format!("{:.1} MiB", art.size_bytes as f64 / 1_000_000.0)
         };
-        let c = format!("{}/{}",
+        let c = format!(
+            "{}/{}",
             art.checks.iter().filter(|c| c.passed).count(),
             art.checks.len()
         );
         md.push_str(&format!(
             "| {} {} | {} | {} | {} | {} | {} |\n",
-            status, art.path, art.file_type, size_str, &art.sha256[..12], c, art.warnings.len()
+            status,
+            art.path,
+            art.file_type,
+            size_str,
+            &art.sha256[..12],
+            c,
+            art.warnings.len()
         ));
     }
     md.push('\n');
@@ -670,7 +700,10 @@ mod tests {
         let h1 = sha256_file(&path).unwrap();
         let h2 = sha256_file(&path).unwrap();
         assert_eq!(h1, h2);
-        assert_eq!(h1, "b94d27b9934d3e08a52e52d7da7dabfac484efe37a5380ee9088f7ace2efcde9");
+        assert_eq!(
+            h1,
+            "b94d27b9934d3e08a52e52d7da7dabfac484efe37a5380ee9088f7ace2efcde9"
+        );
         let _ = fs::remove_file(&path);
     }
 
@@ -786,8 +819,16 @@ mod tests {
                 arch: Some("x86_64".into()),
                 is_stripped: Some(true),
                 checks: vec![
-                    CheckResult { name: "non-empty".into(), passed: true, detail: "1024 bytes".into() },
-                    CheckResult { name: "sha256".into(), passed: true, detail: "abababababababab".into() },
+                    CheckResult {
+                        name: "non-empty".into(),
+                        passed: true,
+                        detail: "1024 bytes".into(),
+                    },
+                    CheckResult {
+                        name: "sha256".into(),
+                        passed: true,
+                        detail: "abababababababab".into(),
+                    },
                 ],
                 warnings: vec![],
             }],
