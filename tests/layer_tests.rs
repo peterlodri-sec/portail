@@ -18,6 +18,7 @@ mod layer_tests {
             event_log: Arc::new(events::EventLog::new(100)),
             cdn_cache: None,
             hooks: Arc::new(hooks::HookStore::new()),
+            base_hooks: Arc::new(portail::base_hooks::default_registry()),
             a2a_tasks: Arc::new(a2a::TaskStore::new()),
             dns_store: Arc::new(dns::DnsStore::new()),
             doh_client: None,
@@ -84,6 +85,7 @@ mod layer_tests {
             inject: hooks::InjectMode::Prepend,
             content: "test".into(),
             enabled: true,
+            priority: 0,
         });
         assert_eq!(store.list().len(), 1);
     }
@@ -143,6 +145,7 @@ mod layer_tests {
             inject: hooks::InjectMode::Prepend,
             content: "test".into(),
             enabled: true,
+            priority: 0,
         });
 
         let matched = store.match_message("/test");
@@ -201,6 +204,7 @@ mod layer_tests {
             inject: hooks::InjectMode::Prepend,
             content: "test".into(),
             enabled: true,
+            priority: 0,
         });
         assert_eq!(state.hooks.list().len(), 1);
 
@@ -283,6 +287,7 @@ mod layer_tests {
             inject: hooks::InjectMode::Prepend,
             content: "be helpful".into(),
             enabled: true,
+            priority: 0,
         }];
 
         let modified = hooks::apply_message_hooks(&body, &hooks).unwrap();
@@ -304,6 +309,7 @@ mod layer_tests {
             inject: hooks::InjectMode::Prepend,
             content: "injected".into(),
             enabled: true,
+            priority: 0,
         });
 
         let matched = store.match_event("test-agent", "started");

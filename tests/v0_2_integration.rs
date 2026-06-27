@@ -18,6 +18,7 @@ mod v0_2_integration {
             event_log: Arc::new(events::EventLog::new(100)),
             cdn_cache: None,
             hooks: Arc::new(hooks::HookStore::new()),
+            base_hooks: Arc::new(portail::base_hooks::default_registry()),
             a2a_tasks: Arc::new(a2a::TaskStore::new()),
             dns_store: Arc::new(dns::DnsStore::new()),
             doh_client: None,
@@ -547,5 +548,43 @@ burst = 5
         assert_eq!(cfg.store.retention_days, 30);
         assert_eq!(cfg.telemetry.sampling_ratio, 0.1);
         assert_eq!(cfg.telemetry.service_name, "portail");
+    }
+
+    #[tokio::test]
+    async fn sentinel_hello_test() {
+        let state = Arc::new(base_app_state());
+        let el = state.event_log.clone();
+
+        // Spawn sentinel
+        tokio::spawn(async move {
+            portail::sentinel::run_sentinel(el, None).await;
+        });
+
+        // Wait a bit for sentinel to start and publish its started event
+        tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+
+        // Publish a HELLO event
+        state.event_log.publish(events::AgentEvent {
+            agent_id: "test".into(),
+            event_type: "HELLO".into(),
+            severity: "info".into(),
+            timestamp: 0,
+            metadata: portail::types::BoundedMeta::default(),
+        });
+
+        // Wait for sentinel_hello_success event
+        let mut success = false;
+        for _ in 0..20 {
+            tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+            let events = state.event_log.recent(50);
+            if events
+                .iter()
+                .any(|e| e.event_type == "sentinel_hello_success")
+            {
+                success = true;
+                break;
+            }
+        }
+        assert!(success, "Sentinel did not publish sentinel_hello_success");
     }
 }

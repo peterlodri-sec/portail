@@ -66,6 +66,7 @@ OPEN:   #28, #30, #31, #33, #34, #1 super devnote (HUMAN ONLY) — #33 + #34 act
 | Utoipa + Scalar UI | done |
 | AI services Nix flake | done |
 | VS Code settings + Codespaces | done |
+| OpenCode Sentinel MCP integration | done |
 
 ---
 
