@@ -56,6 +56,9 @@ mod layer_tests {
             loop_runner: loopeng::SharedLoopEngine::new(loopeng::LoopEngineConfig::default()),
             inference_engine: None,
             pkg_ctx_memory: tokio::sync::Mutex::new(pkg_ctx::memory::PkgCtxMemory::new().unwrap()),
+            tool_registry: Arc::new(std::sync::RwLock::new(
+                portail_claude_plugins::bridge::ToolRegistry::new(),
+            )),
         }
     }
 

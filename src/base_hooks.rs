@@ -19,6 +19,9 @@
 //! | `error-capture` | PostResponse | Capture upstream errors |
 //! | `api-key-mask` | PreRequest | Mask API keys in logs/events |
 
+use axum::extract::{Request, State};
+use axum::middleware::Next;
+use axum::response::Response;
 use std::sync::Arc;
 
 // ─── trait ────────────────────────────────────────────────────────
@@ -227,10 +230,10 @@ impl BaseHook for ApiKeyMask {
 /// Runs pre-request hooks on the body before forwarding, and
 /// post-response hooks after the response comes back.
 pub async fn base_hooks_middleware(
-    axum::extract::State(state): axum::extract::State<Arc<crate::AppState>>,
-    req: axum::http::Request<axum::body::Body>,
-    next: axum::middleware::Next,
-) -> axum::response::Response {
+    State(state): State<Arc<crate::AppState>>,
+    req: Request,
+    next: Next,
+) -> Response {
     let path = req.uri().path().to_string();
 
     // Only intercept AI gateway paths
@@ -247,11 +250,13 @@ pub async fn base_hooks_middleware(
         .await
         .unwrap_or_default();
 
-    let config = state.config.read().unwrap();
-    let parsed: serde_json::Value =
-        serde_json::from_slice(&body_bytes).unwrap_or(serde_json::Value::Null);
-    let modified = state.base_hooks.run_pre_request(&parsed, &path, &config);
-    drop(config);
+    let (modified, parsed) = {
+        let config = state.config.read().unwrap();
+        let parsed: serde_json::Value =
+            serde_json::from_slice(&body_bytes).unwrap_or(serde_json::Value::Null);
+        let modified = state.base_hooks.run_pre_request(&parsed, &path, &config);
+        (modified, parsed)
+    };
 
     let body_bytes = if modified != parsed {
         serde_json::to_vec(&modified).unwrap_or(body_bytes.to_vec())
