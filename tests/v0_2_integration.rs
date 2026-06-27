@@ -48,16 +48,12 @@ mod v0_2_integration {
             supervisor: std::sync::Arc::new(portail::supervisor::Supervisor::new(
                 std::sync::Arc::new(portail::events::EventLog::new(100)),
             )),
-            plugin_registry: portail::plugin_hooks::init_plugin_registry(
-                std::path::Path::new("vaked"),
-            ),
-            loop_manager: std::sync::Arc::new(
-                loop_state_manager::LoopStateManager::new("3.0.0"),
-            ),
+            plugin_registry: portail::plugin_hooks::init_plugin_registry(std::path::Path::new(
+                "vaked",
+            )),
+            loop_manager: std::sync::Arc::new(loop_state_manager::LoopStateManager::new("3.0.0")),
             loop_runner: loopeng::SharedLoopEngine::new(loopeng::LoopEngineConfig::default()),
-            pkg_ctx_memory: tokio::sync::Mutex::new(
-                pkg_ctx::memory::PkgCtxMemory::new().unwrap()
-            ),
+            pkg_ctx_memory: tokio::sync::Mutex::new(pkg_ctx::memory::PkgCtxMemory::new().unwrap()),
         }
     }
 
@@ -272,7 +268,8 @@ mod v0_2_integration {
             retention_days: 0,
             provider: "rusqlite".into(),
         };
-        let backend = std::sync::Arc::new(RusqliteBackend::open(&config).expect("open in-memory store"));
+        let backend =
+            std::sync::Arc::new(RusqliteBackend::open(&config).expect("open in-memory store"));
         store::EventStore::from_backend(backend, config)
     }
 

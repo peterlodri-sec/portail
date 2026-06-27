@@ -48,16 +48,12 @@ mod layer_tests {
             supervisor: std::sync::Arc::new(portail::supervisor::Supervisor::new(
                 std::sync::Arc::new(portail::events::EventLog::new(100)),
             )),
-            plugin_registry: portail::plugin_hooks::init_plugin_registry(
-                std::path::Path::new("vaked"),
-            ),
-            loop_manager: std::sync::Arc::new(
-                loop_state_manager::LoopStateManager::new("3.0.0"),
-            ),
+            plugin_registry: portail::plugin_hooks::init_plugin_registry(std::path::Path::new(
+                "vaked",
+            )),
+            loop_manager: std::sync::Arc::new(loop_state_manager::LoopStateManager::new("3.0.0")),
             loop_runner: loopeng::SharedLoopEngine::new(loopeng::LoopEngineConfig::default()),
-            pkg_ctx_memory: tokio::sync::Mutex::new(
-                pkg_ctx::memory::PkgCtxMemory::new().unwrap()
-            ),
+            pkg_ctx_memory: tokio::sync::Mutex::new(pkg_ctx::memory::PkgCtxMemory::new().unwrap()),
         }
     }
 
@@ -95,7 +91,7 @@ mod layer_tests {
     fn layer1_a2a_constructible() {
         let store = a2a::TaskStore::new();
         let task = store.create("t1".into());
-        assert_eq!(task.status, a2a::TaskStatus::Submitted);
+        assert_eq!(task.status.state, a2a::TaskState::Submitted);
     }
 
     #[test]
@@ -209,7 +205,7 @@ mod layer_tests {
 
         // A2A tasks work
         let task = state.a2a_tasks.create("t1".into());
-        assert_eq!(task.status, a2a::TaskStatus::Submitted);
+        assert_eq!(task.status.state, a2a::TaskState::Submitted);
 
         // DNS works
         state.dns_store.add_record(

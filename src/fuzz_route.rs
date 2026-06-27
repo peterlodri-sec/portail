@@ -55,7 +55,7 @@ pub fn generate_probes() -> Vec<(&'static str, &'static str, Vec<u8>, &'static s
         "/.well-known/agent.json",
         "/events",
         "/hooks",
-        "/a2a/tasks",
+        "/a2a",
         "/a2c/chat",
         "/ci/status",
         "/ci/badge",

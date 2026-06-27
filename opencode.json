@@ -1,0 +1,8 @@
+{
+  "plugin": [
+    "@simonwjackson/opencode-direnv",
+    "harness-memory/plugin",
+    "@hueyexe/opencode-ensemble@0.15.0",
+    "opencode-snip@latest",
+  ]
+}

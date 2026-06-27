@@ -29,11 +29,20 @@ impl Default for DohResolver {
 
 impl DohResolver {
     pub fn new(urls: Vec<String>) -> Self {
-        Self { client: reqwest::Client::new(), urls }
+        Self {
+            client: reqwest::Client::new(),
+            urls,
+        }
     }
 
-    async fn try_resolve(&self, url: &str, name: &str, record_type: &str) -> Result<Vec<IpAddr>, String> {
-        let resp = self.client
+    async fn try_resolve(
+        &self,
+        url: &str,
+        name: &str,
+        record_type: &str,
+    ) -> Result<Vec<IpAddr>, String> {
+        let resp = self
+            .client
             .get(url)
             .header("accept", "application/dns-json")
             .query(&[("name", name), ("type", record_type)])
@@ -42,7 +51,9 @@ impl DohResolver {
             .map_err(|e| format!("DoH request failed: {}", e))?;
 
         let body: serde_json::Value = resp.json().await.map_err(|e| e.to_string())?;
-        let answers = body["Answer"].as_array().ok_or("No Answer in DoH response")?;
+        let answers = body["Answer"]
+            .as_array()
+            .ok_or("No Answer in DoH response")?;
 
         let mut ips = Vec::new();
         for answer in answers {
@@ -70,11 +81,19 @@ impl DnsResolver for DohResolver {
             match self.try_resolve(url, name, rt).await {
                 Ok(ips) if !ips.is_empty() => return Ok(ips),
                 Ok(_) => continue,
-                Err(e) => { last_err = e; continue; }
+                Err(e) => {
+                    last_err = e;
+                    continue;
+                }
             }
         }
-        Err(format!("All DoH resolvers failed. Last error: {}", last_err))
+        Err(format!(
+            "All DoH resolvers failed. Last error: {}",
+            last_err
+        ))
     }
 
-    fn name(&self) -> &'static str { "doh" }
+    fn name(&self) -> &'static str {
+        "doh"
+    }
 }

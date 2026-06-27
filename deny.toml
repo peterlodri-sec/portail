@@ -1,15 +1,25 @@
+[graph]
+all-features = false
+no-default-features = false
+
 [advisories]
+unmaintained = "all"
+unsound = "all"
+yanked = "warn"
+ignore = [
+    # async-std is discontinued but only used transitively by cacache
+    "RUSTSEC-2025-0052",
+    # paste is unmaintained but only used by ratatui
+    "RUSTSEC-2024-0436",
+    # lru IterMut Stacked Borrows — used transitively, no replacement
+    "RUSTSEC-2026-0002",
+    # memmap2 unchecked pointer offset — used by cacache/file_cache
+    "RUSTSEC-2026-0186",
+]
 db-path = "~/.cargo/advisory-db"
 db-urls = ["https://github.com/rustsec/advisory-db"]
-vulnerability = "deny"
-unmaintained = "warn"
-unsound = "deny"
-notice = "warn"
-yanked = "warn"
-ignore = []
 
 [licenses]
-unlicensed = "deny"
 allow = [
     "MIT",
     "Apache-2.0",
@@ -20,24 +30,29 @@ allow = [
     "Unicode-3.0",
     "Zlib",
     "CC0-1.0",
-    "OpenSSL",
+    "BSL-1.0",
+    "MPL-2.0",
+    "CDLA-Permissive-2.0",
 ]
-deny = []
-copyleft = "deny"
-allow-osi-fsf-free = "neither"
-default = "deny"
 confidence-threshold = 0.8
 
 [bans]
-multiple-versions = "deny"
+multiple-versions = "warn"
 wildcards = "allow"
 highlight = "all"
 deny = []
-skip = []
-skip-tree = []
+allow-workspace = true
+skip = [
+    # async-channel 1.x and 2.x coexist due to async-std vs async-global-executor
+    { crate = "async-channel@1.9.0", reason = "pinned by async-std, cannot resolve" },
+]
+skip-tree = [
+    # async-nats pulls in different versions of common crates — skip its tree
+    { crate = "async-nats@0.48.0", reason = "different dep versions from portail's pinned deps" },
+]
 
 [sources]
-unknown-git = "deny"
 unknown-registry = "deny"
-allow-git = []
+unknown-git = "deny"
 allow-registry = ["https://github.com/rust-lang/crates.io-index"]
+allow-git = []

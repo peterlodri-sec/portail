@@ -1,0 +1,19 @@
+{
+  "versions": [
+    {
+      "version": 1,
+      "loaded_at": "2026-06-27T01:08:49.761200+00:00",
+      "config_json": "{\"listen\":\"0.0.0.0:8787\",\"mcp_socket\":\"/run/portail/mcp.sock\",\"cache_dir\":\"/var/cache/portail\",\"cache_size\":\"10g\",\"ai_gateway\":null,\"mcp\":null,\"cdn\":null,\"targets\":[],\"rate_limit\":{\"enabled\":true,\"burst\":30,\"per_second\":10.0,\"endpoints\":{},\"api_keys\":{}},\"auth\":{\"enabled\":false,\"api_keys\":{},\"jwt\":null,\"bypass_paths\":[\"/healthz\",\"/livez\",\"/readyz\",\"/metrics\",\"/.well-known/agent.json\"]},\"store\":{\"enabled\":false,\"db_path\":\"/var/lib/portail/events.db\",\"retention_days\":30,\"provider\":\"sqlx\"},\"telemetry\":{\"enabled\":false,\"endpoint\":\"http://localhost:4317\",\"service_name\":\"portail\",\"sampling_ratio\":0.1}}"
+    },
+    {
+      "version": 1,
+      "loaded_at": "2026-06-27T01:09:57.433929+00:00",
+      "config_json": "{\"listen\":\"0.0.0.0:8787\",\"mcp_socket\":\"/run/portail/mcp.sock\",\"cache_dir\":\"/var/cache/portail\",\"cache_size\":\"10g\",\"ai_gateway\":null,\"mcp\":null,\"cdn\":null,\"targets\":[],\"rate_limit\":{\"enabled\":true,\"burst\":30,\"per_second\":10.0,\"endpoints\":{},\"api_keys\":{}},\"auth\":{\"enabled\":false,\"api_keys\":{},\"jwt\":null,\"bypass_paths\":[\"/healthz\",\"/livez\",\"/readyz\",\"/metrics\",\"/.well-known/agent.json\"]},\"store\":{\"enabled\":false,\"db_path\":\"/var/lib/portail/events.db\",\"retention_days\":30,\"provider\":\"sqlx\"},\"telemetry\":{\"enabled\":false,\"endpoint\":\"http://localhost:4317\",\"service_name\":\"portail\",\"sampling_ratio\":0.1}}"
+    },
+    {
+      "version": 1,
+      "loaded_at": "2026-06-27T01:55:13.277181+00:00",
+      "config_json": "{\"listen\":\"0.0.0.0:8787\",\"mcp_socket\":\"/run/portail/mcp.sock\",\"cache_dir\":\"/var/cache/portail\",\"cache_size\":\"10g\",\"ai_gateway\":null,\"mcp\":null,\"cdn\":null,\"targets\":[],\"rate_limit\":{\"enabled\":true,\"burst\":30,\"per_second\":10.0,\"endpoints\":{},\"api_keys\":{}},\"auth\":{\"enabled\":false,\"api_keys\":{},\"jwt\":null,\"bypass_paths\":[\"/healthz\",\"/livez\",\"/readyz\",\"/metrics\",\"/.well-known/agent.json\"]},\"store\":{\"enabled\":false,\"db_path\":\"/var/lib/portail/events.db\",\"retention_days\":30,\"provider\":\"sqlx\"},\"telemetry\":{\"enabled\":false,\"endpoint\":\"http://localhost:4317\",\"service_name\":\"portail\",\"sampling_ratio\":0.1}}"
+    }
+  ]
+}

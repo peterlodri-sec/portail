@@ -32,10 +32,19 @@ pub fn run_dev(action: &super::DevAction) -> Result<()> {
         super::DevAction::Build { max } => {
             let _args = ["build", "--release", "-p", "portail"];
             if *max {
-                cmd("cargo", &["build", "--release", "-p", "portail",
-                    "--config", "profile.release.lto=\"fat\"",
-                    "--config", "profile.release.codegen-units=1",
-                ])?;
+                cmd(
+                    "cargo",
+                    &[
+                        "build",
+                        "--release",
+                        "-p",
+                        "portail",
+                        "--config",
+                        "profile.release.lto=\"fat\"",
+                        "--config",
+                        "profile.release.codegen-units=1",
+                    ],
+                )?;
             } else {
                 cmd("cargo", &["build", "--release", "-p", "portail"])?;
             }
@@ -124,7 +133,9 @@ mod tests {
             DevAction::Lint,
             DevAction::Test,
             DevAction::Build { max: false },
-            DevAction::Audit { version: "0.0.0".into() },
+            DevAction::Audit {
+                version: "0.0.0".into(),
+            },
         ];
         assert_eq!(actions.len(), 5);
     }

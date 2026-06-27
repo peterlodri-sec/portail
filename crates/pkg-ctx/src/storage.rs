@@ -1,4 +1,4 @@
-use rusqlite::{params, Connection, Result as SqlResult};
+use rusqlite::{Connection, Result as SqlResult, params};
 
 #[derive(Debug, Clone)]
 pub struct DocChunk {
@@ -90,7 +90,12 @@ impl PackageDb {
         self.conn.execute(
             "INSERT INTO chunks_fts (rowid, doc_title, section_title, content)
              VALUES (?1, ?2, ?3, ?4)",
-            params![chunk_id, chunk.doc_title, chunk.section_title, chunk.content],
+            params![
+                chunk_id,
+                chunk.doc_title,
+                chunk.section_title,
+                chunk.content
+            ],
         )?;
         Ok(chunk_id)
     }
@@ -136,7 +141,9 @@ impl PackageDb {
     }
 
     pub fn get_meta(&self, key: &str) -> SqlResult<Option<String>> {
-        let mut stmt = self.conn.prepare("SELECT value FROM pkg_meta WHERE key = ?1")?;
+        let mut stmt = self
+            .conn
+            .prepare("SELECT value FROM pkg_meta WHERE key = ?1")?;
         let mut rows = stmt.query(params![key])?;
         match rows.next()? {
             Some(row) => Ok(Some(row.get(0)?)),
@@ -168,7 +175,8 @@ mod tests {
             doc_path: "middleware.md".into(),
             doc_title: "Middleware".into(),
             section_title: "Auth Middleware".into(),
-            content: "Authentication middleware verifies JWT tokens and sets request context.".into(),
+            content: "Authentication middleware verifies JWT tokens and sets request context."
+                .into(),
             tokens: 15,
             has_code: false,
         })

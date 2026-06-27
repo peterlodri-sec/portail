@@ -77,7 +77,11 @@ impl OrchestratorDashboard {
                 });
             }
             AgentEvent::AgentProgress { agent_id, message } => {
-                if let Some(a) = state.active_agents.iter_mut().find(|a| a.agent_id == agent_id) {
+                if let Some(a) = state
+                    .active_agents
+                    .iter_mut()
+                    .find(|a| a.agent_id == agent_id)
+                {
                     a.progress = message.clone();
                 }
                 let log = format!("[{agent_id}] {message}");
@@ -128,7 +132,10 @@ impl OrchestratorDashboard {
                 }
             }
             AgentEvent::AgentCheckedIn { registration } => {
-                let log = format!("[fleet] agent '{}' checked in ({})", registration.id, registration.provider);
+                let log = format!(
+                    "[fleet] agent '{}' checked in ({})",
+                    registration.id, registration.provider
+                );
                 self.log_buffer.push(log);
                 if self.log_buffer.len() > 256 {
                     self.log_buffer.remove(0);
@@ -182,10 +189,7 @@ impl OrchestratorDashboard {
         let area = f.area();
         let chunks = Layout::default()
             .direction(Direction::Vertical)
-            .constraints([
-                Constraint::Length(8),
-                Constraint::Min(1),
-            ])
+            .constraints([Constraint::Length(8), Constraint::Min(1)])
             .split(area);
 
         self.draw_banner(f, chunks[0]);
@@ -213,7 +217,8 @@ impl OrchestratorDashboard {
                 Span::raw(" Uptime: ").style(Style::default().fg(Color::Green)),
                 Span::raw(format!("{uptime}s")).style(Style::default().fg(Color::White)),
                 Span::raw(" │ Agents: ").style(Style::default().fg(Color::Yellow)),
-                Span::raw(format!("{active} active, {done} done")).style(Style::default().fg(Color::White)),
+                Span::raw(format!("{active} active, {done} done"))
+                    .style(Style::default().fg(Color::White)),
                 Span::raw(" │ Tokens: ").style(Style::default().fg(Color::Magenta)),
                 Span::raw(format!("{total}")).style(Style::default().fg(Color::White)),
             ]),
@@ -224,10 +229,7 @@ impl OrchestratorDashboard {
     fn draw_main_grid(&self, f: &mut Frame, area: Rect) {
         let chunks = Layout::default()
             .direction(Direction::Horizontal)
-            .constraints([
-                Constraint::Percentage(40),
-                Constraint::Percentage(60),
-            ])
+            .constraints([Constraint::Percentage(40), Constraint::Percentage(60)])
             .split(area);
 
         self.draw_log_panel(f, chunks[0]);
@@ -240,18 +242,24 @@ impl OrchestratorDashboard {
             .title(" Orchestrator Log ")
             .style(Style::default().fg(Color::Cyan));
 
-        let items: Vec<ListItem> = self.log_buffer.iter().rev().take(32).map(|msg| {
-            let prefix = if msg.contains("failed") || msg.contains("error") {
-                Color::Red
-            } else if msg.contains("completed") {
-                Color::Green
-            } else if msg.contains("[orchestrator]") {
-                Color::Cyan
-            } else {
-                Color::White
-            };
-            ListItem::new(Text::from(msg.as_str())).style(Style::default().fg(prefix))
-        }).collect();
+        let items: Vec<ListItem> = self
+            .log_buffer
+            .iter()
+            .rev()
+            .take(32)
+            .map(|msg| {
+                let prefix = if msg.contains("failed") || msg.contains("error") {
+                    Color::Red
+                } else if msg.contains("completed") {
+                    Color::Green
+                } else if msg.contains("[orchestrator]") {
+                    Color::Cyan
+                } else {
+                    Color::White
+                };
+                ListItem::new(Text::from(msg.as_str())).style(Style::default().fg(prefix))
+            })
+            .collect();
 
         let list = List::new(items).block(block);
         f.render_widget(list, area);
@@ -262,7 +270,11 @@ impl OrchestratorDashboard {
 
         let block = Block::default()
             .borders(Borders::ALL)
-            .title(format!(" Agents ({}/{}) ", state.active_agents.len(), state.completed.len()))
+            .title(format!(
+                " Agents ({}/{}) ",
+                state.active_agents.len(),
+                state.completed.len()
+            ))
             .style(Style::default().fg(Color::Yellow));
 
         let inner = block.inner(area);
@@ -270,7 +282,10 @@ impl OrchestratorDashboard {
 
         let rows = Layout::default()
             .direction(Direction::Vertical)
-            .constraints(std::iter::repeat_n(Constraint::Length(4), state.active_agents.len().max(1)))
+            .constraints(std::iter::repeat_n(
+                Constraint::Length(4),
+                state.active_agents.len().max(1),
+            ))
             .split(inner);
 
         if state.active_agents.is_empty() {
@@ -287,7 +302,9 @@ impl OrchestratorDashboard {
         } else {
             let spinner = SPINNER[(self.tick_count as usize / 3) % SPINNER.len()];
             for (i, agent) in state.active_agents.iter().enumerate() {
-                if i >= rows.len() { break; }
+                if i >= rows.len() {
+                    break;
+                }
                 let agent_area = rows[i];
                 self.draw_agent_card(f, agent_area, agent, spinner);
             }
@@ -297,7 +314,11 @@ impl OrchestratorDashboard {
     fn draw_agent_card(&self, f: &mut Frame, area: Rect, agent: &ActiveAgent, spinner: char) {
         let chunks = Layout::default()
             .direction(Direction::Vertical)
-            .constraints([Constraint::Length(1), Constraint::Length(1), Constraint::Min(0)])
+            .constraints([
+                Constraint::Length(1),
+                Constraint::Length(1),
+                Constraint::Min(0),
+            ])
             .margin(1)
             .split(area);
 
@@ -308,8 +329,7 @@ impl OrchestratorDashboard {
         );
 
         f.render_widget(
-            Paragraph::new(agent.progress.as_str())
-                .style(Style::default().fg(Color::DarkGray)),
+            Paragraph::new(agent.progress.as_str()).style(Style::default().fg(Color::DarkGray)),
             chunks[1],
         );
 

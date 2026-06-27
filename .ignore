@@ -1,0 +1,39 @@
+# Portail .ignore — blocks AI access to sensitive/irrelevant paths
+
+# Secrets & credentials
+*.key
+*.pem
+*.crt
+.env*
+.env
+*.env
+id_rsa
+id_ed25519
+secrets.json
+credentials.json
+api-keys.json
+**/secrets/**
+
+# Build artifacts
+**/target/
+**/dist/
+**/build/
+**/.cache/
+
+# Node artifacts (if any)
+**/node_modules/
+
+# Nix
+**/.direnv/
+
+# Local overrides
+config.local.json
+config.development.json
+*.local.json
+*.dev.json
+
+# Temp files
+temp*.log
+*.tmp
+*.swp
+*.swo

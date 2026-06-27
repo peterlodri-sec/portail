@@ -1,0 +1,9 @@
+# Nix flake environment
+use flake
+
+# Project-specific variables
+export DATABASE_URL="postgresql://localhost/myapp"
+export API_KEY="your-api-key-here"
+
+# Tool versions via asdf/mise
+use asdf

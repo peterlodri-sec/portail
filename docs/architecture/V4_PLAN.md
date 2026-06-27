@@ -1,300 +1,244 @@
-# Portail V4 — VKID Integrity Kernel + Built-in Services
+# Portail V4 — SOTA Gateway Architecture
 
 **Target:** v4.0.0
-**Status:** Planning
+**Status:** Active Development
+**Theme:** Ship the foundation. No VKID, no capability graphs, no genesis seals.
 
 ---
 
-## 1. VKID (Vaked Integrity Kernel) Integration
-
-Vaked is a deterministic agentic swarm appliance engineered for absolute execution
-determinism, low-latency performance, and immutable system integrity.
-
-### Architecture Layers
+## Architecture
 
 ```
-┌──────────────────────────────────────────────────────────┐
-│  Portail Agent Runloops (ADK-Rust, WASM sandboxes)       │
-├──────────────────────────────────────────────────────────┤
-│  Memory Plane: Zero-Copy Shared Memory (mmap)            │
-├──────────────────────────────────────────────────────────┤
-│  VKID Root Integrity Kernel: seccomp BPF, process guard  │
-├──────────────────────────────────────────────────────────┤
-│  Host Layer: Ephemeral NixOS tmpfs or Talos Linux        │
-└──────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────┐
+│                    portail serve                              │
+│                                                              │
+│  ┌──────────┐   ┌──────────┐   ┌──────────┐   ┌──────────┐ │
+│  │ Gateway  │   │ Router   │   │ Sandbox  │   │  Store   │ │
+│  │ (axum)   │──▶│ (targets)│──▶│ (WASM)   │   │ (SQLite) │ │
+│  └──────────┘   └──────────┘   └──────────┘   └──────────┘ │
+│       │              │              │              │         │
+│       ▼              ▼              ▼              ▼         │
+│  HTTP/WS/A2A   Model routing   Extism plugins   BOW secrets│
+│  MCP server    Local+cloud     Capability I/O   Event log  │
+└─────────────────────────────────────────────────────────────┘
+                          │
+                    ┌─────┴─────┐
+                    │  nushell  │  ← CLI/ops layer
+                    │  + plugins│  ← query, formats, socket
+                    │  + par-each│ ← parallel fleet ops
+                    └───────────┘
+                          │
+                    ┌─────┴─────┐
+                    │    nix    │  ← reproducibility layer
+                    │  flake    │  ← pinned everything
+                    │  deploy   │  ← NixOS modules
+                    └───────────┘
 ```
-
-### Integration Points
-
-| Portail Component | VKID Equivalent | Integration |
-|------------------|-----------------|-------------|
-| Supervisor (respawn) | Root Integrity Kernel | Replace process supervision with VKID's seccomp-BPF guarded lifecycle |
-| PIT (process tracker) | Genesis attestation | PIT logs feed into VKID's continuous hash verification |
-| Release-audit | Genesis Seal | Release pipeline produces GENESIS_SEAL.hash notarized in DNS |
-| Config (figment) | Immutable config domain | Figment extract() at entry, immutable refs passed to runloops |
-| Portal MCP | WASM sandbox with capability I/O | Replace ptrace-based MCP sidecar with WASM sandbox (Wasmtime) |
-| Target templates | Capability graph | Provider targets become typed capabilities with proof chains |
-
-### Genesis Ceremony
-
-```nix
-# flake.nix postInstall — already implemented
-postInstall = ''
-  mkdir -p $out/var/portail
-  sha256sum $out/bin/portail > $out/var/portail/GENESIS_SEAL.hash
-'';
-```
-
-**Phase 2:** Notarize GENESIS_SEAL.hash into DNS TXT record at
-`_vaked.portail.dev` for continuous remote attestation.
 
 ---
 
-## 2. Built-in Services
+## Milestones
 
-### BOW (Backend Object Warehouse) — Secret & Identity Management
+### P0 — WASM MCP Sidecar (5 days)
 
-Purpose: Agent-accessible secret storage, API key distribution, identity tokens.
-Replaces: HashiCorp Vault, 1Password CLI, manual .env management.
+Replace the Python MCP sidecar (slow, fragile, requires uv + litellm)
+with a WASM-based sidecar using Extism.
 
-```rust
-// Design sketch
-pub struct BowConfig {
-    pub store_path: PathBuf,        // encrypted SQLite store
-    pub auto_unlock: bool,          // unlock via TPM/enclave
-    pub audit_log: bool,            // log every secret access
-}
-
-pub enum BowSecret {
-    ApiKey { name: String, value: Encrypted, provider: String },
-    EnvVar { name: String, value: Encrypted },
-    Identity { issuer: String, credential: Vec<u8> },
-}
+```
+[axum HTTP] ──► [Rust proxy] ──► [extism runtime]
+                                      │
+                                 ┌─────┴─────┐
+                                 │ MCP server │
+                                 │ (compiled  │
+                                 │  to .wasm) │
+                                 └───────────┘
 ```
 
-**CLI:** `portail bow set <name> <value>`, `portail bow get <name>`,
-`portail bow list`, `portail bow rotate <name>`
+**Why Extism over raw Wasmtime:**
+- Plugin lifecycle management built-in
+- Host functions for I/O without WASI complexity
+- Polyglot: authors can write MCP servers in Rust, Go, TS, Python compiled to WASM
+- Hot-reload without restarting portail
 
-### CREPSC (Codebase Retrieval, Exploration & Semantic Query)
+**Files:**
+- `crates/portail-mcp-wasm/` — WASM MCP server host
+- `src/mcp/mod.rs` — replace `Command::new("uv")` with extism instantiation
 
-MCP server for semantic code search over the local codebase.
-Combines: ripgrep for text search + tree-sitter for AST + vector embeddings.
-
-### Mercury — Message/Event Bus Bridge
-
-Bridges between NATS (existing), MQTT, and in-memory event log.
-Agents publish/subscribe across protocols transparently.
-
-### Sentinel-X — Extended Health & Observability
-
-Upgrades the existing sentinel to:
-- Prometheus remote write
-- Structured audit log export (OpenTelemetry)
-- Automated dashboard provisioning
-
-### Maelstrom — Chaos Engineering Agent
-
-Deliberately injects faults (packet loss, process kill, disk latency)
-into the system and verifies the supervisor auto-recovers.
+**Deliverable:** No Python dependency. MCP servers run as WASM modules.
+~50KB binary instead of ~200MB Python venv.
 
 ---
 
-## 3. Capability Graph Language
+### P1 — BOW (Backend Object Warehouse) (3 days)
 
-Replace unstructured provider/plugin config with a typed capability graph.
-
-### Concept
-
-Each capability (target, MCP server, plugin) is a node in a DAG:
+Agent-accessible encrypted secret store. Replaces `.env` for production.
 
 ```
-target:anthropic-fast
-  ├─ provider: anthropic
-  ├─ models: [claude-sonnet-4, claude-haiku-3]
-  ├─ rps: 10
-  └─ requires: [bow:anthropic-api-key]
-
-mcp:filesystem
-  ├─ transport: stdio
-  ├─ command: npx @modelcontextprotocol/server-filesystem
-  └─ capabilities: [fs:read, fs:write, fs:search]
-
-capability:fs:read
-  ├─ grants: [path:/src, path:/docs]
-  └─ audited: true
+portail bow set ANTHROPIC_API_KEY sk-ant-xxx  → encrypted at rest
+portail bow list                               → shows names, not values
+portail bow get ANTHROPIC_API_KEY --into-env   → exports to env
 ```
 
-### Lowering
+**Design:**
+- AES-256-GCM encryption at rest (ring or aes-gcm crate)
+- Unlock via passphrase or TPM/enclave (when available)
+- SQLite backend with WAL mode
+- Audit log: every access recorded with timestamp + caller
 
-The graph is "lowered" at boot into concrete config:
+**Files:**
+- `src/bow.rs` — BOW engine: encrypted SQLite store + keyring unlock
+- `src/cli/bow.rs` — CLI subcommands
+- `src/config.rs` — `[bow]` config section
 
-```rust
-// High-level capability (developer writes this)
-capability "deploy-production" {
-    uses target "anthropic-fast"
-    uses mcp "filesystem" { paths = ["/src"] }
-    uses mcp "github"
-}
+**Deliverable:** `portail bow` CLI works. Secrets survive reboot.
 
-// Lowered to (compiler generates this)
-[[targets]]
-name = "anthropic-fast"
-provider = "anthropic"
-base_url = "https://api.anthropic.com/v1"
-models = ["claude-sonnet-4"]
+---
 
-[[mcp.server_registry]]
-name = "filesystem"
-transport = "stdio"
-command = "npx"
-args = ["-y", "@modelcontextprotocol/server-filesystem", "/src"]
+### P2 — A2A Protocol Support (3 days)
 
-[[mcp.server_registry]]
-name = "github"
-transport = "stdio"
-command = "npx"
-args = ["-y", "@modelcontextprotocol/server-github"]
+Standardized agent-to-agent interop via Google's A2A protocol.
+
+```
+Agent A ──(A2A JSON-RPC)──▶ Portail ──(A2A JSON-RPC)──▶ Agent B
+                              │
+                         Routes by agent card,
+                         manages task lifecycle,
+                         handles streaming
 ```
 
-### Rust lowerer
+**Why:**
+- A2A is the emerging standard (Google, 2025+)
+- Replaces custom WebSocket handler with interop-ready protocol
+- Enables multi-agent orchestration without custom code
 
-```rust
-pub enum Capability {
-    Target(TargetCapability),
-    Mcp(McpCapability),
-    Bow(BowCapability),
-}
+**Files:**
+- `src/a2a/` — A2A protocol handler (cards, tasks, streaming)
+- Extend existing WS route to speak A2A JSON-RPC
 
-pub struct CapabilityGraph {
-    nodes: Vec<Capability>,
-    edges: Vec<(usize, usize)>, // depends-on relationships
-}
+**Deliverable:** Portail serves A2A agent cards. Tasks flow between agents.
 
-impl CapabilityGraph {
-    pub fn lower(&self) -> Config {
-        // Walk DAG, collect Config struct
+---
+
+### P3 — Local Inference Routing (3 days)
+
+Route small-model requests to local inference via mistral.rs + candle.
+
+```
+[target:local-mistral] ──► mistral.rs HTTP server ──► candle (Metal/CUDA)
+```
+
+**Why:**
+- Small models (3B-7B) are good enough for routing decisions, classification, embedding
+- Saves API costs for high-volume, low-complexity requests
+- Runs on the same box, no network latency
+
+**Files:**
+- `src/gateway/local.rs` — local inference gateway
+- `Cargo.toml` — add `mistralrs` or `candle` behind feature flag
+
+**Deliverable:** `portail serve` with `[[targets]] provider = "local"` serves
+models via mistral.rs. `curl http://localhost:8787/v1/chat/completions` works.
+
+---
+
+### P4 — Nushell Fleet Ops (2 days)
+
+Structured fleet management via nushell + par-each + plugins.
+
+**Core commands (in `nushell/`):**
+
+```nu
+# Fleet health probe — parallel, typed, ordered
+def "portail probe" [] {
+    let targets = (open portail.toml | get targets | each { |t| {name: $t.name, url: $t.base_url} })
+    $targets | par-each -k { |t|
+        let health = (http get $"($t.url)/health" --timeout 3sec | from json)
+        {name: $t.name, status: $health.status, version: $health.version}
     }
-    pub fn verify(&self) -> Result<(), Vec<String>> {
-        // Check all deps satisfied, no cycles
+}
+
+# Fleet deploy — parallel, ordered, CI exit code
+def "portail deploy" [...hosts: string] {
+    let results = ($hosts | par-each -k { |h|
+        let res = (do { ^ssh $h "cd /opt/portail && cargo build --release" } | complete)
+        {host: $h, ok: ($res.exit_code == 0)}
+    })
+    $results | each { |r| print $"(if $r.ok {'✓'} else {'✗'}) ($r.host)" }
+    if ($results | where not ok | length) > 0 { exit 1 }
+}
+
+# Config drift detection — parallel across fleet
+def "portail drift" [] {
+    let nodes = (open portail.toml | get nodes)
+    $nodes | par-each -k { |n|
+        let remote_hash = (ssh $n.name "sha256sum /opt/portail/portail.toml" | split row " " | first)
+        let local_hash = (open portail.toml | hash sha256)
+        {node: $n.name, drift: ($remote_hash != $local_hash)}
     }
 }
 ```
 
----
+**Plugins installed:**
+- `nu_plugin_query` — HTTP/JSON API probing
+- `nu_plugin_formats` — format parsing (toml, yaml, etc.)
 
-## 4. Roadmap to V4
-
-| Phase | What | Depends On |
-|-------|------|-----------|
-| P0 | Figment config (done) | — |
-| P1 | Built-in MCP servers (done) | — |
-| P2 | Target templates (done) | — |
-| P3 | BOW secret management | figment config |
-| P4 | Deep research CI agent | search APIs |
-| P5 | Capability graph language | target + MCP + BOW |
-| P6 | VKID Genesis attestation | release pipeline |
-| P7 | WASM sandbox for MCP sidecar | capability graph |
+**Deliverable:** `portail probe`, `portail deploy`, `portail drift` work from any dev shell.
 
 ---
 
-## 5. DYAD Replaced by ACP + maki + Zed
+### P5 — OTLP → Grafana Observability (2 days)
 
-The DYAD outer-loop layer (originally planned as a custom bidirectional
-HITL surface) is replaced by the **ACP ecosystem**:
+Real observability via OpenTelemetry pipeline → Grafana.
 
 ```
-  Zed (editor) ←──→ ACP ←──→ maki (agent) ←──→ Portail (backend)
-  (human surface)   (protocol)  (orchestrator)   (MCP, targets, infra)
+[portail] ──OTLP/gRPC──▶ [otel-collector] ──▶ [Grafana] ──▶ dashboards
+                                    │
+                              [Tempo/Loki]
+                              traces + logs
 ```
 
-### Components
+**What we already have:**
+- OTLP trace export (src/telemetry.rs)
+- Event store (src/store.rs)
+- Prometheus metrics endpoint
 
-| Component | Role | Why |
-|-----------|------|-----|
-| **Zed** | Human interface (editor, TUI) | Native ACP support, great UX |
-| **ACP** | Protocol between editor & agent | Standardized JSON-RPC, tool use, permissions |
-| **maki** | Orchestrator agent | ACP mode built-in, efficient, Lua plugins |
-| **Portail** | Backend infra | MCP servers, target routing, PIT, loop state |
+**What we add:**
+- OTLP log export (structured traces → Tempo)
+- Dashboard provisioning (Grafana JSON dashboards)
+- Alert rules (Prometheus → Alertmanager)
 
-### Integration
+**Deliverable:** `docker compose up` gives full observability stack.
+Grafana dashboards show request latency, error rates, agent activity.
 
-```json
-// Zed settings.json
-{
-  "agent_servers": {
-    "Portail": {
-      "type": "custom",
-      "command": "maki",
-      "args": ["acp"],
-      "env": {}
-    }
-  }
-}
-```
+---
 
-Portail exposes its services as MCP servers that maki discovers and uses.
-The loop-state-manager tracks state; maki queries it via MCP tools.
+## Dropped from Previous v4 Plan
 
-### What this means for our code
+| Component | Why Dropped |
+|-----------|------------|
+| VKID (seccomp-BPF kernel) | Too complex. We're not building a kernel. NixOS gives us most of this. |
+| Capability Graph DAG | Figment already does config lowering. Don't build a second system. |
+| Genesis Seal DNS notarization | Cool but not MVP. Ship first, attest later. |
+| Maelstrom chaos agent | Nice-to-have. Do it in v5 after the foundation is solid. |
 
-- **No custom DYAD TUI needed** — maki's 60 FPS ratatui is the surface
-- **No custom protocol** — ACP is the standardized wire format
-- **loop-state-manager stays** — Portail backend state, exposed as MCP tools
-- **Portail acp command** — wraps `maki acp` with Portail's config context
+## Schedule
 
-## 6. Modern CLI Layer — No Legacy Tools
+| Phase | Milestone | Target Date | Tests |
+|-------|-----------|-------------|-------|
+| P0 | WASM MCP Sidecar | Jul 07 | 185+ |
+| P1 | BOW Secret Store | Jul 10 | 195+ |
+| P2 | A2A Protocol Support | Jul 13 | 205+ |
+| P3 | Local Inference Routing | Jul 16 | 210+ |
+| P4 | Nushell Fleet Ops | Jul 18 | 210+ |
+| P5 | OTLP → Grafana | Jul 20 | 215+ |
+| **Release** | **v4.0.0** | **Jul 21** | **215+** |
 
-The `portail` CLI and all dev shell environments MUST use only modern,
-actively maintained tools. Legacy tools (grep, awk, sed, cat, ls, find)
-are banned in scripts, Taskfile, and CI.
+## Dependencies
 
-| Legacy | Modern Replacement | Why |
-|--------|-------------------|-----|
-| `grep` | `rg` (ripgrep) | 5-10x faster, gitignore-aware, JSON output |
-| `awk` | `jq` + `rg` | Structured data, composable, no Turing-complete DSL |
-| `sed` | `sd` (sed alternative) | Human-readable regex, in-place, JSON-aware |
-| `cat` | `bat` or `< file` | Syntax highlighting, git integration |
-| `ls` | `eza` / `exa` | Colors, icons, tree view, git status |
-| `find` | `fd` | 9x faster, intuitive syntax, .gitignore-aware |
-| `du` | `dua` / `dust` | Interactive, visual, faster |
-| `top` | `btm` (bottom) | GPU, network, graph view |
-| `diff` | `delta` / `difftastic` | Syntax-highlighted side-by-side |
-| `curl` | `httpie` or native `reqwest` | Structured JSON output, sessions |
-| `bash` | `nushell` / `zsh` + `fish` | Structured data pipes, typed values |
-| `tmux` | `zellij` | Built-in UI, floating panes, session mgmt |
-| `ssh` | `mosh` + `ssh` | Roaming, predictive echo, UDP transport |
-| `ping` | `gping` | Graph + histogram, cross-platform |
-
-### Enforced via dev shell
-
-```nix
-# In flake.nix devShell
-nativeBuildInputs = with pkgs; [
-  ripgrep jq sd bat eza fd dua bottom delta
-  zellij gping httpie doggo hyperfine just
-];
-```
-
-### Taskfile aliases (no legacy commands)
-
-```yaml
-tasks:
-  search:   'rg {.PATTERN} src/'
-  fmt-json: 'sd "  " "    " **/*.json'
-  tree:     'eza --tree --git-ignore'
-  du:       'dua interactive'
-  stats:    'dust src/'
-  top:      'btm'
-```
-
-## 6. Built-in MCP Servers (shipped)
-
-| Name | What | Context Savings |
-|------|------|-----------------|
-| filesystem | Read/write/search files | Replaces cat/ls tool calls (~95%) |
-| github | PRs, issues, search | Replaces gh CLI subprocess (~80%) |
-| playwright | Chrome DevTools, browser | Replaces screenshot dumps (~90%) |
-| fetch | HTTP download | Replaces curl subprocess (~70%) |
-| brave-search | Web search | Replaces raw search JSON (~85%) |
-| sqlite | Database queries | Replaces raw SQL dumps (~90%) |
-| sequential-thinking | Reasoning chains | Replaces rambling CoT (~60%) |
+| Crate | Purpose | Phase |
+|-------|---------|-------|
+| `extism` | WASM runtime for MCP sidecar | P0 |
+| `aes-gcm` | Secret encryption at rest | P1 |
+| `ring` | Cryptographic operations | P1 |
+| `mistralrs` or `candle` | Local inference | P3 |
+| `opentelemetry` | OTLP export | P5 |

@@ -1,0 +1,39 @@
+{
+  "name": "Portail",
+  "image": "mcr.microsoft.com/devcontainers/universal:2",
+  "features": {
+    "ghcr.io/devcontainers/features/rust:1": {
+      "version": "1.85",
+      "profile": "minimal"
+    }
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "rust-lang.rust-analyzer",
+        "tamasfe.even-better-toml",
+        "serayuzgur.crates",
+        "vadimcn.vscode-lldb",
+        "DavidAnson.vscode-markdownlint",
+        "redhat.vscode-yaml",
+        "bierner.markdown-mermaid",
+        "usernamehw.errorlens",
+        "github.vscode-github-actions"
+      ],
+      "settings": {
+        "editor.formatOnSave": true,
+        "rust-analyzer.check.command": "clippy",
+        "rust-analyzer.check.extraArgs": ["--all-targets", "--", "-D", "warnings"]
+      }
+    }
+  },
+  "postCreateCommand": "rustup component add clippy rustfmt && cargo check",
+  "forwardPorts": [8787],
+  "portsAttributes": {
+    "8787": {
+      "label": "Portail server",
+      "onAutoForward": "notify"
+    }
+  },
+  "remoteUser": "codespace"
+}

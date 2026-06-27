@@ -57,14 +57,24 @@ impl Default for PitConfig {
             log_path: base.join("pit.log"),
             intercept_enabled: true,
             ignore_list: HashSet::from_iter([
-                "bash".into(), "zsh".into(), "fish".into(),
-                "sh".into(), "nvim".into(), "vim".into(),
-                "code".into(), "cursor".into(),
-                "tmux".into(), "screen".into(),
-                "sudo".into(), "su".into(),
+                "bash".into(),
+                "zsh".into(),
+                "fish".into(),
+                "sh".into(),
+                "nvim".into(),
+                "vim".into(),
+                "code".into(),
+                "cursor".into(),
+                "tmux".into(),
+                "screen".into(),
+                "sudo".into(),
+                "su".into(),
             ]),
             intercept_list: HashSet::from_iter([
-                "git".into(), "gh".into(), "make".into(), "curl".into(),
+                "git".into(),
+                "gh".into(),
+                "make".into(),
+                "curl".into(),
             ]),
             proc_watch: cfg!(target_os = "linux"),
         }
@@ -86,9 +96,13 @@ impl Pit {
         fs::create_dir_all(dir)?;
 
         let pit_file = OpenOptions::new()
-            .create(true).append(true).open(&config.pit_path)?;
+            .create(true)
+            .append(true)
+            .open(&config.pit_path)?;
         let log_file = OpenOptions::new()
-            .create(true).append(true).open(&config.log_path)?;
+            .create(true)
+            .append(true)
+            .open(&config.log_path)?;
 
         Ok(Self {
             config,
@@ -105,8 +119,7 @@ impl Pit {
             return false;
         }
 
-        let intercepted = self.config.intercept_enabled
-            && self.config.intercept_list.contains(cmd);
+        let intercepted = self.config.intercept_enabled && self.config.intercept_list.contains(cmd);
 
         let cwd_str = std::env::current_dir()
             .map(|p| p.to_string_lossy().to_string())

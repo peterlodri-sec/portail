@@ -5,8 +5,8 @@
 
 use chrono::Utc;
 use serde::{Deserialize, Serialize};
-use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::Instant;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -18,7 +18,11 @@ pub struct NullClawConfig {
 
 impl Default for NullClawConfig {
     fn default() -> Self {
-        Self { enabled: true, heartbeat_interval_secs: 10, agent_id: "nullclaw".into() }
+        Self {
+            enabled: true,
+            heartbeat_interval_secs: 10,
+            agent_id: "nullclaw".into(),
+        }
     }
 }
 
@@ -38,7 +42,11 @@ pub struct NullClaw {
 
 impl NullClaw {
     pub fn new(config: NullClawConfig) -> Self {
-        Self { config, started_at: Instant::now(), requests_processed: AtomicU64::new(0) }
+        Self {
+            config,
+            started_at: Instant::now(),
+            requests_processed: AtomicU64::new(0),
+        }
     }
 
     pub fn record_request(&self) {

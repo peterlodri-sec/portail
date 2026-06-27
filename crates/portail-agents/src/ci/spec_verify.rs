@@ -10,7 +10,9 @@ pub struct SpecVerifyConfig {
 
 impl Default for SpecVerifyConfig {
     fn default() -> Self {
-        Self { golden_path: "spec.routes.toml".into() }
+        Self {
+            golden_path: "spec.routes.toml".into(),
+        }
     }
 }
 

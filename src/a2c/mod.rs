@@ -98,7 +98,11 @@ pub async fn handle_chat(
             .into_response();
     };
 
-    let last_msg = req.messages.last().map(|m| m.content.as_str()).unwrap_or("");
+    let last_msg = req
+        .messages
+        .last()
+        .map(|m| m.content.as_str())
+        .unwrap_or("");
     let is_orchestrator = last_msg.starts_with("/orchestrate")
         || last_msg.starts_with("/plan")
         || last_msg.starts_with("/delegate");
@@ -111,7 +115,9 @@ pub async fn handle_chat(
     match crate::gateway::forward_with_url(&upstream, "/v1/chat/completions", &body_bytes).await {
         Ok(resp) => {
             let status = resp.status();
-            let body = axum::body::to_bytes(resp.into_body(), 10_000_000).await.unwrap_or_default();
+            let body = axum::body::to_bytes(resp.into_body(), 10_000_000)
+                .await
+                .unwrap_or_default();
             (status, body).into_response()
         }
         Err(e) => (
@@ -148,8 +154,8 @@ async fn handle_orchestrator_command(
             dispatch_goal(goal, state).await
         }
         "register" | "checkin" => {
-            let _reg: crate::orchestrator::AgentRegistration = serde_json::from_str(rest).unwrap_or(
-                crate::orchestrator::AgentRegistration {
+            let _reg: crate::orchestrator::AgentRegistration = serde_json::from_str(rest)
+                .unwrap_or(crate::orchestrator::AgentRegistration {
                     id: rest.to_string(),
                     name: rest.to_string(),
                     provider: "unknown".into(),
@@ -157,11 +163,12 @@ async fn handle_orchestrator_command(
                     capabilities: vec!["chat".into()],
                     connected_at: chrono::Utc::now().to_rfc3339(),
                     last_heartbeat: chrono::Utc::now().to_rfc3339(),
-                }
-            );
-            (axum::http::StatusCode::OK,
-             axum::Json(serde_json::json!({ "status": "registered", "agent_id": rest }))
-            ).into_response()
+                });
+            (
+                axum::http::StatusCode::OK,
+                axum::Json(serde_json::json!({ "status": "registered", "agent_id": rest })),
+            )
+                .into_response()
         }
         "workflows" => {
             let workflows = vec![
@@ -169,9 +176,11 @@ async fn handle_orchestrator_command(
                 serde_json::json!({"id": "coding", "name": "Coding Task"}),
                 serde_json::json!({"id": "review", "name": "Code Review"}),
             ];
-            (axum::http::StatusCode::OK,
-             axum::Json(serde_json::json!({ "workflows": workflows }))
-            ).into_response()
+            (
+                axum::http::StatusCode::OK,
+                axum::Json(serde_json::json!({ "workflows": workflows })),
+            )
+                .into_response()
         }
         _ => (
             axum::http::StatusCode::BAD_REQUEST,
@@ -204,17 +213,21 @@ async fn dispatch_goal(
                 content: summary,
                 tokens,
                 has_code: false,
-            }).await.ok();
+            })
+            .await
+            .ok();
         }
     });
 
-    (axum::http::StatusCode::ACCEPTED,
-     axum::Json(serde_json::json!({
-        "status": "orchestrating",
-        "workflow": workflow,
-        "subtasks": n_subtasks,
-    }))
-    ).into_response()
+    (
+        axum::http::StatusCode::ACCEPTED,
+        axum::Json(serde_json::json!({
+            "status": "orchestrating",
+            "workflow": workflow,
+            "subtasks": n_subtasks,
+        })),
+    )
+        .into_response()
 }
 
 #[cfg(test)]

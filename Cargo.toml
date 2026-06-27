@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = [".", "creative_tui", "crates/pkg-ctx", "crates/portail-agents", "crates/portail-plugin-sdk", "crates/portail-vaked", "crates/loop-state-manager", "crates/loopeng"]
+members = [".", "creative_tui", "crates/pkg-ctx", "crates/portail-agents", "crates/portail-plugin-sdk", "crates/portail-vaked", "crates/loop-state-manager", "crates/loopeng", "crates/portail-mcp-wasm"]
 
 [workspace.package]
 edition = "2024"
@@ -32,7 +32,9 @@ toml = "=0.8.23"
 clap = { version = "=4.6.1", features = ["derive", "env"] }
 clap_complete = "=4.5.44"
 moka = { version = "=0.12.15", features = ["future"] }
-async-nats = "=0.39.0"
+async-nats = "=0.48.0"
+utoipa = { version = "5", features = ["axum_extras"] }
+utoipa-axum = "0.2"
 tracing = "=0.1.44"
 tracing-subscriber = { version = "=0.3.23", features = ["env-filter", "json"] }
 tracing-appender = "=0.2.5"
@@ -52,6 +54,7 @@ portail-vaked = { path = "crates/portail-vaked" }
 loop-state-manager = { path = "crates/loop-state-manager" }
 loopeng = { path = "crates/loopeng" }
 pkg-ctx = { path = "crates/pkg-ctx" }
+portail-mcp-wasm = { path = "crates/portail-mcp-wasm" }
 rustc-hash = "=2.1.2"
 ratatui = "=0.29.0"
 crossterm = { version = "=0.28.1", features = ["event-stream"] }
@@ -100,7 +103,6 @@ tracing-opentelemetry = "=0.28.0"
 async-graphql = "=7.2.1"
 async-stream = "=0.3.6"
 async-trait = "=0.1.89"
-
 
 [features]
 default = []
@@ -159,6 +161,7 @@ tokio = { workspace = true }
 
 [build-dependencies]
 chrono = "=0.4.45"
+utoipa = "5"
 
 [[bench]]
 name = "hot_paths"
