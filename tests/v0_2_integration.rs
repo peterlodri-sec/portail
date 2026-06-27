@@ -19,6 +19,7 @@ mod v0_2_integration {
             cdn_cache: None,
             hooks: Arc::new(hooks::HookStore::new()),
             a2a_tasks: Arc::new(a2a::TaskStore::new()),
+            a2a_registry: Arc::new(a2a::registry::AgentRegistry::new()),
             dns_store: Arc::new(dns::DnsStore::new()),
             doh_client: None,
             network_isolation: Arc::new(dns::NetworkIsolation::default()),

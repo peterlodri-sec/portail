@@ -17,9 +17,8 @@ use tracing::{debug, info};
 
 // ── Plugin registry ─────────────────────────────────────────────
 
-/// A loaded plugin (native or WASM)
+/// A loaded plugin (WASM-based .vaked file)
 pub enum LoadedPlugin {
-    Native(Box<dyn portail_plugin_sdk::PortailPlugin>),
     Vaked(Box<VakedFile>),
 }
 
@@ -86,19 +85,22 @@ impl PluginRegistry {
     pub fn lower_all_to_nix(&self) -> String {
         let mut parts = Vec::new();
         for plugin in self.plugins.values() {
-            if let LoadedPlugin::Vaked(vaked) = plugin {
-                parts.push(vaked.lower_to_nix());
-            }
+            let LoadedPlugin::Vaked(vaked) = plugin;
+            parts.push(vaked.lower_to_nix());
         }
         if parts.is_empty() {
             return "{ config, pkgs, ... }: { }".into();
         }
-        // Merge: wrap all in a single nix expression
-        let merged = format!(
-            "{{ config, pkgs, ... }}:\n{{\n  imports = [\n{}  ];\n}}\n",
-            parts.iter().map(|p| format!("    ({}: ", p)).collect::<Vec<_>>().join("")
-        );
-        merged
+        // Merge: wrap all modules in a single nix expression with imports
+        let imports = parts
+            .iter()
+            .map(|p| format!("    ({})", p.trim()))
+            .collect::<Vec<_>>()
+            .join("\n");
+        format!(
+            "{{ config, pkgs, ... }}:\n{{\n  imports = [\n{}\n  ];\n}}\n",
+            imports
+        )
     }
 
     /// Count loaded plugins
@@ -120,12 +122,17 @@ pub fn build_vaked(path: &Path) -> anyhow::Result<()> {
     if let Some(ref build) = vaked.build {
         match build.r#type.as_str() {
             "wasm" => {
+                // Use the entry path from the .vaked file, falling back to the
+                // directory containing the .vaked file
+                let manifest_dir = path.parent().unwrap_or(Path::new("."));
                 let status = std::process::Command::new("cargo")
                     .args([
                         "build",
                         "--target",
                         "wasm32-wasip1",
                         "--release",
+                        "--manifest-path",
+                        manifest_dir.join("Cargo.toml").to_str().unwrap_or("Cargo.toml"),
                     ])
                     .status()?;
                 if !status.success() {

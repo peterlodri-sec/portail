@@ -92,8 +92,8 @@ async fn invoke_agent(
     name: &str,
 ) -> anyhow::Result<()> {
     use adk_rust::prelude::*;
-    use adk_rust::runner::{InvocationContext, MutableSession};
-    use adk_rust::session::{service::CreateRequest, InMemorySessionService};
+    use adk_rust::runner::MutableSession;
+    use adk_rust::session::{service::CreateRequest, InMemorySessionService, SessionService};
     use futures::StreamExt;
 
     let app_name = "portail";
@@ -109,12 +109,11 @@ async fn invoke_agent(
             session_id: Some(session_id.clone()),
             state: Default::default(),
         })
-        .await?
-        .into_dyn();
-    let mutable_session = Arc::new(MutableSession::new(session));
+        .await?;
+    let mutable_session = Arc::new(MutableSession::new(session.into()));
 
     let user_content = Content::new("user").with_text("run");
-    let ctx = Arc::new(InvocationContext::with_mutable_session(
+    let ctx = Arc::new(adk_rust::runner::InvocationContext::with_mutable_session(
         invocation_id,
         Arc::clone(agent) as Arc<dyn Agent>,
         user_id.into(),

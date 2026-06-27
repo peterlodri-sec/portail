@@ -12,12 +12,14 @@ serde = { workspace = true }
 serde_json = "=1.0.150"
 tokio = { workspace = true }
 tracing = { workspace = true }
+anyhow = { workspace = true }
 chrono = { workspace = true }
 reqwest = { workspace = true }
 walkdir = { workspace = true }
 dirs = { workspace = true }
 toml = "=0.8.23"
 uuid = { version = "=1.23.4", features = ["v4"] }
+futures = { workspace = true }
 # ADK-Rust: agent runtime for CI agents and fleet heartbeat.
 # Pinned to 0.9.x to match workspace rust-version (1.85).
 adk-rust = { version = "=0.9.1", default-features = false, features = ["minimal"] }

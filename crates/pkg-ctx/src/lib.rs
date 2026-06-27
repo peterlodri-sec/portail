@@ -1,4 +1,4 @@
-pub mod build;
+pub mod commands;
 pub mod chunker;
 pub mod mcp_server;
 pub mod memory;

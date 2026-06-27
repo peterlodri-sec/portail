@@ -24,7 +24,6 @@ use chrono::Utc;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Mutex;
-use tokio::sync::oneshot;
 use uuid::Uuid;
 
 // ── Core Types ───────────────────────────────────────────────────
@@ -120,28 +119,6 @@ pub enum LoopError {
     HitlTimeout,
     #[error("Invalid transition: {0} → {1}")]
     InvalidTransition(LoopPhase, LoopPhase),
-}
-
-// ── HITL Channel ─────────────────────────────────────────────────
-
-/// A channel for waiting on a human decision
-pub struct HitlChannel {
-    tx: Mutex<Option<oneshot::Sender<HumanDecision>>>,
-}
-
-impl HitlChannel {
-    pub fn new() -> (Self, oneshot::Receiver<HumanDecision>) {
-        let (tx, rx) = oneshot::channel();
-        (Self { tx: Mutex::new(Some(tx)) }, rx)
-    }
-
-    pub fn send_decision(&self, decision: HumanDecision) -> Result<(), HumanDecision> {
-        let tx = self.tx.lock().unwrap().take();
-        match tx {
-            Some(tx) => tx.send(decision),
-            None => Err(decision),
-        }
-    }
 }
 
 // ── Loop State Manager ───────────────────────────────────────────
@@ -348,13 +325,6 @@ pub enum DyadMessage {
     Ping,
     /// Either side: heartbeat response
     Pong,
-}
-
-/// The DYAD session state
-pub struct DyadSession {
-    pub session_id: String,
-    pub connected_at: String,
-    pub last_activity: String,
 }
 
 #[cfg(test)]

@@ -108,9 +108,7 @@ impl PkgCtxMemory {
     pub fn save_sync(&mut self) -> Result<()> {
         if let Some(ref path) = self.save_path.clone() {
             let mem_db = self.db.lock().unwrap();
-            let mut file_db = PackageDb::open(path.to_str().unwrap())?;
-            let backup = rusqlite::backup::Backup::new(&mem_db.conn, &mut file_db.conn)?;
-            backup.run_to_completion(5, std::time::Duration::from_millis(100), None)?;
+            Self::backup_to_path(&mem_db, path)?;
         }
         Ok(())
     }
@@ -121,10 +119,7 @@ impl PkgCtxMemory {
             let path = path.to_string_lossy().to_string();
             tokio::task::spawn_blocking(move || -> Result<()> {
                 let mem_db = db.lock().unwrap();
-                let mut file_db = PackageDb::open(&path).map_err(|e| anyhow::anyhow!(e))?;
-                let backup = rusqlite::backup::Backup::new(&mem_db.conn, &mut file_db.conn)?;
-                backup.run_to_completion(5, std::time::Duration::from_millis(100), None)
-                    .map_err(|e| anyhow::anyhow!(e))
+                Self::backup_to_path(&mem_db, Path::new(&path))
             })
             .await??;
         }
@@ -136,12 +131,16 @@ impl PkgCtxMemory {
         let path = path.to_string_lossy().to_string();
         tokio::task::spawn_blocking(move || -> Result<()> {
             let mem_db = db.lock().unwrap();
-            let mut file_db = PackageDb::open(&path).map_err(|e| anyhow::anyhow!(e))?;
-            let backup = rusqlite::backup::Backup::new(&mem_db.conn, &mut file_db.conn)?;
-            backup.run_to_completion(5, std::time::Duration::from_millis(100), None)
-                .map_err(|e| anyhow::anyhow!(e))
+            Self::backup_to_path(&mem_db, Path::new(&path))
         })
         .await??;
+        Ok(())
+    }
+
+    fn backup_to_path(mem_db: &PackageDb, path: &Path) -> Result<()> {
+        let mut file_db = PackageDb::open(path.to_str().unwrap())?;
+        let backup = rusqlite::backup::Backup::new(&mem_db.conn, &mut file_db.conn)?;
+        backup.run_to_completion(5, std::time::Duration::from_millis(100), None)?;
         Ok(())
     }
 

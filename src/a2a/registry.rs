@@ -4,7 +4,7 @@
 //! stores them in-memory (with optional persistence via `event_store`) and can
 //! route A2A tasks to the agent whose skills best match the request.
 
-use super::{AgentCard, Skill};
+use super::AgentCard;
 use axum::extract::{Path, State};
 use axum::http::StatusCode;
 use axum::Json;

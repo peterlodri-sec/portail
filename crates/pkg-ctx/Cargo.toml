@@ -14,10 +14,6 @@ tokio = { workspace = true, features = ["process", "io-util", "rt", "macros"] }
 tracing = { workspace = true }
 anyhow = { workspace = true }
 chrono = { workspace = true }
-reqwest = { workspace = true }
 rusqlite = { version = "=0.33.0", features = ["bundled", "backup"] }
-pulldown-cmark = "=0.13.0"
-sha2 = { workspace = true }
-hex = { workspace = true }
 walkdir = { workspace = true }
 futures = { workspace = true }

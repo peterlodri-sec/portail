@@ -959,7 +959,7 @@ async fn dispatch_loop(action: &cli::LoopAction, _cli: &cli::Cli) -> anyhow::Res
 }
 
 async fn dispatch_pkg_ctx(action: &cli::PkgCtxAction) -> anyhow::Result<()> {
-    use pkg_ctx::{build, search, mcp_server, PKG_DIR};
+    use pkg_ctx::{commands, search, mcp_server, PKG_DIR};
     use std::path::Path;
 
     let pkg_dir = dirs::data_dir()
@@ -970,7 +970,7 @@ async fn dispatch_pkg_ctx(action: &cli::PkgCtxAction) -> anyhow::Result<()> {
     match action {
         cli::PkgCtxAction::Add { repo, name, version } => {
             println!("Adding package from {repo}...");
-            let info = build::add_package(repo, name.as_deref(), version.as_deref(), &pkg_dir).await?;
+            let info = commands::add_package(repo, name.as_deref(), version.as_deref(), &pkg_dir).await?;
             println!("  Package: {}@{}", info.name, info.version);
             println!("  Chunks: {}", info.chunk_count);
             println!("  DB: {}", info.db_path.display());

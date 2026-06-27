@@ -38,7 +38,7 @@ pub fn call_plugin_hooks(
     let provider_str = provider.map(|s| s.to_string());
     let model_str = model.map(|s| s.to_string());
 
-    let mut result = HookResult::pass_through();
+    let result = HookResult::pass_through();
 
     for name in registry.list() {
         // Check if this plugin is a .vaked native or WASM
@@ -53,7 +53,7 @@ pub fn call_plugin_hooks(
             continue;
         }
 
-        let ctx = HookContext {
+        let _ctx = HookContext {
             hook: hook.clone(),
             request_id: request_id_str.clone(),
             provider: provider_str.clone(),
@@ -70,18 +70,8 @@ pub fn call_plugin_hooks(
             },
         };
 
-        // For native plugins, call directly
-        if let LoadedPlugin::Native(p) = plugin {
-            let r = p.handle_hook(ctx);
-            if r.abort_status.is_some() {
-                return r;
-            }
-            if r.body.is_some() {
-                result.body = r.body;
-            }
-            result.headers.extend(r.headers);
-        }
         // For WASM plugins, would call via extism — stub for now
+        let LoadedPlugin::Vaked(_v) = plugin;
     }
 
     result
@@ -89,7 +79,6 @@ pub fn call_plugin_hooks(
 
 fn plugin_hook_list(plugin: &LoadedPlugin) -> Vec<String> {
     match plugin {
-        LoadedPlugin::Native(p) => p.manifest().hooks.clone(),
         LoadedPlugin::Vaked(v) => {
             v.hooks
                 .as_ref()

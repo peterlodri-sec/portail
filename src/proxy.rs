@@ -546,6 +546,7 @@ mod tests {
             cdn_cache: None,
             hooks: Arc::new(crate::hooks::HookStore::new()),
             a2a_tasks: Arc::new(crate::a2a::TaskStore::new()),
+            a2a_registry: Arc::new(crate::a2a::registry::AgentRegistry::new()),
             dns_store: Arc::new(crate::dns::DnsStore::new()),
             doh_client: None,
             network_isolation: Arc::new(crate::dns::NetworkIsolation::default()),
