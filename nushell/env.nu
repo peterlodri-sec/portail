@@ -1,11 +1,10 @@
-# portail/env.nu — project-specific nushell environment
-# Sourced by: source env.nu (from project root)
+# portail/env.nu — project nushell environment
+# Sourced: source env.nu
 
-# ── Paths ──────────────────────────────────────────────────────
 $env.CARGO_TARGET_DIR = ($env.PWD | path join "target")
 $env.RUST_LOG = "portail=info,tower_http=info"
 
-# ── Aliases ────────────────────────────────────────────────────
+# ── Build aliases ──────────────────────────────────────────────
 alias pg = cargo run --release --
 alias pt = cargo test
 alias pc = cargo check
@@ -22,22 +21,22 @@ alias config-show = cargo run --release -- config show
 alias hooks-list = cargo run --release -- hooks list
 alias events-tail = cargo run --release -- events --tail
 
-# ── Staging ────────────────────────────────────────────────────
+# ── Staging SSH ────────────────────────────────────────────────
 alias staging-ssh = ssh bench-node
 alias staging-build = ssh bench-node 'source ~/.cargo/env && cd /opt/portail-staging && cargo build --release'
 alias staging-status = ssh bench-node 'systemctl status portail-staging'
 alias staging-logs = ssh bench-node 'journalctl -u portail-staging -f'
 alias staging-health = ssh bench-node 'curl -s http://localhost:8787/health'
 
-# ── Development helpers ────────────────────────────────────────
+# ── Dev helpers ────────────────────────────────────────────────
 alias watch-build = watch ./src/ { |op, path, new_path| if $op == "Write" { print $"($op) ($path)"; cargo check } }
 alias test-w = watch ./src/ { |op, path, new_path| if $op == "Write" { print $"($op) ($path)"; cargo test } }
 
-# ── Quick health check ────────────────────────────────────────
+# ── Quick health ───────────────────────────────────────────────
 def health [] {
     http get "http://localhost:8787/health" | table
 }
 
-# ── Print config on enter ─────────────────────────────────────
-print $"(ansi green_bold)Portail dev shell loaded (ansi reset) — (ansi cyan)($env.PWD)(ansi reset)"
-print $"  fleet: use fleet.nu  |  cli wrappers: use portail.nu"
+# ── Welcome ────────────────────────────────────────────────────
+print $"(ansi green_bold)Portail dev shell (ansi reset) — (ansi cyan)($env.PWD)(ansi reset)"
+print $"  fleet ops: use portail.nu  |  health: health"
