@@ -90,6 +90,13 @@ rusqlite = { version = "=0.33.0", features = ["bundled"] }
 # v2.x — sqlx async SQLite (primary backend, compile-time checked queries)
 sqlx = { version = "=0.9.0", features = ["runtime-tokio", "sqlite", "migrate"] }
 
+# v2.x — BOW encrypted secret store
+aes-gcm = "0.10"
+argon2 = "0.5"
+zeroize = { version = "1.8", features = ["derive"] }
+rpassword = "7"
+thiserror = "2"
+
 # v0.2 — OpenTelemetry OTLP
 opentelemetry = "=0.27.1"
 opentelemetry_sdk = { version = "=0.27.1", features = ["rt-tokio"] }
