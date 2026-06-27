@@ -63,6 +63,9 @@ complexity-report.toml
 docs/index.html
 docs/demo.html
 
+# Worktrees
+/.worktrees/
+
 # OS
 .DS_Store
 .DS_Store?
