@@ -43,6 +43,7 @@ pub mod gateway;
 pub mod godfather;
 pub mod graphql;
 pub mod hooks;
+pub mod local_inference;
 pub mod mcp;
 pub mod nats_bridge;
 pub mod orchestrator;
@@ -95,5 +96,6 @@ pub struct AppState {
     pub plugin_registry: Arc<std::sync::Mutex<PluginRegistry>>,
     pub loop_manager: Arc<LoopStateManager>,
     pub loop_runner: loopeng::SharedLoopEngine,
+    pub inference_engine: Option<Arc<local_inference::InferenceEngine>>,
     pub pkg_ctx_memory: tokio::sync::Mutex<pkg_ctx::memory::PkgCtxMemory>,
 }

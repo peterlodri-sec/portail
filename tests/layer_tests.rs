@@ -53,6 +53,7 @@ mod layer_tests {
             )),
             loop_manager: std::sync::Arc::new(loop_state_manager::LoopStateManager::new("3.0.0")),
             loop_runner: loopeng::SharedLoopEngine::new(loopeng::LoopEngineConfig::default()),
+            inference_engine: None,
             pkg_ctx_memory: tokio::sync::Mutex::new(pkg_ctx::memory::PkgCtxMemory::new().unwrap()),
         }
     }
