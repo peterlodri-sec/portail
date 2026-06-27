@@ -1,17 +1,32 @@
 name: E2E Tests
 
 # Full user-journey tests: install, serve, CLI, API, config, CI agents.
-# Runs on every tag push and manual trigger. Never blocks CI — advisory.
+# Runs on PRs, every tag push, and manual trigger. Never blocks CI — advisory.
 
 on:
+  pull_request:
   push:
     tags: ["v*"]
   workflow_dispatch:
 
 jobs:
-  e2e:
+  e2e-rust:
+    name: Rust E2E (real TCP server)
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install Rust
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+
+      - name: Run Rust E2E tests
+        run: cargo test --test e2e
+
+  e2e-script:
+    name: Shell E2E (binary smoke)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v7
 
