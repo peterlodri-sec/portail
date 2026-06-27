@@ -1,0 +1,43 @@
+# ── Multi-Architecture Docker Build for Portail ────────────────────────
+# Supports: linux/amd64, linux/arm64
+# Usage: docker buildx build --platform linux/amd64,linux/arm64 -t portail:latest --push .
+
+# ── Stage 1: Build with full toolchain ──────────────────────────────────
+FROM rust:1.85-slim-bookworm AS build
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    pkg-config libssl-dev zlib1g-dev libzstd-dev upx-ucl \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /build
+COPY . .
+
+ENV CARGO_PROFILE_RELEASE_LTO=fat \
+    CARGO_PROFILE_RELEASE_CODEGEN_UNITS=1 \
+    CARGO_PROFILE_RELEASE_STRIP=symbols \
+    CARGO_PROFILE_RELEASE_DEBUG=false \
+    PKG_CONFIG_ALLOW_CROSS=1
+
+# Build with optimizations and UPX compression
+RUN cargo build --release --bin portail \
+    && upx --best --lzma target/release/portail
+
+# ── Stage 2: Distroless runtime ────────────────────────────────────────
+FROM gcr.io/distroless/cc-debian12
+
+# Create non-root user for security
+USER 1000:1000
+
+# Copy binary from build stage
+COPY --from=build /build/target/release/portail /portail
+
+# Expose port
+EXPOSE 8787
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+    CMD ["/portail", "healthz"] || exit 1
+
+# Default command
+ENTRYPOINT ["/portail"]
+CMD ["serve"]
