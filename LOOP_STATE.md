@@ -66,6 +66,7 @@ OPEN:   #28, #30, #31, #33, #34, #1 super devnote (HUMAN ONLY) — #33 + #34 act
 | Utoipa + Scalar UI | done |
 | AI services Nix flake | done |
 | VS Code settings + Codespaces | done |
+| OpenCode Sentinel MCP integration | done |
 
 ---
 
@@ -163,7 +164,7 @@ v1.3  [SHIPPED]  2026-06-26  type hardening, BoundedMeta
 v1.4  [SHIPPED]  2026-06-26  chore-bot, NATS bridge
 v1.4r [SHIPPED]  2026-06-26  release v1.4.0
 v2.0  [SHIPPED]  2026-06-26  production-stable (174 tests, 10 CI agents)
-v2.1  [SHIPPED]  2026-07-03  contributor DX + provider handlers + Ollama E2E — THIS SESSION
+v2.1  [SHIPPED]  2026-07-03  contributor DX + handlers + Ollama E2E + OpenCode Sentinel MCP integration — THIS SESSION
 v2.2  [NEXT]     2026-07-10  documentation + OSS release — Issue #33
 v2.3  [NEXT]     2026-07-17  stability: 80% coverage, benchmarks, bug bash — Issue #34
 v2.5             TBD         release-audit + project-wide simplification
