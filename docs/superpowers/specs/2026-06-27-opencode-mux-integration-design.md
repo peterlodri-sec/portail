@@ -192,7 +192,7 @@ Six files: 4 new, 2 modified.
 | User's existing `oh-my-opencode-slim.json` has a conflicting `multiplexer` block | `write-config` logs a diff and asks for `--force`. |
 | `--port` workaround in the doc is removed (upstream `opencode#9099` resolved) | The flake can drop `--port` from the app wrappers; the nushell API stays the same. |
 
-## Open questions (deferred)
+## Open questions (resolved)
 
-- Should `ohmy-slim ultra` use the nushell module as the binary source, or keep calling the user-level `ohmy-slim-ultra.sh`? Deferred: pick whichever the user prefers when implementation begins.
-- Should `devShells.opencode-mux` include `tmux` as a fallback? Deferred: out of scope per "zellij-only" decision.
+- **`ohmy-slim ultra` binary source** → use the nushell module as the source of truth. `ohmy-slim ultra` is implemented in pure nu (mimalloc preload via `DYLD_INSERT_LIBRARIES`, vmtouch-style `dd` page-warm, `nice` QoS, Bun cache env, `OPENCODE_EXPERIMENTAL_BACKGROUND_SUBAGENTS`). The user-level `ohmy-slim-ultra.sh` is kept for non-flake users but is no longer the source of truth — `OPENCODE_MUX.md` documents the nushell command as the recommended path and marks the bash script legacy.
+- **tmux fallback in `devShells.opencode-mux`** → no. zellij-only. A future spec can add `type: "auto"` if needed.
