@@ -7,7 +7,10 @@
 
 ## 1. AI Gateway Flow (`/v1/chat/*`)
 
+![Portail AI Gateway Request & Hook Injection Lifecycle](../images/gateway_flow.jpg)
+
 This is the primary path — LLM chat completion proxied through hooks.
+
 
 ```
 Client                           Portail                           Upstream (LiteLLM/OpenAI/Anthropic)
@@ -76,7 +79,10 @@ handle_chat_completion(request, state):
 
 ## 2. CDN Cache Flow (`/cdn/*`)
 
+![Portail Two-Tier CDN Cache Architecture](../images/cdn_flow.jpg)
+
 Two-tier cache (Moka in-memory → blake3 disk) with zero-copy reads.
+
 
 ```
 Client                    Portail                         Origin

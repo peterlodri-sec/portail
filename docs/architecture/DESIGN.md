@@ -27,6 +27,9 @@
 └─────────────────────────────────────────────────────────────┘
 ```
 
+![Portail System Architecture](../images/system_architecture.jpg)
+
+
 ## Module Responsibilities
 
 | Module    | Responsibility                              | Dependencies           |

@@ -50,7 +50,25 @@ control plane for AI infrastructure. Built in Rust. Start in 5 minutes. Scale to
 - **GraphQL API** — Async-graphql schema, query events + publish mutations
 - **Keyboards CLI** — Status, events, hooks, cache, health, config — all HTTP-connected to running server
 
+## Architecture & Flow
+
+### System Architecture
+Portail is centered around a shared thread-safe asynchronous `AppState` coordinating routing, cache lookups, hooks matching, events log buffer, and upstream integrations.
+
+![Portail System Architecture](docs/images/system_architecture.jpg)
+
+### AI Gateway Request Lifecycle & Hook Injection
+Every completion or message request flows through authorization, rate limits, and custom prompt/context injection before being adapted to the target provider schema.
+
+![Portail AI Gateway Request Flow](docs/images/gateway_flow.jpg)
+
+### Two-Tier CDN Cache Architecture
+Incoming asset queries are checked against a Tier 1 in-memory Moka cache, falling back to a Tier 2 memory-mapped Disk cache before hitting the origin server.
+
+![Portail Two-Tier CDN Cache Flow](docs/images/cdn_flow.jpg)
+
 ## Quick Start
+
 
 ```bash
 # Install
