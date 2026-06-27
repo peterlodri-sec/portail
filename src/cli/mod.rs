@@ -363,7 +363,10 @@ pub enum LoopAction {
     /// Add a task to the backlog
     Add { phase: String, description: String },
     /// Approve a HITL-pending task
-    Approve { task_id: String, reason: Option<String> },
+    Approve {
+        task_id: String,
+        reason: Option<String>,
+    },
     /// Reject a HITL-pending task
     Reject { task_id: String, reason: String },
     /// Get next task for a phase

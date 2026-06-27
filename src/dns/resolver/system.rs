@@ -11,12 +11,18 @@ pub struct SystemResolver;
 
 #[async_trait::async_trait]
 impl DnsResolver for SystemResolver {
-    async fn resolve(&self, name: &str, _record_type: DnsRecordType) -> Result<Vec<IpAddr>, String> {
+    async fn resolve(
+        &self,
+        name: &str,
+        _record_type: DnsRecordType,
+    ) -> Result<Vec<IpAddr>, String> {
         tokio::net::lookup_host(name)
             .await
             .map(|addrs| addrs.map(|a| a.ip()).collect())
             .map_err(|e| format!("System DNS failed: {}", e))
     }
 
-    fn name(&self) -> &'static str { "system" }
+    fn name(&self) -> &'static str {
+        "system"
+    }
 }

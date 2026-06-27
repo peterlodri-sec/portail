@@ -1,0 +1,21 @@
+[package]
+name = "portail-mcp-wasm"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "WASM-based MCP sidecar for Portail — replaces Python uv sidecar with Extism"
+
+[dependencies]
+extism = "1"
+serde = { workspace = true }
+serde_json = { workspace = true }
+tokio = { workspace = true }
+tracing = { workspace = true }
+anyhow = { workspace = true }
+bytes = "1"
+metrics = "0.24"
+
+[lints]
+workspace = true

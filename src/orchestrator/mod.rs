@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Instant;
-use tokio::sync::{mpsc, RwLock};
+use tokio::sync::{RwLock, mpsc};
 
 // ── Fleet Anchor ─────────────────────────────────────────────────
 
@@ -103,34 +103,46 @@ pub struct OrchestratorGoal {
 impl OrchestratorGoal {
     pub fn deep_research(query: &str) -> Self {
         Self {
-            id: format!("goal-{}", std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_nanos()).unwrap_or(0)),
+            id: format!(
+                "goal-{}",
+                std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .map(|d| d.as_nanos())
+                    .unwrap_or(0)
+            ),
             workflow: "deep-research".into(),
             description: format!("Deep research: {query}"),
             target_files: vec![],
             created_at: chrono::Utc::now().to_rfc3339(),
-            subtasks: vec![
-                SubTask {
-                    id: "research".into(),
-                    description: format!("Research: {query}"),
-                    context_files: vec![],
-                    success_criteria: vec!["find sources".into(), "summarize".into()],
-                    agent_config: AgentConfig {
-                        id: "researcher".into(),
-                        role: "researcher".into(),
-                        model: "openrouter/openai/gpt-4o".into(),
-                        system_prompt: "Research the topic deeply. Find sources, summarize, provide citations.".into(),
-                        max_turns: 5,
-                        temperature: 0.7,
-                    },
-                    dependencies: vec![],
+            subtasks: vec![SubTask {
+                id: "research".into(),
+                description: format!("Research: {query}"),
+                context_files: vec![],
+                success_criteria: vec!["find sources".into(), "summarize".into()],
+                agent_config: AgentConfig {
+                    id: "researcher".into(),
+                    role: "researcher".into(),
+                    model: "openrouter/openai/gpt-4o".into(),
+                    system_prompt:
+                        "Research the topic deeply. Find sources, summarize, provide citations."
+                            .into(),
+                    max_turns: 5,
+                    temperature: 0.7,
                 },
-            ],
+                dependencies: vec![],
+            }],
         }
     }
 
     pub fn coding_task(task: &str, files: Vec<String>) -> Self {
         Self {
-            id: format!("goal-{}", std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_nanos()).unwrap_or(0)),
+            id: format!(
+                "goal-{}",
+                std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .map(|d| d.as_nanos())
+                    .unwrap_or(0)
+            ),
             workflow: "coding".into(),
             description: format!("Coding: {task}"),
             target_files: files.clone(),
@@ -145,7 +157,8 @@ impl OrchestratorGoal {
                         id: "architect".into(),
                         role: "planner".into(),
                         model: "openrouter/anthropic/claude-sonnet-4".into(),
-                        system_prompt: "Analyze the task and produce an implementation plan.".into(),
+                        system_prompt: "Analyze the task and produce an implementation plan."
+                            .into(),
                         max_turns: 3,
                         temperature: 0.5,
                     },
@@ -172,28 +185,33 @@ impl OrchestratorGoal {
 
     pub fn review_task(changes: &str) -> Self {
         Self {
-            id: format!("goal-{}", std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_nanos()).unwrap_or(0)),
+            id: format!(
+                "goal-{}",
+                std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .map(|d| d.as_nanos())
+                    .unwrap_or(0)
+            ),
             workflow: "review".into(),
             description: format!("Code review: {changes}"),
             target_files: vec![],
             created_at: chrono::Utc::now().to_rfc3339(),
-            subtasks: vec![
-                SubTask {
+            subtasks: vec![SubTask {
+                id: "reviewer".into(),
+                description: format!("Review: {changes}"),
+                context_files: vec![],
+                success_criteria: vec!["check correctness".into(), "check style".into()],
+                agent_config: AgentConfig {
                     id: "reviewer".into(),
-                    description: format!("Review: {changes}"),
-                    context_files: vec![],
-                    success_criteria: vec!["check correctness".into(), "check style".into()],
-                    agent_config: AgentConfig {
-                        id: "reviewer".into(),
-                        role: "checker".into(),
-                        model: "openrouter/anthropic/claude-sonnet-4".into(),
-                        system_prompt: "Review code for correctness, style, and security issues.".into(),
-                        max_turns: 3,
-                        temperature: 0.2,
-                    },
-                    dependencies: vec![],
+                    role: "checker".into(),
+                    model: "openrouter/anthropic/claude-sonnet-4".into(),
+                    system_prompt: "Review code for correctness, style, and security issues."
+                        .into(),
+                    max_turns: 3,
+                    temperature: 0.2,
                 },
-            ],
+                dependencies: vec![],
+            }],
         }
     }
 }
@@ -202,14 +220,36 @@ impl OrchestratorGoal {
 
 #[derive(Debug, Clone)]
 pub enum AgentEvent {
-    AgentStarted { agent_id: String, task: String },
-    AgentProgress { agent_id: String, message: String },
-    AgentCompleted { agent_id: String, result: SubTaskResult },
-    AgentFailed { agent_id: String, error: String },
-    OrchestratorLog { message: String },
-    GoalComplete { goal_id: String, workflow: String, success: bool },
-    AgentCheckedIn { registration: AgentRegistration },
-    AgentCheckedOut { agent_id: String },
+    AgentStarted {
+        agent_id: String,
+        task: String,
+    },
+    AgentProgress {
+        agent_id: String,
+        message: String,
+    },
+    AgentCompleted {
+        agent_id: String,
+        result: SubTaskResult,
+    },
+    AgentFailed {
+        agent_id: String,
+        error: String,
+    },
+    OrchestratorLog {
+        message: String,
+    },
+    GoalComplete {
+        goal_id: String,
+        workflow: String,
+        success: bool,
+    },
+    AgentCheckedIn {
+        registration: AgentRegistration,
+    },
+    AgentCheckedOut {
+        agent_id: String,
+    },
 }
 
 pub type EventSender = mpsc::UnboundedSender<AgentEvent>;
@@ -323,7 +363,9 @@ impl Default for ToolRegistry {
 
 impl ToolRegistry {
     pub fn new() -> Self {
-        Self { tools: HashMap::new() }
+        Self {
+            tools: HashMap::new(),
+        }
     }
 
     pub fn register(&mut self, tool: Arc<dyn AgentTool>) {
@@ -396,7 +438,10 @@ impl FanOutEngine {
 
     pub async fn execute(&self, goal: OrchestratorGoal) -> Vec<SubTaskResult> {
         let mut results = Vec::new();
-        self.log("goal", &format!("Starting '{}': {}", goal.workflow, goal.description));
+        self.log(
+            "goal",
+            &format!("Starting '{}': {}", goal.workflow, goal.description),
+        );
 
         for task in &goal.subtasks {
             self.send(AgentEvent::AgentStarted {
@@ -439,14 +484,21 @@ impl FanOutEngine {
 
         self.send(AgentEvent::AgentProgress {
             agent_id: task.agent_config.id.clone(),
-            message: format!("Context: [{}]", if context.is_empty() { "none" } else { &context }),
+            message: format!(
+                "Context: [{}]",
+                if context.is_empty() { "none" } else { &context }
+            ),
         });
 
         let steps = task.agent_config.max_turns as u32;
         for step in 0..steps {
             tokio::time::sleep(std::time::Duration::from_millis(30)).await;
             tokio::task::yield_now().await;
-            let criterion = task.success_criteria.get(step as usize).cloned().unwrap_or_else(|| "working".into());
+            let criterion = task
+                .success_criteria
+                .get(step as usize)
+                .cloned()
+                .unwrap_or_else(|| "working".into());
             self.send(AgentEvent::AgentProgress {
                 agent_id: task.agent_config.id.clone(),
                 message: format!("Step {}/{} — {criterion}", step + 1, steps),
@@ -456,7 +508,10 @@ impl FanOutEngine {
         SubTaskResult {
             task_id: task.id.clone(),
             status: SubTaskStatus::Completed,
-            output: Some(format!("Agent '{}' completed: {}", task.agent_config.id, task.description)),
+            output: Some(format!(
+                "Agent '{}' completed: {}",
+                task.agent_config.id, task.description
+            )),
             files_changed: task.context_files.clone(),
             token_cost: (steps as usize) * 500,
             duration_ms: start.elapsed().as_millis() as u64,

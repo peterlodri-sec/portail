@@ -9,8 +9,8 @@ use bytes::Bytes;
 use moka::future::Cache;
 use std::collections::HashMap;
 use std::path::PathBuf;
-use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::Duration;
 
 use crate::cdn::backend::CacheBackend;
@@ -31,7 +31,10 @@ impl DiskLayer {
     fn path(&self, key: &str) -> PathBuf {
         let hash = blake3::hash(key.as_bytes());
         let hex = hash.to_hex();
-        self.root.join(&hex[..2]).join(&hex[2..4]).join(hex.as_str())
+        self.root
+            .join(&hex[..2])
+            .join(&hex[2..4])
+            .join(hex.as_str())
     }
 }
 
@@ -91,7 +94,9 @@ impl CacheBackend for MokaBackend {
     }
 
     async fn purge_prefix(&self, prefix: &str) {
-        let memory_keys: Vec<String> = self.memory.iter()
+        let memory_keys: Vec<String> = self
+            .memory
+            .iter()
             .filter(|(k, _)| k.starts_with(&format!("cdn:{}", prefix)))
             .map(|(k, _)| k.as_ref().clone())
             .collect();
@@ -112,14 +117,16 @@ impl CacheBackend for MokaBackend {
 
 pub(crate) fn parse_size(s: &str) -> Option<u64> {
     let s = s.trim().to_lowercase();
-    if s.is_empty() { return None; }
+    if s.is_empty() {
+        return None;
+    }
     // If the last char is not a digit, it's a unit suffix
     let last_char = s.chars().last()?;
     if last_char.is_ascii_digit() {
         return s.parse().ok();
     }
-    let unit = &s[s.len()-1..];
-    let num_str = &s[..s.len()-1];
+    let unit = &s[s.len() - 1..];
+    let num_str = &s[..s.len() - 1];
     let num = num_str.parse::<u64>().ok()?;
     match unit {
         "k" => Some(num * 1_000),

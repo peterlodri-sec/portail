@@ -27,7 +27,11 @@ impl DocSearch {
         Ok(apply_token_budget(results))
     }
 
-    pub fn search_all(&self, query: &str, limit: usize) -> Result<Vec<(String, Vec<SearchResult>)>> {
+    pub fn search_all(
+        &self,
+        query: &str,
+        limit: usize,
+    ) -> Result<Vec<(String, Vec<SearchResult>)>> {
         let mut all = Vec::new();
         for entry in std::fs::read_dir(&*self.pkg_dir)? {
             let entry = entry?;
@@ -98,11 +102,7 @@ fn apply_token_budget(results: Vec<SearchResult>) -> Vec<SearchResult> {
     filtered
 }
 
-pub fn format_search_results(
-    results: &[SearchResult],
-    package: &str,
-    query: &str,
-) -> String {
+pub fn format_search_results(results: &[SearchResult], package: &str, query: &str) -> String {
     if results.is_empty() {
         return format!("No results found for '{query}' in {package}.");
     }

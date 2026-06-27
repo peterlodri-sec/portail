@@ -19,7 +19,10 @@ pub fn resolve_upstream(
 ) -> ResolvedTarget {
     // 1. Explicit header override
     if let Some(header) = provider_header {
-        if let Some(t) = targets.iter().find(|t| t.name == header || t.provider == header) {
+        if let Some(t) = targets
+            .iter()
+            .find(|t| t.name == header || t.provider == header)
+        {
             return ResolvedTarget::Found(t.clone());
         }
     }
@@ -28,7 +31,10 @@ pub fn resolve_upstream(
     if let Some(body) = request_body {
         if let Some(model) = body.get("model").and_then(|m| m.as_str()) {
             for t in targets {
-                if t.models.iter().any(|m| model.starts_with(m) || model.contains(m.as_str())) {
+                if t.models
+                    .iter()
+                    .any(|m| model.starts_with(m) || model.contains(m.as_str()))
+                {
                     return ResolvedTarget::Found(t.clone());
                 }
             }
@@ -37,7 +43,10 @@ pub fn resolve_upstream(
 
     // 3. Default provider
     if let Some(provider) = default_provider {
-        if let Some(t) = targets.iter().find(|t| t.name == provider || t.provider == provider) {
+        if let Some(t) = targets
+            .iter()
+            .find(|t| t.name == provider || t.provider == provider)
+        {
             return ResolvedTarget::Found(t.clone());
         }
     }
@@ -72,11 +81,10 @@ impl ResolvedTarget {
     }
 }
 
-/// Provider-specific path mappings (e.g. Anthropic uses /v1/messages, OpenAI uses /v1/chat/completions)
+/// Provider-specific path mappings (e.g. Anthropic uses /v1/messages, Ollama uses /api/chat)
 pub fn provider_path(provider: &str, request_path: &str) -> String {
     match provider {
         "anthropic" => {
-            // Anthropic uses /v1/messages, rewrite common paths
             if request_path.contains("chat/completions") {
                 request_path.replace("chat/completions", "messages")
             } else {
@@ -84,9 +92,18 @@ pub fn provider_path(provider: &str, request_path: &str) -> String {
             }
         }
         "google" => {
-            // Gemini uses /v1beta/models/model:generateContent
             if request_path.contains("chat/completions") {
                 "/v1beta/models/gemini-2.5-flash:generateContent".to_string()
+            } else {
+                request_path.to_string()
+            }
+        }
+        "ollama" => {
+            // Ollama uses /api/chat for chat, /api/generate for single prompts
+            if request_path.contains("chat/completions") {
+                "/api/chat".to_string()
+            } else if request_path.contains("completions") {
+                "/api/generate".to_string()
             } else {
                 request_path.to_string()
             }
@@ -142,11 +159,81 @@ mod tests {
 
     #[test]
     fn test_provider_path_anthropic() {
-        assert_eq!(provider_path("anthropic", "/v1/chat/completions"), "/v1/messages");
+        assert_eq!(
+            provider_path("anthropic", "/v1/chat/completions"),
+            "/v1/messages"
+        );
     }
 
     #[test]
     fn test_provider_path_openai() {
-        assert_eq!(provider_path("openai", "/v1/chat/completions"), "/v1/chat/completions");
+        assert_eq!(
+            provider_path("openai", "/v1/chat/completions"),
+            "/v1/chat/completions"
+        );
+    }
+
+    #[test]
+    fn test_provider_path_google() {
+        assert_eq!(
+            provider_path("google", "/v1/chat/completions"),
+            "/v1beta/models/gemini-2.5-flash:generateContent"
+        );
+    }
+
+    #[test]
+    fn test_provider_path_fallback() {
+        let paths = ["/v1/chat/completions", "/v1/messages", "/cdn/foo"];
+        for p in &paths {
+            let result = provider_path("unknown-provider", p);
+            assert_eq!(result, *p, "unknown provider should passthrough path");
+        }
+    }
+
+    #[test]
+    fn test_resolve_not_found_with_empty_targets() {
+        let result = resolve_upstream(&[], None, None, None);
+        assert!(matches!(result, ResolvedTarget::NotFound));
+        assert!(result.base_url().is_none());
+        assert!(result.provider().is_none());
+    }
+
+    #[test]
+    fn test_resolve_fallback_to_first_target() {
+        let targets = vec![crate::config::TargetConfig {
+            name: "default".into(),
+            provider: "openai".into(),
+            base_url: "https://default.example.com".into(),
+            ..Default::default()
+        }];
+        let result = resolve_upstream(&targets, None, None, None);
+        assert_eq!(result.base_url(), Some("https://default.example.com"));
+    }
+
+    #[test]
+    fn test_resolve_by_header() {
+        let targets = vec![crate::config::TargetConfig {
+            name: "my-target".into(),
+            provider: "anthropic".into(),
+            base_url: "https://my.anthropic.com".into(),
+            ..Default::default()
+        }];
+        let result = resolve_upstream(&targets, None, Some("my-target"), None);
+        assert_eq!(result.base_url(), Some("https://my.anthropic.com"));
+        assert_eq!(result.provider(), Some("anthropic"));
+    }
+
+    #[test]
+    fn test_resolve_by_partial_model_match() {
+        let targets = vec![crate::config::TargetConfig {
+            name: "openai-box".into(),
+            provider: "openai".into(),
+            base_url: "https://openai.example.com".into(),
+            models: vec!["gpt-4".into()],
+            ..Default::default()
+        }];
+        let body = serde_json::json!({"model": "gpt-4-turbo"});
+        let result = resolve_upstream(&targets, None, None, Some(&body));
+        assert_eq!(result.base_url(), Some("https://openai.example.com"));
     }
 }

@@ -10,7 +10,9 @@ pub struct ChoreConfig {
 
 impl Default for ChoreConfig {
     fn default() -> Self {
-        Self { src_dir: "src".into() }
+        Self {
+            src_dir: "src".into(),
+        }
     }
 }
 
@@ -33,9 +35,14 @@ pub fn run_chore_check(config: &ChoreConfig) -> ChoreReport {
     let mut findings = Vec::new();
     let src = std::path::Path::new(&config.src_dir);
     if src.exists() {
-        for entry in walkdir::WalkDir::new(src).into_iter().filter_map(|e| e.ok()) {
+        for entry in walkdir::WalkDir::new(src)
+            .into_iter()
+            .filter_map(|e| e.ok())
+        {
             let path = entry.path();
-            if path.extension().and_then(|s| s.to_str()) != Some("rs") { continue; }
+            if path.extension().and_then(|s| s.to_str()) != Some("rs") {
+                continue;
+            }
             if let Ok(content) = std::fs::read_to_string(path) {
                 for (i, line) in content.lines().enumerate() {
                     if line.ends_with(' ') || line.ends_with('\t') {

@@ -1,5 +1,5 @@
-use crate::search::{format_search_results, DocSearch};
 use crate::PKG_DIR;
+use crate::search::{DocSearch, format_search_results};
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -213,10 +213,9 @@ mod tests {
 
     #[test]
     fn test_initialized_check() {
-        let req: JsonRpcRequest = serde_json::from_str(
-            r#"{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}"#,
-        )
-        .unwrap();
+        let req: JsonRpcRequest =
+            serde_json::from_str(r#"{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}"#)
+                .unwrap();
         assert_eq!(req.method, "initialize");
         assert_eq!(req.id, Some(Value::Number(1.into())));
     }

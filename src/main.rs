@@ -89,8 +89,16 @@ async fn main() -> anyhow::Result<()> {
     };
 
     if let Some(mcp_cfg) = config.mcp.as_ref().filter(|c| c.enabled) {
-        let config_json = mcp_cfg.server_registry.as_ref().map(|r| serde_json::to_string(r).unwrap_or_default());
-        mcp::start_sidecar(&mcp_cfg.socket_path, config_json.as_deref()).await?;
+        let config_json = mcp_cfg
+            .server_registry
+            .as_ref()
+            .map(|r| serde_json::to_string(r).unwrap_or_default());
+        mcp::start_sidecar(
+            &mcp_cfg.socket_path,
+            config_json.as_deref(),
+            &mcp_cfg.backend,
+        )
+        .await?;
     }
 
     // ── v0.2: rate limiting ──
@@ -170,12 +178,10 @@ async fn main() -> anyhow::Result<()> {
         ),
         config_watcher: config_watcher.clone(),
         supervisor: Arc::new(portail::supervisor::Supervisor::new(Arc::clone(&event_log))),
-        plugin_registry: portail::plugin_hooks::init_plugin_registry(
-            std::path::Path::new("vaked"),
-        ),
-        loop_manager: std::sync::Arc::new(
-            loop_state_manager::LoopStateManager::new(env!("CARGO_PKG_VERSION")),
-        ),
+        plugin_registry: portail::plugin_hooks::init_plugin_registry(std::path::Path::new("vaked")),
+        loop_manager: std::sync::Arc::new(loop_state_manager::LoopStateManager::new(env!(
+            "CARGO_PKG_VERSION"
+        ))),
         loop_runner: loopeng::SharedLoopEngine::new(loopeng::LoopEngineConfig {
             name: "portail-server".into(),
             token_budget: Some(100_000),
@@ -674,14 +680,21 @@ async fn dispatch_cli(cmd: &cli::Commands, cli: &cli::Cli) -> anyhow::Result<()>
                     println!("Target templates ({} total):", targets.len());
                     for t in &targets {
                         let tag_str = t.tags.join(",");
-                        println!("  {:<20} {:<12} {:3}/s  [{}]",
-                            t.name, format!("{}/", t.provider), t.rps, tag_str);
+                        println!(
+                            "  {:<20} {:<12} {:3}/s  [{}]",
+                            t.name,
+                            format!("{}/", t.provider),
+                            t.rps,
+                            tag_str
+                        );
                     }
                 }
                 cli::TargetAction::Export { name } => {
                     let cfg = portail::config::Config::load(Some(&cli.config))?;
                     let builtins = portail::config::builtin_targets();
-                    let all: Vec<_> = cfg.targets.iter()
+                    let all: Vec<_> = cfg
+                        .targets
+                        .iter()
                         .chain(builtins.iter())
                         .filter(|t| t.name == *name)
                         .collect();
@@ -692,8 +705,13 @@ async fn dispatch_cli(cmd: &cli::Commands, cli: &cli::Cli) -> anyhow::Result<()>
                 }
                 cli::TargetAction::Builtins => {
                     for t in portail::config::builtin_targets() {
-                        println!("{} ({}) — {} — models: {}",
-                            t.name, t.provider, t.description.as_deref().unwrap_or(""), t.models.join(", "));
+                        println!(
+                            "{} ({}) — {} — models: {}",
+                            t.name,
+                            t.provider,
+                            t.description.as_deref().unwrap_or(""),
+                            t.models.join(", ")
+                        );
                     }
                 }
             }
@@ -703,7 +721,9 @@ async fn dispatch_cli(cmd: &cli::Commands, cli: &cli::Cli) -> anyhow::Result<()>
             match action {
                 cli::McpAction::List => {
                     let cfg = portail::config::Config::load(Some(&cli.config))?;
-                    let servers = cfg.mcp.as_ref()
+                    let servers = cfg
+                        .mcp
+                        .as_ref()
                         .and_then(|m| m.server_registry.as_ref())
                         .map(|s| s.as_slice())
                         .unwrap_or(&[]);
@@ -715,15 +735,19 @@ async fn dispatch_cli(cmd: &cli::Commands, cli: &cli::Cli) -> anyhow::Result<()>
                         for s in servers {
                             let tag_str = s.tags.join(",");
                             let transport = &s.transport;
-                            println!("  {:<20} {:<8} auto={}  [{}]",
-                                s.name, transport, s.autostart, tag_str);
+                            println!(
+                                "  {:<20} {:<8} auto={}  [{}]",
+                                s.name, transport, s.autostart, tag_str
+                            );
                         }
                     }
                 }
                 cli::McpAction::Info { name } => {
                     let cfg = portail::config::Config::load(Some(&cli.config))?;
                     let builtins = portail::config::builtin_mcp_servers();
-                    let all: Vec<_> = cfg.mcp.as_ref()
+                    let all: Vec<_> = cfg
+                        .mcp
+                        .as_ref()
                         .and_then(|m| m.server_registry.as_ref())
                         .into_iter()
                         .flatten()
@@ -749,11 +773,16 @@ async fn dispatch_cli(cmd: &cli::Commands, cli: &cli::Cli) -> anyhow::Result<()>
                     }
                 }
                 cli::McpAction::Config { name } => {
-                    let s = portail::config::builtin_mcp_servers().into_iter()
+                    let s = portail::config::builtin_mcp_servers()
+                        .into_iter()
                         .find(|s| s.name == *name);
                     match s {
                         Some(s) => {
-                            println!("# MCP server config for: {} ({})", s.name, s.description.unwrap_or_default());
+                            println!(
+                                "# MCP server config for: {} ({})",
+                                s.name,
+                                s.description.unwrap_or_default()
+                            );
                             println!("[[mcp.server_registry]]");
                             println!("name = \"{}\"", s.name);
                             println!("transport = \"{}\"", s.transport);
@@ -761,17 +790,25 @@ async fn dispatch_cli(cmd: &cli::Commands, cli: &cli::Cli) -> anyhow::Result<()>
                                 println!("command = \"{}\"", cmd);
                             }
                             if let Some(args) = &s.args {
-                                println!("args = {}", serde_json::to_string_pretty(args).unwrap_or_default());
+                                println!(
+                                    "args = {}",
+                                    serde_json::to_string_pretty(args).unwrap_or_default()
+                                );
                             }
                             println!("autostart = true");
                         }
-                        None => println!("Built-in MCP server '{name}' not found. Available: filesystem, github, playwright, fetch, brave-search, sqlite, sequential-thinking"),
+                        None => println!(
+                            "Built-in MCP server '{name}' not found. Available: filesystem, github, playwright, fetch, brave-search, sqlite, sequential-thinking"
+                        ),
                     }
                 }
                 cli::McpAction::Builtins => {
                     for s in portail::config::builtin_mcp_servers() {
-                        println!("  {:<20} {}",
-                            s.name, s.description.as_deref().unwrap_or(""));
+                        println!(
+                            "  {:<20} {}",
+                            s.name,
+                            s.description.as_deref().unwrap_or("")
+                        );
                     }
                 }
             }
@@ -780,15 +817,16 @@ async fn dispatch_cli(cmd: &cli::Commands, cli: &cli::Cli) -> anyhow::Result<()>
         cli::Commands::Vaked { action } => {
             match action {
                 cli::VakedAction::List => {
-                    let mut registry = portail_vaked::PluginRegistry::new(
-                        std::path::PathBuf::from("vaked"),
-                    );
+                    let mut registry =
+                        portail_vaked::PluginRegistry::new(std::path::PathBuf::from("vaked"));
                     registry.scan_dir().ok();
                     println!("{}", portail_vaked::format_plugin_list(&registry));
                 }
                 cli::VakedAction::Load { path } => {
                     let mut registry = portail_vaked::PluginRegistry::new(
-                        path.parent().unwrap_or(std::path::Path::new(".")).to_path_buf(),
+                        path.parent()
+                            .unwrap_or(std::path::Path::new("."))
+                            .to_path_buf(),
                     );
                     match registry.load_vaked(path) {
                         Ok(name) => println!("Loaded .vaked plugin: {name}"),
@@ -857,7 +895,9 @@ fn create_engine() -> loopeng::LoopEngine {
 async fn dispatch_loop(action: &cli::LoopAction, _cli: &cli::Cli) -> anyhow::Result<()> {
     match action {
         cli::LoopAction::Status => {
-            println!("Loop state — use 'portail loop run <schedule>' to execute, 'portail loop prompt' for handoff");
+            println!(
+                "Loop state — use 'portail loop run <schedule>' to execute, 'portail loop prompt' for handoff"
+            );
         }
         cli::LoopAction::Backlog => {
             println!("Backlog — use loop-state-manager: portail loop add <phase> <description>");
@@ -872,7 +912,10 @@ async fn dispatch_loop(action: &cli::LoopAction, _cli: &cli::Cli) -> anyhow::Res
             println!("Rejected {task_id}: {reason}");
         }
         cli::LoopAction::Next { phase } => {
-            println!("Next task for phase {:?} — use via loop-state-manager", phase);
+            println!(
+                "Next task for phase {:?} — use via loop-state-manager",
+                phase
+            );
         }
         cli::LoopAction::Prompt => {
             let engine = create_engine();
@@ -891,8 +934,16 @@ async fn dispatch_loop(action: &cli::LoopAction, _cli: &cli::Cli) -> anyhow::Res
                 match engine.run_iteration(schedule).await {
                     Ok(run) => {
                         let status_str = format!("{:?}", run.status);
-                        println!("[{}/{}] {} — {} ({})", i + 1, count, run.id, status_str,
-                            run.token_cost.map(|c| format!("{} tokens", c)).unwrap_or_default());
+                        println!(
+                            "[{}/{}] {} — {} ({})",
+                            i + 1,
+                            count,
+                            run.id,
+                            status_str,
+                            run.token_cost
+                                .map(|c| format!("{} tokens", c))
+                                .unwrap_or_default()
+                        );
                     }
                     Err(e) => {
                         eprintln!("[{}/{}] Error: {e}", i + 1, count);
@@ -904,7 +955,11 @@ async fn dispatch_loop(action: &cli::LoopAction, _cli: &cli::Cli) -> anyhow::Res
             let path = std::path::Path::new("_next-prompt.md");
             let _ = prompt.write_to_file(path);
         }
-        cli::LoopAction::Council { run_id, decision, reason } => {
+        cli::LoopAction::Council {
+            run_id,
+            decision,
+            reason,
+        } => {
             let mut engine = create_engine();
             let council = match decision.to_lowercase().as_str() {
                 "ship" => loopeng::CouncilDecision::Ship,
@@ -938,7 +993,10 @@ async fn dispatch_loop(action: &cli::LoopAction, _cli: &cli::Cli) -> anyhow::Res
             println!("  Max iterations: {}", cfg.max_iterations);
             println!("  Token budget: {:?}", cfg.token_budget);
             println!("  Escalate after: {} failures", cfg.escalate_after_failures);
-            println!("  Circuit breaker threshold: {}", cfg.circuit_breaker_threshold);
+            println!(
+                "  Circuit breaker threshold: {}",
+                cfg.circuit_breaker_threshold
+            );
             println!("  Evaluation criteria: {:?}", cfg.evaluation_criteria);
             println!("\nBuilding blocks:");
             println!("  Schedules: {}", engine.schedules().len());
@@ -950,8 +1008,10 @@ async fn dispatch_loop(action: &cli::LoopAction, _cli: &cli::Cli) -> anyhow::Res
         cli::LoopAction::Schedules => {
             let engine = create_engine();
             for s in engine.schedules() {
-                println!("  {} — every {}s (pattern: {}, enabled: {}, max_iter: {:?})",
-                    s.name, s.cadence_secs, s.pattern, s.enabled, s.max_iterations);
+                println!(
+                    "  {} — every {}s (pattern: {}, enabled: {}, max_iter: {:?})",
+                    s.name, s.cadence_secs, s.pattern, s.enabled, s.max_iterations
+                );
             }
         }
     }
@@ -959,7 +1019,7 @@ async fn dispatch_loop(action: &cli::LoopAction, _cli: &cli::Cli) -> anyhow::Res
 }
 
 async fn dispatch_pkg_ctx(action: &cli::PkgCtxAction) -> anyhow::Result<()> {
-    use pkg_ctx::{build, search, mcp_server, PKG_DIR};
+    use pkg_ctx::{PKG_DIR, build, mcp_server, search};
     use std::path::Path;
 
     let pkg_dir = dirs::data_dir()
@@ -968,9 +1028,14 @@ async fn dispatch_pkg_ctx(action: &cli::PkgCtxAction) -> anyhow::Result<()> {
     std::fs::create_dir_all(&pkg_dir)?;
 
     match action {
-        cli::PkgCtxAction::Add { repo, name, version } => {
+        cli::PkgCtxAction::Add {
+            repo,
+            name,
+            version,
+        } => {
             println!("Adding package from {repo}...");
-            let info = build::add_package(repo, name.as_deref(), version.as_deref(), &pkg_dir).await?;
+            let info =
+                build::add_package(repo, name.as_deref(), version.as_deref(), &pkg_dir).await?;
             println!("  Package: {}@{}", info.name, info.version);
             println!("  Chunks: {}", info.chunk_count);
             println!("  DB: {}", info.db_path.display());
@@ -978,7 +1043,10 @@ async fn dispatch_pkg_ctx(action: &cli::PkgCtxAction) -> anyhow::Result<()> {
         cli::PkgCtxAction::Search { library, topic } => {
             let searcher = search::DocSearch::new(&pkg_dir);
             let results = searcher.search_package(library, topic, 10)?;
-            println!("{}", search::format_search_results(&results, library, topic));
+            println!(
+                "{}",
+                search::format_search_results(&results, library, topic)
+            );
         }
         cli::PkgCtxAction::List => {
             let searcher = search::DocSearch::new(&pkg_dir);

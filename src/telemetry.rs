@@ -8,21 +8,19 @@ use opentelemetry::KeyValue;
 use opentelemetry_otlp::{SpanExporter, WithExportConfig};
 use opentelemetry_sdk::Resource;
 use serde::{Deserialize, Serialize};
-use tracing_subscriber::{fmt, prelude::*, EnvFilter};
+use tracing_subscriber::{EnvFilter, fmt, prelude::*};
 
 /// Initialize production-grade non-blocking JSON logging.
 /// Returns a guard that flushes on drop and the log directory path.
 /// Uses tracing-appender for async file I/O off the main thread.
 pub fn init_logging() -> (tracing_appender::non_blocking::WorkerGuard, String) {
-    let log_dir = std::env::var("PORTAIL_LOG_DIR")
-        .unwrap_or_else(|_| "/var/log/portail".into());
+    let log_dir = std::env::var("PORTAIL_LOG_DIR").unwrap_or_else(|_| "/var/log/portail".into());
     let _ = std::fs::create_dir_all(&log_dir);
 
     let file_appender = tracing_appender::rolling::hourly(&log_dir, "portail.log");
     let (non_blocking, guard) = tracing_appender::non_blocking(file_appender);
 
-    let filter = EnvFilter::from_default_env()
-        .add_directive(tracing::Level::INFO.into());
+    let filter = EnvFilter::from_default_env().add_directive(tracing::Level::INFO.into());
 
     tracing_subscriber::registry()
         .with(filter)
