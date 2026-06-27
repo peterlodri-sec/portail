@@ -55,6 +55,19 @@ pub fn build_router(state: Arc<AppState>) -> Router {
             get(crate::a2a::handle_agent_card),
         )
         .route(
+            "/a2a/agents",
+            axum::routing::get(crate::a2a::registry::handle_list),
+        )
+        .route(
+            "/a2a/agents",
+            axum::routing::post(crate::a2a::registry::handle_register),
+        )
+        .route("/a2a/agents/{id}", get(crate::a2a::registry::handle_get))
+        .route(
+            "/a2a/agents/{id}",
+            delete(crate::a2a::registry::handle_deregister),
+        )
+        .route(
             "/a2a/tasks",
             axum::routing::post(crate::a2a::handle_task_create),
         )

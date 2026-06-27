@@ -16,3 +16,8 @@ chrono = { workspace = true }
 reqwest = { workspace = true }
 walkdir = { workspace = true }
 dirs = { workspace = true }
+toml = "=0.8.23"
+uuid = { version = "=1.23.4", features = ["v4"] }
+# ADK-Rust: agent runtime for CI agents and fleet heartbeat.
+# Pinned to 0.9.x to match workspace rust-version (1.85).
+adk-rust = { version = "=0.9.1", default-features = false, features = ["minimal"] }

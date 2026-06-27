@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = [".", "creative_tui", "crates/pkg-ctx", "crates/portail-agents", "crates/portail-plugin-sdk", "crates/portail-vaked", "crates/loop-state-manager", "crates/loopeng"]
+members = [".", "crates/pkg-ctx", "crates/portail-agents", "crates/portail-plugin-sdk", "crates/portail-vaked", "crates/loop-state-manager", "crates/loopeng"]
 
 [workspace.package]
 edition = "2024"
@@ -53,8 +53,6 @@ loop-state-manager = { path = "crates/loop-state-manager" }
 loopeng = { path = "crates/loopeng" }
 pkg-ctx = { path = "crates/pkg-ctx" }
 rustc-hash = "=2.1.2"
-ratatui = "=0.29.0"
-crossterm = { version = "=0.28.1", features = ["event-stream"] }
 chrono = { version = "=0.4.45", features = ["serde"] }
 regex = "=1.12.4"
 walkdir = "=2.5.0"
@@ -170,8 +168,8 @@ copyright = "2026, Peter Lodri <peterlodri-sec@github.com>"
 license-file = ["LICENSE", "4"]
 extended-description = """\
 Portail is a unified proxy and gateway for AI services, MCP tools, \
-and CDN caching. Built in Rust with zero-copy I/O, SIMD-optimized \
-hashing, and a live TUI dashboard."""
+and CDN caching. Built in Rust with zero-copy I/O and SIMD-optimized \
+hashing."""
 depends = "$auto"
 section = "net"
 priority = "optional"

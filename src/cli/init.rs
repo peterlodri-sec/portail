@@ -95,7 +95,7 @@ pub fn run_init() -> Result<()> {
 
     std::fs::write(path, &out)?;
     println!("\nportail.toml generated successfully.");
-    println!("Run 'portail serve' to start, or 'portail' for the TUI.\n");
+    println!("Run 'portail serve' to start the server.\n");
     println!("Full config reference: https://github.com/peterlodri-sec/portail");
 
     Ok(())

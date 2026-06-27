@@ -122,11 +122,6 @@ tasks:
     cmds:
       - cargo run -- drift-detect capture
 
-  fuzz:
-    desc: Fuzz all routes for crashes
-    cmds:
-      - cargo run -- fuzz-route --url http://localhost:8787
-
   audit:
     desc: Security audit dependencies
     cmds:

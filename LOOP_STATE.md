@@ -131,6 +131,30 @@ OPEN:   #27, #28, #29, #30, #31, #33, #34, #35, #1 super devnote (HUMAN ONLY)
 - Homebrew formula, AUR package, Docker multi-arch
 - Release blog post
 
+## v2.1 — Contributor DX + Agent-Native Foundation       🚧 WIP
+**Target:** 2026-07-03  **Effort:** 2 weeks
+
+### Dead-code removal
+- Removed `creative_tui/` workspace crate (wgpu/ratatui hybrid — deferred)
+- Removed `src/cli/dashboard.rs` ratatui TUI; default CLI now prints help
+- Removed `src/fuzz_route.rs` CLI subcommand (Google fuzzer will handle fuzzing)
+- Removed `examples/plugins/request-logger/` example plugin
+- Dropped `ratatui`, `crossterm` dependencies; updated packaging metadata
+
+### ADK-Rust runtime integration
+- Added `adk-rust = "=0.9.1"` to `crates/portail-agents` (MSRV 1.85)
+- Reimplemented `nullclaw` heartbeat as ADK-Rust `CustomAgent`
+- Ported `spec-verify` CI agent to ADK-Rust `CustomAgent`
+- Added `ci/runner.rs` scheduler; wired into server lifecycle
+- Spawned `nullclaw` heartbeat loop in `src/main.rs`
+
+### A2A agent registry
+- Added `src/a2a/registry.rs` with skill-based discovery
+- Routes: `GET/POST /a2a/agents`, `GET/DELETE /a2a/agents/{id}`
+- `POST /a2a/tasks` accepts `"skill"` and records `routed_to` / `routed_url`
+
+**Status:** implementation complete, pending `cargo check` verification.
+
 ---
 
 ## CI Agent Policy
@@ -166,7 +190,7 @@ v1.3  [SHIPPED]  2026-06-26  type hardening, BoundedMeta
 v1.4  [SHIPPED]  2026-06-26  chore-bot, NATS bridge
 v1.4r [SHIPPED]  2026-06-26  release v1.4.0
 v2.0  [SHIPPED]  2026-06-26  production-stable (174 tests, 10 CI agents)
-v2.1  [NEXT]     2026-07-03  contributor DX: guide, e2e env, package research — docs/V2_1_V2_3_PLAN.md
+v2.1  [WIP]      2026-07-03  contributor DX + agent-native foundation — docs/V2_1_V2_3_PLAN.md
 v2.2             2026-07-10  documentation + OSS release (crates.io, Homebrew, AUR, blog)
 v2.3             2026-07-17  stability: 80% coverage, benchmarks, bug bash, final release
 v2.5             TBD         release-audit + project-wide simplification (~1700 lines dead code removed)
