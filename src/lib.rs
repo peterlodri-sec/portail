@@ -29,6 +29,7 @@
 pub mod a2a;
 pub mod a2c;
 pub mod auth;
+pub mod bow;
 pub mod cdn;
 pub mod ci;
 pub mod cli;
