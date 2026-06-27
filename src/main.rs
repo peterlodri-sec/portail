@@ -140,6 +140,7 @@ async fn main() -> anyhow::Result<()> {
         event_log: Arc::clone(&event_log),
         cdn_cache: cdn_cache.clone(),
         hooks: Arc::new(portail::hooks::HookStore::new()),
+        base_hooks: Arc::new(portail::base_hooks::default_registry()),
         a2a_tasks: Arc::new(portail::a2a::TaskStore::new()),
         dns_store: Arc::new(portail::dns::DnsStore::new()),
         doh_client: Some(Arc::new(portail::dns::DohClient::new(vec![
@@ -193,6 +194,9 @@ async fn main() -> anyhow::Result<()> {
             .filter(|c| c.enabled)
             .map(|c| Arc::new(portail::local_inference::InferenceEngine::new(c.clone()))),
         pkg_ctx_memory: tokio::sync::Mutex::new(pkg_ctx::memory::PkgCtxMemory::new()?),
+        tool_registry: std::sync::Arc::new(std::sync::RwLock::new(
+            portail_claude_plugins::bridge::ToolRegistry::new(),
+        )),
     });
 
     // ── v2.0: session TTL eviction (1h) ──

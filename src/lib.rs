@@ -29,6 +29,7 @@
 pub mod a2a;
 pub mod a2c;
 pub mod auth;
+pub mod base_hooks;
 pub mod bow;
 pub mod cdn;
 pub mod ci;
@@ -78,6 +79,7 @@ pub struct AppState {
     pub event_log: Arc<events::EventLog>,
     pub cdn_cache: Option<Arc<cdn::CacheManager>>,
     pub hooks: Arc<hooks::HookStore>,
+    pub base_hooks: Arc<base_hooks::BaseHookRegistry>,
     pub a2a_tasks: Arc<a2a::TaskStore>,
     pub dns_store: Arc<dns::DnsStore>,
     pub doh_client: Option<Arc<dns::DohClient>>,
@@ -99,4 +101,52 @@ pub struct AppState {
     pub loop_runner: loopeng::SharedLoopEngine,
     pub inference_engine: Option<Arc<local_inference::InferenceEngine>>,
     pub pkg_ctx_memory: tokio::sync::Mutex<pkg_ctx::memory::PkgCtxMemory>,
+    pub tool_registry: Arc<std::sync::RwLock<portail_claude_plugins::bridge::ToolRegistry>>,
+}
+
+#[cfg(test)]
+impl AppState {
+    pub fn test_default() -> Self {
+        let event_log = Arc::new(events::EventLog::new(1000));
+        let supervisor = Arc::new(supervisor::Supervisor::new(event_log.clone()));
+
+        Self {
+            config: RwLock::new(Config::default()),
+            config_watcher: config_watcher::ConfigWatcher::new("portail.toml".into()),
+            event_log,
+            cdn_cache: None,
+            hooks: Arc::new(hooks::HookStore::new()),
+            base_hooks: Arc::new(base_hooks::default_registry()),
+            a2a_tasks: Arc::new(a2a::TaskStore::new()),
+            dns_store: Arc::new(dns::DnsStore::new()),
+            doh_client: None,
+            network_isolation: Arc::new(dns::NetworkIsolation::default()),
+            tinyurl: Arc::new(plugins::TinyUrlStore::new(plugins::TinyUrlConfig::default())),
+            trace_store: Arc::new(plugins::TraceStore::new(10000)),
+            redis_cache: Arc::new(plugins::RedisCache::new(
+                plugins::RedisCacheConfig::default(),
+            )),
+            discovery: Arc::new(discovery::DiscoveryStore::new(
+                discovery::DiscoveryConfig::default(),
+            )),
+            ci_status: Arc::new(ci::CiStatusStore::new(100, None)),
+            metrics_handle: crate::test_utils::global_metrics().clone(),
+            rate_limiter: None,
+            auth_state: None,
+            event_store: None,
+            session_store: sessions::SessionStore::new(100),
+            file_cache: file_cache::FileCache::new(&file_cache::FileCacheConfig::default()),
+            supervisor,
+            plugin_registry: Arc::new(std::sync::Mutex::new(portail_vaked::PluginRegistry::new(
+                "/tmp/portail-plugins".into(),
+            ))),
+            loop_manager: Arc::new(loop_state_manager::LoopStateManager::new("0.1.0")),
+            loop_runner: loopeng::SharedLoopEngine::new(loopeng::LoopEngineConfig::default()),
+            inference_engine: None,
+            pkg_ctx_memory: tokio::sync::Mutex::new(pkg_ctx::memory::PkgCtxMemory::new().unwrap()),
+            tool_registry: Arc::new(std::sync::RwLock::new(
+                portail_claude_plugins::bridge::ToolRegistry::new(),
+            )),
+        }
+    }
 }

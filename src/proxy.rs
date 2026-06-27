@@ -93,6 +93,8 @@ pub fn build_router(state: Arc<AppState>) -> Router {
             axum::routing::post(crate::a2a::handle_rpc_stream),
         )
         .route("/a2c/chat", axum::routing::post(crate::a2c::handle_chat))
+        .route("/tools/list", get(handle_tools_list))
+        .route("/tools/call", get(handle_tools_call))
         // ── v4: local inference (OpenAI-compatible) ──
         .route(
             "/v1/chat/completions",
@@ -631,6 +633,45 @@ async fn session_detail_handler(
         .get_session(&id)
         .map(Json)
         .ok_or(StatusCode::NOT_FOUND)
+}
+
+// ── MCP tool endpoints ──────────────────────────────────────────
+
+async fn handle_tools_list(State(state): State<Arc<AppState>>) -> Json<serde_json::Value> {
+    let registry = state.tool_registry.read().unwrap();
+    let tools: Vec<serde_json::Value> = registry
+        .list_tools()
+        .iter()
+        .map(|t| {
+            serde_json::json!({
+                "name": t.name,
+                "description": t.description,
+                "input_schema": t.input_schema,
+                "plugin": t.plugin,
+            })
+        })
+        .collect();
+    Json(json!({ "tools": tools }))
+}
+
+async fn handle_tools_call(
+    State(state): State<Arc<AppState>>,
+    Json(body): Json<serde_json::Value>,
+) -> Json<serde_json::Value> {
+    let tool_name = body.get("name").and_then(|v| v.as_str()).unwrap_or("");
+    let input = body
+        .get("input")
+        .cloned()
+        .unwrap_or(serde_json::Value::Null);
+
+    let registry = state.tool_registry.read().unwrap();
+    let result = portail_claude_plugins::bridge::execute_tool(&registry, tool_name, &input);
+
+    Json(json!({
+        "output": result.output,
+        "is_error": result.is_error,
+        "latency_ms": result.latency.as_millis() as u64,
+    }))
 }
 
 #[cfg(test)]
