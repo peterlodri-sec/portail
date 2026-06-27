@@ -1,4 +1,5 @@
 pub mod features;
+pub mod function_calling;
 pub mod handlers;
 pub mod schema;
 

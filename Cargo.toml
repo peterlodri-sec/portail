@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = [".", "creative_tui", "crates/pkg-ctx", "crates/portail-agents", "crates/portail-claude-plugins", "crates/portail-plugin-sdk", "crates/portail-vaked", "crates/loop-state-manager", "crates/loopeng", "crates/portail-mcp-wasm"]
+members = [".", "crates/pkg-ctx", "crates/portail-agents", "crates/portail-claude-plugins", "crates/portail-plugin-sdk", "crates/portail-vaked", "crates/loop-state-manager", "crates/loopeng", "crates/portail-mcp-wasm"]
 
 [workspace.package]
 edition = "2024"

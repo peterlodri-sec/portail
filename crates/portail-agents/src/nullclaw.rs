@@ -158,7 +158,7 @@ async fn invoke_heartbeat(
 ) -> anyhow::Result<()> {
     use adk_rust::prelude::*;
     use adk_rust::runner::{InvocationContext, MutableSession};
-    use adk_rust::session::{service::CreateRequest, InMemorySessionService};
+    use adk_rust::session::{InMemorySessionService, service::CreateRequest};
     use futures::StreamExt;
 
     let app_name = "portail";
