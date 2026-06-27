@@ -40,6 +40,7 @@ pub struct Config {
     pub ai_gateway: Option<AiGatewayConfig>,
     pub mcp: Option<McpConfig>,
     pub cdn: Option<CdnConfig>,
+    pub local_inference: Option<crate::local_inference::LocalInferenceConfig>,
 
     /// Upstream target templates — create, reuse, share
     #[serde(default)]
@@ -388,6 +389,7 @@ impl Default for Config {
             ai_gateway: None,
             mcp: None,
             cdn: None,
+            local_inference: None,
             targets: vec![],
             rate_limit: crate::rate_limit::RateLimitConfig::default(),
             auth: crate::auth::AuthConfig::default(),

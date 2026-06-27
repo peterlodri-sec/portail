@@ -187,6 +187,11 @@ async fn main() -> anyhow::Result<()> {
             circuit_breaker_threshold: 5,
             ..Default::default()
         }),
+        inference_engine: config
+            .local_inference
+            .as_ref()
+            .filter(|c| c.enabled)
+            .map(|c| Arc::new(portail::local_inference::InferenceEngine::new(c.clone()))),
         pkg_ctx_memory: tokio::sync::Mutex::new(pkg_ctx::memory::PkgCtxMemory::new()?),
     });
 

@@ -1,5 +1,6 @@
 {
   "dependencies": {
+    "@opencode-ai/plugin": "1.17.11",
     "harness-memory": "latest"
   }
 }

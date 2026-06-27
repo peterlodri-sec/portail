@@ -93,6 +93,19 @@ pub fn build_router(state: Arc<AppState>) -> Router {
             axum::routing::post(crate::a2a::handle_rpc_stream),
         )
         .route("/a2c/chat", axum::routing::post(crate::a2c::handle_chat))
+        // ── v4: local inference (OpenAI-compatible) ──
+        .route(
+            "/v1/chat/completions",
+            axum::routing::post(crate::local_inference::handle_chat_completions),
+        )
+        .route(
+            "/v1/models",
+            axum::routing::get(crate::local_inference::handle_list_models),
+        )
+        .route(
+            "/v1/health",
+            axum::routing::get(crate::local_inference::handle_health),
+        )
         // ── v0.2: plugin & diagnostics routers ──
         .merge(crate::ci::router())
         .merge(crate::discovery::router())
@@ -668,6 +681,7 @@ mod tests {
             )),
             loop_manager: std::sync::Arc::new(loop_state_manager::LoopStateManager::new("3.0.0")),
             loop_runner: loopeng::SharedLoopEngine::new(loopeng::LoopEngineConfig::default()),
+            inference_engine: None,
             pkg_ctx_memory: tokio::sync::Mutex::new(pkg_ctx::memory::PkgCtxMemory::new().unwrap()),
         })
     }
