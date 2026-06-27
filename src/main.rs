@@ -36,11 +36,12 @@ async fn main() -> anyhow::Result<()> {
 
     let cli = cli::Cli::parse();
 
-    // CLI mode: no subcommand → interactive TUI, subcommand → dispatch
+    // CLI mode: no subcommand → print help, subcommand → dispatch
     match &cli.command {
         None => {
-            let mut dashboard = cli::dashboard::Dashboard::new();
-            dashboard.run_tui()?;
+            let mut cmd = <cli::Cli as clap::CommandFactory>::command();
+            let _ = cmd.print_help();
+            println!();
             return Ok(());
         }
         Some(cli::Commands::Serve) => {} // fall through to server
@@ -142,6 +143,7 @@ async fn main() -> anyhow::Result<()> {
         hooks: Arc::new(portail::hooks::HookStore::new()),
         base_hooks: Arc::new(portail::base_hooks::default_registry()),
         a2a_tasks: Arc::new(portail::a2a::TaskStore::new()),
+        a2a_registry: Arc::new(portail::a2a::registry::AgentRegistry::new()),
         dns_store: Arc::new(portail::dns::DnsStore::new()),
         doh_client: Some(Arc::new(portail::dns::DohClient::new(vec![
             "https://cloudflare-dns.com/dns-query".into(),
@@ -250,6 +252,28 @@ async fn main() -> anyhow::Result<()> {
                 .await
         }
     });
+
+    // ── v2.x: ADK-Rust CI agent runner ──
+    {
+        let mut agents = std::collections::HashMap::new();
+        let spec_config = portail_agents::ci::spec_verify::SpecVerifyConfig::default();
+        if let Ok(agent) = portail_agents::ci::spec_verify::build_spec_verify_agent(&spec_config) {
+            agents.insert("spec-verify".into(), agent);
+        }
+        portail_agents::ci::runner::spawn_runner(
+            portail_agents::ci::runner::CiRunnerConfig::default(),
+            agents,
+        );
+    }
+
+    // ── v2.x: NullClaw fleet heartbeat ──
+    {
+        let nullclaw_config = portail_agents::nullclaw::NullClawConfig::default();
+        tokio::spawn(async move {
+            portail_agents::nullclaw::run_nullclaw_loop(nullclaw_config).await;
+        });
+    }
+
     // ── v1.1: self-healing config (file watcher replaces SIGHUP) ──
     portail::config_watcher::spawn_watcher(config_watcher, Arc::clone(&state)).await;
 
@@ -571,18 +595,6 @@ async fn dispatch_cli(cmd: &cli::Commands, cli: &cli::Cli) -> anyhow::Result<()>
         }
         cli::Commands::SpecVerify { command, ci } => {
             portail::spec_verify::run(command, *ci)?;
-            Ok(())
-        }
-        cli::Commands::FuzzRoute { url, ci } => {
-            if *ci {
-                portail::fuzz_route::ci_run(url)?;
-            } else {
-                let report = portail::fuzz_route::run(url)?;
-                println!(
-                    "fuzz-route: {} probes | {} passed | {} errors | {} crashes",
-                    report.total_probes, report.passed, report.errored, report.crashed
-                );
-            }
             Ok(())
         }
         cli::Commands::Install { method, dir } => {

@@ -20,6 +20,7 @@ mod layer_tests {
             hooks: Arc::new(hooks::HookStore::new()),
             base_hooks: Arc::new(portail::base_hooks::default_registry()),
             a2a_tasks: Arc::new(a2a::TaskStore::new()),
+            a2a_registry: Arc::new(a2a::registry::AgentRegistry::new()),
             dns_store: Arc::new(dns::DnsStore::new()),
             doh_client: None,
             network_isolation: Arc::new(dns::NetworkIsolation::default()),
@@ -97,7 +98,7 @@ mod layer_tests {
     fn layer1_a2a_constructible() {
         let store = a2a::TaskStore::new();
         let task = store.create("t1".into());
-        assert_eq!(task.status.state, a2a::TaskState::Submitted);
+        assert_eq!(task.status, a2a::TaskStatus::Submitted);
     }
 
     #[test]
@@ -213,7 +214,7 @@ mod layer_tests {
 
         // A2A tasks work
         let task = state.a2a_tasks.create("t1".into());
-        assert_eq!(task.status.state, a2a::TaskState::Submitted);
+        assert_eq!(task.status, a2a::TaskStatus::Submitted);
 
         // DNS works
         state.dns_store.add_record(

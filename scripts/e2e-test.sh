@@ -109,9 +109,6 @@ $BINARY complexity --ci --ci-report-path /tmp/e2e-complexity.toml 2>/dev/null
 [ $? -eq 0 ] && pass "complexity --ci (exit 0)" || fail "complexity --ci (non-zero exit)"
 [ -f /tmp/e2e-complexity.toml ] && pass "complexity wrote report" || fail "complexity report missing"
 
-$BINARY fuzz-route --ci --url "$URL" 2>/dev/null
-[ $? -eq 0 ] && pass "fuzz-route --ci (exit 0)" || fail "fuzz-route --ci (non-zero exit)"
-
 $BINARY spec-verify diff --ci 2>/dev/null
 [ $? -eq 0 ] && pass "spec-verify --ci (exit 0)" || fail "spec-verify --ci (non-zero exit)"
 

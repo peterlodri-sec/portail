@@ -9,60 +9,25 @@ use axum::body::Body;
 use axum::extract::{Request, State};
 use axum::http::{Method, StatusCode};
 use axum::middleware::{self, Next};
-use axum::response::{Html, IntoResponse, Response};
+use axum::response::{IntoResponse, Response};
 use axum::routing::{any, delete, get};
 use axum::{Json, Router};
 pub use cdn::CacheManager;
 use metrics::{counter, histogram};
 use serde_json::json;
 use std::sync::Arc;
-use std::sync::OnceLock;
 use std::time::{Duration, Instant};
 use tower_http::cors::{Any, CorsLayer};
 use tower_http::limit::RequestBodyLimitLayer;
 use tower_http::trace::TraceLayer;
-use utoipa_axum::{router::OpenApiRouter, routes};
 
 const MAX_BODY_BYTES: usize = 10 * 1024 * 1024; // 10MB
 
-static API_SPEC_JSON: OnceLock<serde_json::Value> = OnceLock::new();
-
 pub fn build_router(state: Arc<AppState>) -> Router {
-    // ── OpenApiRouter: collects utoipa-annotated routes for auto-documentation ──
-    let (api_router, api) = OpenApiRouter::new()
-        .routes(routes!(healthz))
-        .routes(routes!(readyz))
-        .routes(routes!(metrics_handler))
-        .routes(routes!(stats_handler))
-        .routes(routes!(dashboard_handler))
-        .routes(routes!(supervisor_handler))
-        .routes(routes!(sessions_handler))
-        .routes(routes!(session_detail_handler))
-        .routes(routes!(loop_status_handler))
-        .routes(routes!(loop_run_handler))
-        .routes(routes!(pkg_ctx_search_handler))
-        .routes(routes!(pkg_ctx_list_handler))
-        .split_for_parts();
-
-    // Store OpenAPI spec for the /api-docs endpoint
-    let mut api_json = serde_json::to_value(&api).unwrap();
-    // Override default metadata (utoipa-axum emits its own info)
-    if let Some(ref mut info) = api_json.get_mut("info") {
-        info["title"] = serde_json::json!("Portail API");
-        info["description"] = serde_json::json!(
-            "Unified proxy/gateway: AI Gateway + MCP Gateway + CDN cache + \
-             Agent protocol + DNS + Observability"
-        );
-        info["version"] = serde_json::json!(env!("CARGO_PKG_VERSION"));
-        info["contact"] = serde_json::json!(null);
-        info["license"] = serde_json::json!(null);
-    }
-    let _ = API_SPEC_JSON.set(api_json);
-
-    // ── Build the full axum::Router with all routes + middleware ──
-    let mut router = api_router
-        // Non-annotated routes (no OpenAPI docs — yet, can be added incrementally)
+    let mut router = Router::new()
+        .route("/healthz", get(healthz))
         .route("/livez", get(healthz))
+        .route("/readyz", get(readyz))
         .route("/v1/messages", any(route_to_ai_gateway))
         .route("/v1/chat/completions", any(route_to_ai_gateway))
         .route("/v1/responses", any(route_to_ai_gateway))
@@ -70,9 +35,11 @@ pub fn build_router(state: Arc<AppState>) -> Router {
         .route("/v1/audio/{*path}", any(route_to_ai_gateway))
         .route("/v1/images/{*path}", any(route_to_ai_gateway))
         .route("/v1beta/{*path}", any(route_to_ai_gateway))
+        .route("/metrics", get(metrics_handler))
         .route("/cdn/{*path}", any(route_cdn))
         .route("/mcp/{*path}", any(route_mcp))
         .route("/mcp-rest/{*path}", any(route_mcp))
+        .route("/stats", get(stats_handler))
         .route(
             "/events",
             get(crate::events::handle_recent).post(crate::events::handle_publish),
@@ -87,27 +54,28 @@ pub fn build_router(state: Arc<AppState>) -> Router {
             "/.well-known/agent.json",
             get(crate::a2a::handle_agent_card),
         )
-        .route("/a2a", axum::routing::post(crate::a2a::handle_rpc))
         .route(
-            "/a2a/subscribe",
-            axum::routing::post(crate::a2a::handle_rpc_stream),
+            "/a2a/agents",
+            axum::routing::get(crate::a2a::registry::handle_list),
         )
+        .route(
+            "/a2a/agents",
+            axum::routing::post(crate::a2a::registry::handle_register),
+        )
+        .route("/a2a/agents/{id}", get(crate::a2a::registry::handle_get))
+        .route(
+            "/a2a/agents/{id}",
+            delete(crate::a2a::registry::handle_deregister),
+        )
+        .route(
+            "/a2a/tasks",
+            axum::routing::post(crate::a2a::handle_task_create),
+        )
+        .route("/a2a/tasks/{id}", get(crate::a2a::handle_task_get))
+        .route("/a2a/ws", axum::routing::get(crate::a2a::handle_ws))
         .route("/a2c/chat", axum::routing::post(crate::a2c::handle_chat))
-        .route("/tools/list", get(handle_tools_list))
-        .route("/tools/call", get(handle_tools_call))
-        // ── v4: local inference (OpenAI-compatible) ──
-        .route(
-            "/v1/chat/completions",
-            axum::routing::post(crate::local_inference::handle_chat_completions),
-        )
-        .route(
-            "/v1/models",
-            axum::routing::get(crate::local_inference::handle_list_models),
-        )
-        .route(
-            "/v1/health",
-            axum::routing::get(crate::local_inference::handle_health),
-        )
+        // ── v1.2: dashboard health snapshot ──
+        .route("/dashboard", get(dashboard_handler))
         // ── v0.2: plugin & diagnostics routers ──
         .merge(crate::ci::router())
         .merge(crate::discovery::router())
@@ -118,6 +86,20 @@ pub fn build_router(state: Arc<AppState>) -> Router {
         .merge(crate::godfather::router())
         .merge(crate::graphql::router())
         .merge(crate::file_cache::router_with_state())
+        .route("/supervisor/status", axum::routing::get(supervisor_handler))
+        .route("/sessions", axum::routing::get(sessions_handler))
+        .route("/sessions/{id}", axum::routing::get(session_detail_handler))
+        .route("/api-docs/openapi.json", get(openapi_json))
+        .route("/v1/loop/status", get(loop_status_handler))
+        .route(
+            "/v1/loop/run/{schedule}",
+            axum::routing::post(loop_run_handler),
+        )
+        .route(
+            "/v1/pkg-ctx/search",
+            axum::routing::post(pkg_ctx_search_handler),
+        )
+        .route("/v1/pkg-ctx/list", get(pkg_ctx_list_handler))
         .fallback(route_to_ai_gateway)
         // Decorating middleware (inner → outer)
         .layer(middleware::from_fn_with_state(
@@ -161,8 +143,6 @@ pub fn build_router(state: Arc<AppState>) -> Router {
     }
 
     router
-        .route("/api-docs/openapi.json", get(openapi_json))
-        .route("/api-docs/", get(scalar_ui_html))
         .layer(
             CorsLayer::new()
                 .allow_origin(Any)
@@ -334,26 +314,11 @@ fn normalize_path(path: &str) -> String {
     normalized.join("/")
 }
 
-#[utoipa::path(
-    get,
-    path = "/healthz",
-    tag = "health",
-    responses((status = 200, description = "Liveness check passes"))
-)]
 async fn healthz() -> &'static str {
     counter!("health_checks").increment(1);
     "ok"
 }
 
-#[utoipa::path(
-    get,
-    path = "/readyz",
-    tag = "health",
-    responses(
-        (status = 200, description = "Readiness check passes — upstream AI gateway is reachable"),
-        (status = 503, description = "AI gateway not ready"),
-    )
-)]
 async fn readyz(State(state): State<Arc<AppState>>) -> (StatusCode, &'static str) {
     let upstream = {
         let c = state.config.read().unwrap();
@@ -439,20 +404,8 @@ async fn route_to_ai_gateway(State(state): State<Arc<AppState>>, req: Request) -
             .into_response();
     }
 
-    let provider_name = provider.as_deref().unwrap_or("openai");
-    let is_openai_compat = matches!(provider_name, "openai" | "deepseek" | "");
-
     let result = if matching_hooks.is_empty() {
-        if is_openai_compat {
-            gateway::forward(&upstream, req).await
-        } else {
-            // Provider schema adaptation needed
-            let (parts, body) = req.into_parts();
-            let body_bytes = axum::body::to_bytes(body, 10_000_000)
-                .await
-                .unwrap_or_default();
-            gateway::forward_adapted(&upstream, provider_name, parts, body_bytes).await
-        }
+        gateway::forward(&upstream, req).await
     } else {
         let (parts, body) = req.into_parts();
         let body_bytes = axum::body::to_bytes(body, 10_000_000)
@@ -477,11 +430,7 @@ async fn route_to_ai_gateway(State(state): State<Arc<AppState>>, req: Request) -
             ]),
         });
 
-        if is_openai_compat {
-            gateway::forward_with_body(&upstream, parts, modified.into()).await
-        } else {
-            gateway::forward_adapted(&upstream, provider_name, parts, modified.into()).await
-        }
+        gateway::forward_with_body(&upstream, parts, modified.into()).await
     };
 
     // Tag response with provider info
@@ -516,12 +465,6 @@ async fn route_mcp(State(state): State<Arc<AppState>>, req: Request) -> Response
     mcp::proxy_to_sidecar(&socket_path, req).await
 }
 
-#[utoipa::path(
-    get,
-    path = "/metrics",
-    tag = "observability",
-    responses((status = 200, description = "Prometheus metrics in text/plain format"))
-)]
 async fn metrics_handler(
     State(state): State<Arc<AppState>>,
 ) -> (StatusCode, [(&'static str, &'static str); 1], String) {
@@ -533,12 +476,6 @@ async fn metrics_handler(
     )
 }
 
-#[utoipa::path(
-    get,
-    path = "/stats",
-    tag = "observability",
-    responses((status = 200, description = "Server statistics including CDN cache and version"))
-)]
 async fn stats_handler(State(state): State<Arc<AppState>>) -> Json<serde_json::Value> {
     let cdn_stats: serde_json::Value = state
         .cdn_cache
@@ -550,12 +487,6 @@ async fn stats_handler(State(state): State<Arc<AppState>>) -> Json<serde_json::V
 
 // ── v1.2: dashboard health snapshot ────────────────────────────────
 
-#[utoipa::path(
-    get,
-    path = "/dashboard",
-    tag = "observability",
-    responses((status = 200, description = "Live health snapshot as JSON"))
-)]
 async fn dashboard_handler(State(state): State<Arc<AppState>>) -> Json<serde_json::Value> {
     let rate_denied = state
         .rate_limiter
@@ -589,12 +520,6 @@ async fn dashboard_handler(State(state): State<Arc<AppState>>) -> Json<serde_jso
 
 // ── Supervisor handler (v2.0) ──────────────────────────────────────
 
-#[utoipa::path(
-    get,
-    path = "/supervisor/status",
-    tag = "observability",
-    responses((status = 200, description = "List of supervised background tasks and their status"))
-)]
 async fn supervisor_handler(
     State(state): State<Arc<AppState>>,
 ) -> Json<Vec<crate::supervisor::TaskStatus>> {
@@ -603,27 +528,12 @@ async fn supervisor_handler(
 
 // ── Session handlers ──────────────────────────────────────────────
 
-#[utoipa::path(
-    get,
-    path = "/sessions",
-    tag = "sessions",
-    responses((status = 200, description = "List of active API sessions"))
-)]
 async fn sessions_handler(
     State(state): State<Arc<AppState>>,
 ) -> Json<Vec<crate::sessions::SessionSummary>> {
     Json(state.session_store.list_sessions())
 }
 
-#[utoipa::path(
-    get,
-    path = "/sessions/{id}",
-    tag = "sessions",
-    responses(
-        (status = 200, description = "Session stats for the given session ID"),
-        (status = 404, description = "Session not found"),
-    )
-)]
 async fn session_detail_handler(
     State(state): State<Arc<AppState>>,
     axum::extract::Path(id): axum::extract::Path<String>,
@@ -633,45 +543,6 @@ async fn session_detail_handler(
         .get_session(&id)
         .map(Json)
         .ok_or(StatusCode::NOT_FOUND)
-}
-
-// ── MCP tool endpoints ──────────────────────────────────────────
-
-async fn handle_tools_list(State(state): State<Arc<AppState>>) -> Json<serde_json::Value> {
-    let registry = state.tool_registry.read().unwrap();
-    let tools: Vec<serde_json::Value> = registry
-        .list_tools()
-        .iter()
-        .map(|t| {
-            serde_json::json!({
-                "name": t.name,
-                "description": t.description,
-                "input_schema": t.input_schema,
-                "plugin": t.plugin,
-            })
-        })
-        .collect();
-    Json(json!({ "tools": tools }))
-}
-
-async fn handle_tools_call(
-    State(state): State<Arc<AppState>>,
-    Json(body): Json<serde_json::Value>,
-) -> Json<serde_json::Value> {
-    let tool_name = body.get("name").and_then(|v| v.as_str()).unwrap_or("");
-    let input = body
-        .get("input")
-        .cloned()
-        .unwrap_or(serde_json::Value::Null);
-
-    let registry = state.tool_registry.read().unwrap();
-    let result = portail_claude_plugins::bridge::execute_tool(&registry, tool_name, &input);
-
-    Json(json!({
-        "output": result.output,
-        "is_error": result.is_error,
-        "latency_ms": result.latency.as_millis() as u64,
-    }))
 }
 
 #[cfg(test)]
@@ -687,7 +558,9 @@ mod tests {
             event_log: Arc::new(crate::events::EventLog::new(100)),
             cdn_cache: None,
             hooks: Arc::new(crate::hooks::HookStore::new()),
+            base_hooks: Arc::new(crate::base_hooks::default_registry()),
             a2a_tasks: Arc::new(crate::a2a::TaskStore::new()),
+            a2a_registry: Arc::new(crate::a2a::registry::AgentRegistry::new()),
             dns_store: Arc::new(crate::dns::DnsStore::new()),
             doh_client: None,
             network_isolation: Arc::new(crate::dns::NetworkIsolation::default()),
@@ -724,7 +597,6 @@ mod tests {
             loop_runner: loopeng::SharedLoopEngine::new(loopeng::LoopEngineConfig::default()),
             inference_engine: None,
             pkg_ctx_memory: tokio::sync::Mutex::new(pkg_ctx::memory::PkgCtxMemory::new().unwrap()),
-            base_hooks: Arc::new(crate::base_hooks::default_registry()),
             tool_registry: Arc::new(std::sync::RwLock::new(
                 portail_claude_plugins::bridge::ToolRegistry::new(),
             )),
@@ -960,90 +832,41 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn a2a_rpc_tasks_send_returns_ok() {
+    async fn a2a_task_create_returns_201() {
         let app = build_router(test_state());
-        let rpc = serde_json::json!({
-            "jsonrpc": "2.0",
-            "id": 1,
-            "method": "tasks/send",
-            "params": {
-                "message": {"role": "user", "parts": [{"type": "text", "text": "hello"}]}
-            }
+        let task_json = serde_json::json!({
+            "messages": [{"role": "user", "parts": [{"type": "text", "text": "hello"}]}]
         });
         let req = Request::builder()
-            .uri("/a2a")
+            .uri("/a2a/tasks")
             .method("POST")
             .header("content-type", "application/json")
-            .body(Body::from(serde_json::to_vec(&rpc).unwrap()))
+            .body(Body::from(serde_json::to_vec(&task_json).unwrap()))
             .unwrap();
         let resp = app.oneshot(req).await.unwrap();
-        assert_eq!(resp.status(), StatusCode::OK);
+        assert_eq!(resp.status(), StatusCode::CREATED);
         let body = axum::body::to_bytes(resp.into_body(), 100_000)
             .await
             .unwrap();
-        let val: serde_json::Value = serde_json::from_slice(&body).unwrap();
-        assert_eq!(val["jsonrpc"], "2.0");
-        assert_eq!(val["id"], 1);
-        assert!(val["result"].is_object());
+        let task: serde_json::Value = serde_json::from_slice(&body).unwrap();
+        assert_eq!(task["status"], "submitted");
+        assert!(!task["id"].as_str().unwrap().is_empty());
     }
 
     #[tokio::test]
-    async fn a2a_rpc_task_not_found() {
+    async fn a2a_task_get_returns_404_for_unknown() {
         let app = build_router(test_state());
-        let rpc = serde_json::json!({
-            "jsonrpc": "2.0",
-            "id": 2,
-            "method": "tasks/get",
-            "params": {"id": "nonexistent"}
-        });
         let req = Request::builder()
-            .uri("/a2a")
-            .method("POST")
-            .header("content-type", "application/json")
-            .body(Body::from(serde_json::to_vec(&rpc).unwrap()))
+            .uri("/a2a/tasks/nonexistent")
+            .body(Body::empty())
             .unwrap();
         let resp = app.oneshot(req).await.unwrap();
-        assert_eq!(resp.status(), StatusCode::OK);
-        let body = axum::body::to_bytes(resp.into_body(), 100_000)
-            .await
-            .unwrap();
-        let val: serde_json::Value = serde_json::from_slice(&body).unwrap();
-        assert!(val["error"].is_object());
-        assert_eq!(val["error"]["code"], -32001);
-    }
-
-    #[tokio::test]
-    async fn a2a_rpc_method_not_found() {
-        let app = build_router(test_state());
-        let rpc = serde_json::json!({
-            "jsonrpc": "2.0",
-            "id": 3,
-            "method": "bogus/method",
-            "params": {}
-        });
-        let req = Request::builder()
-            .uri("/a2a")
-            .method("POST")
-            .header("content-type", "application/json")
-            .body(Body::from(serde_json::to_vec(&rpc).unwrap()))
-            .unwrap();
-        let resp = app.oneshot(req).await.unwrap();
-        let body = axum::body::to_bytes(resp.into_body(), 100_000)
-            .await
-            .unwrap();
-        let val: serde_json::Value = serde_json::from_slice(&body).unwrap();
-        assert_eq!(val["error"]["code"], -32601);
+        assert_eq!(resp.status(), StatusCode::NOT_FOUND);
     }
 }
 
 // ── Loop handlers ────────────────────────────────────────────────
 
-#[utoipa::path(
-    get,
-    path = "/v1/loop/status",
-    tag = "loop",
-    responses((status = 200, description = "Loop engine status: schedules, runs, circuit breaker, memory"))
-)]
 async fn loop_status_handler(State(state): State<Arc<AppState>>) -> Json<serde_json::Value> {
     let status = state.loop_runner.with_engine(|e| {
         serde_json::json!({
@@ -1059,15 +882,6 @@ async fn loop_status_handler(State(state): State<Arc<AppState>>) -> Json<serde_j
     Json(status)
 }
 
-#[utoipa::path(
-    post,
-    path = "/v1/loop/run/{schedule}",
-    tag = "loop",
-    responses(
-        (status = 200, description = "Loop iteration completed"),
-        (status = 400, description = "Invalid schedule name or run failed"),
-    )
-)]
 async fn loop_run_handler(
     State(state): State<Arc<AppState>>,
     axum::extract::Path(schedule): axum::extract::Path<String>,
@@ -1088,15 +902,6 @@ async fn loop_run_handler(
 
 // ── pkg-ctx handlers ─────────────────────────────────────────────
 
-#[utoipa::path(
-    post,
-    path = "/v1/pkg-ctx/search",
-    tag = "pkg-ctx",
-    responses(
-        (status = 200, description = "Search results from documentation context"),
-        (status = 400, description = "Missing library or topic parameter"),
-    )
-)]
 async fn pkg_ctx_search_handler(
     State(state): State<Arc<AppState>>,
     Json(body): Json<serde_json::Value>,
@@ -1118,12 +923,6 @@ async fn pkg_ctx_search_handler(
     Json(serde_json::json!({ "result": text, "count": results.len() })).into_response()
 }
 
-#[utoipa::path(
-    get,
-    path = "/v1/pkg-ctx/list",
-    tag = "pkg-ctx",
-    responses((status = 200, description = "List of indexed packages available for context search"))
-)]
 async fn pkg_ctx_list_handler(State(state): State<Arc<AppState>>) -> Json<serde_json::Value> {
     let summary = state.pkg_ctx_memory.lock().await.summarize();
     Json(serde_json::json!({ "summary": summary }))
@@ -1131,12 +930,29 @@ async fn pkg_ctx_list_handler(State(state): State<Arc<AppState>>) -> Json<serde_
 
 // ── OpenAPI / Swagger ────────────────────────────────────────────
 
-/// Returns the auto-generated OpenAPI 3.1 spec from utoipa annotations.
-async fn openapi_json() -> Json<&'static serde_json::Value> {
-    Json(API_SPEC_JSON.get().expect("API_SPEC_JSON not initialized"))
-}
-
-/// Serves the Scalar API Reference UI at /api-docs/.
-async fn scalar_ui_html() -> impl IntoResponse {
-    Html(include_str!("../docs/api-docs/scalar.html"))
+async fn openapi_json() -> Json<serde_json::Value> {
+    Json(serde_json::json!({
+        "openapi": "3.1.0",
+        "info": {
+            "title": "Portail API",
+            "version": env!("CARGO_PKG_VERSION"),
+            "description": "Unified proxy/gateway: AI Gateway + MCP Gateway + CDN cache + Agent protocol"
+        },
+        "servers": [{"url": "/"}],
+        "paths": {
+            "/healthz": { "get": { "summary": "Liveness check", "tags": ["health"] } },
+            "/readyz": { "get": { "summary": "Readiness check", "tags": ["health"] } },
+            "/v1/loop/status": { "get": { "summary": "Loop engine status", "tags": ["loop"] } },
+            "/v1/loop/run/{schedule}": { "post": { "summary": "Run a loop iteration", "tags": ["loop"] } },
+            "/v1/pkg-ctx/search": { "post": { "summary": "Search documentation context", "tags": ["pkg-ctx"] } },
+            "/v1/pkg-ctx/list": { "get": { "summary": "List available packages", "tags": ["pkg-ctx"] } },
+            "/a2c/chat": { "post": { "summary": "Agent-to-Consumer chat", "tags": ["chat"] } },
+        },
+        "tags": [
+            {"name": "health", "description": "Health check endpoints"},
+            {"name": "loop", "description": "Loop engine management"},
+            {"name": "pkg-ctx", "description": "Documentation context search"},
+            {"name": "chat", "description": "AI chat (A2C / orchestrator)"},
+        ]
+    }))
 }

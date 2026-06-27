@@ -110,7 +110,7 @@ pub fn run_doctor() -> Result<()> {
             issues
         );
     }
-    println!("\n  Run 'portail serve' to start, or 'portail' for the TUI.");
+    println!("\n  Run 'portail serve' to start the server.");
 
     Ok(())
 }

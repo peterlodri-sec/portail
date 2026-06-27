@@ -20,6 +20,7 @@ mod v0_2_integration {
             hooks: Arc::new(hooks::HookStore::new()),
             base_hooks: Arc::new(portail::base_hooks::default_registry()),
             a2a_tasks: Arc::new(a2a::TaskStore::new()),
+            a2a_registry: Arc::new(a2a::registry::AgentRegistry::new()),
             dns_store: Arc::new(dns::DnsStore::new()),
             doh_client: None,
             network_isolation: Arc::new(dns::NetworkIsolation::default()),

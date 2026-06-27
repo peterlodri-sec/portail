@@ -41,7 +41,6 @@ pub mod dns;
 pub mod drift;
 pub mod events;
 pub mod file_cache;
-pub mod fuzz_route;
 pub mod gateway;
 pub mod godfather;
 pub mod graphql;
@@ -81,6 +80,7 @@ pub struct AppState {
     pub hooks: Arc<hooks::HookStore>,
     pub base_hooks: Arc<base_hooks::BaseHookRegistry>,
     pub a2a_tasks: Arc<a2a::TaskStore>,
+    pub a2a_registry: Arc<a2a::registry::AgentRegistry>,
     pub dns_store: Arc<dns::DnsStore>,
     pub doh_client: Option<Arc<dns::DohClient>>,
     pub network_isolation: Arc<dns::NetworkIsolation>,
@@ -118,6 +118,7 @@ impl AppState {
             hooks: Arc::new(hooks::HookStore::new()),
             base_hooks: Arc::new(base_hooks::default_registry()),
             a2a_tasks: Arc::new(a2a::TaskStore::new()),
+            a2a_registry: Arc::new(a2a::registry::AgentRegistry::new()),
             dns_store: Arc::new(dns::DnsStore::new()),
             doh_client: None,
             network_isolation: Arc::new(dns::NetworkIsolation::default()),
