@@ -7,17 +7,12 @@ fn default_true() -> bool {
     true
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
 #[serde(rename_all = "snake_case")]
 pub enum InjectMode {
+    #[default]
     Prepend,
     Append,
-}
-
-impl Default for InjectMode {
-    fn default() -> Self {
-        Self::Prepend
-    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = [".", "creative_tui", "crates/pkg-ctx", "crates/portail-agents", "crates/portail-plugin-sdk", "crates/portail-vaked", "crates/loop-state-manager", "crates/loopeng", "crates/portail-mcp-wasm"]
+members = [".", "creative_tui", "crates/pkg-ctx", "crates/portail-agents", "crates/portail-claude-plugins", "crates/portail-plugin-sdk", "crates/portail-vaked", "crates/loop-state-manager", "crates/loopeng", "crates/portail-mcp-wasm"]
 
 [workspace.package]
 edition = "2024"
@@ -55,6 +55,7 @@ loop-state-manager = { path = "crates/loop-state-manager" }
 loopeng = { path = "crates/loopeng" }
 pkg-ctx = { path = "crates/pkg-ctx" }
 portail-mcp-wasm = { path = "crates/portail-mcp-wasm" }
+portail-claude-plugins = { path = "crates/portail-claude-plugins" }
 rustc-hash = "=2.1.2"
 chrono = { version = "=0.4.45", features = ["serde"] }
 regex = "=1.12.4"
