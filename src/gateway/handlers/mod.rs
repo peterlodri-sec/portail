@@ -16,7 +16,7 @@
 //! 3. Register it in `registry()`
 //! 4. Add a `provider_path()` entry in `target_router.rs` if the API endpoint differs
 
-use super::features::{self, Support};
+use super::features::{self, FallbackStrategy, Support};
 use super::schema::{self, ProviderAdapter};
 use crate::target_router;
 use async_trait::async_trait;
@@ -121,6 +121,7 @@ static REGISTRY: OnceLock<Vec<Box<dyn ProviderHandler>>> = OnceLock::new();
 pub fn registry() -> &'static [Box<dyn ProviderHandler>] {
     REGISTRY.get_or_init(|| {
         vec![
+            Box::new(LocalInferenceHandler),
             Box::new(OpenAiHandler),
             Box::new(DeepSeekHandler),
             Box::new(AnthropicHandler),
@@ -270,6 +271,60 @@ fn is_request_streaming(body: &[u8]) -> bool {
         }
     }
     false
+}
+
+// ── Local Inference Handler (mistral.rs / candle) ────────────────────
+
+struct LocalInferenceHandler;
+
+#[async_trait]
+impl ProviderHandler for LocalInferenceHandler {
+    fn name(&self) -> &'static str {
+        "local"
+    }
+
+    fn capabilities(&self) -> Vec<(&'static str, Support)> {
+        vec![
+            ("streaming", Support::Native),
+            ("tools", Support::Fallback(FallbackStrategy::StripWarn)),
+            ("frequency_penalty", Support::Native),
+            ("temperature", Support::Native),
+            ("max_tokens", Support::Native),
+            ("top_p", Support::Native),
+        ]
+    }
+
+    async fn handle(
+        &self,
+        _upstream: &str,
+        _parts: axum::http::request::Parts,
+        body_bytes: Bytes,
+    ) -> Response {
+        // Parse the OpenAI-compatible request
+        let req: crate::local_inference::ChatCompletionRequest =
+            match serde_json::from_slice(&body_bytes) {
+                Ok(r) => r,
+                Err(e) => {
+                    return (
+                    StatusCode::BAD_REQUEST,
+                    axum::Json(
+                        serde_json::json!({"error": {"message": format!("invalid request: {e}")}}),
+                    ),
+                )
+                    .into_response();
+                }
+            };
+
+        // Forward to local inference engine (placeholder — engine integration in Phase 2)
+        match crate::local_inference::chat_completion_placeholder(req).await {
+            Ok(resp) => (StatusCode::OK, axum::Json(serde_json::json!(resp))).into_response(),
+            Err(e) => (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                axum::Json(serde_json::json!({"error": {"message": e.to_string()}})),
+            )
+                .into_response(),
+        }
+    }
 }
 
 // ── OpenAI Handler (canonical baseline) ──────────────────────────────
