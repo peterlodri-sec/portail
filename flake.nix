@@ -193,6 +193,16 @@
           };
 
           apps = {
+            default = {
+              type = "app";
+              program = pkgs.writeShellScriptBin "portail-serve" ''
+                exec ${self'.packages.portail}/bin/portail serve "$@"
+              '';
+              meta = {
+                description = "Start the Portail proxy/gateway server (default app)";
+                mainProgram = "portail-serve";
+              };
+            };
             ohmy-mux = opencodeMux.appMux;
             opencode-mux = opencodeMux.appNoMux;
           };
