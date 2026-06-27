@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = [".", "creative_tui", "crates/pkg-ctx", "crates/portail-agents", "crates/portail-claude-plugins", "crates/portail-plugin-sdk", "crates/portail-vaked", "crates/loop-state-manager", "crates/loopeng", "crates/portail-mcp-wasm"]
+members = [".", "crates/pkg-ctx", "crates/portail-agents", "crates/portail-plugin-sdk", "crates/portail-vaked", "crates/loop-state-manager", "crates/loopeng", "crates/portail-mcp-gateway"]
 
 [workspace.package]
 edition = "2024"
@@ -30,11 +30,9 @@ serde = { version = "=1.0.228", features = ["derive"] }
 serde_json = "=1.0.150"
 toml = "=0.8.23"
 clap = { version = "=4.6.1", features = ["derive", "env"] }
-clap_complete = "=4.5.44"
+clap_complete = "=4.6.5"
 moka = { version = "=0.12.15", features = ["future"] }
-async-nats = "=0.48.0"
-utoipa = { version = "5", features = ["axum_extras"] }
-utoipa-axum = "0.2"
+async-nats = "=0.39.0"
 tracing = "=0.1.44"
 tracing-subscriber = { version = "=0.3.23", features = ["env-filter", "json"] }
 tracing-appender = "=0.2.5"
@@ -53,12 +51,9 @@ portail-plugin-sdk = { path = "crates/portail-plugin-sdk" }
 portail-vaked = { path = "crates/portail-vaked" }
 loop-state-manager = { path = "crates/loop-state-manager" }
 loopeng = { path = "crates/loopeng" }
+portail-mcp-gateway = { path = "crates/portail-mcp-gateway" }
 pkg-ctx = { path = "crates/pkg-ctx" }
-portail-mcp-wasm = { path = "crates/portail-mcp-wasm" }
-portail-claude-plugins = { path = "crates/portail-claude-plugins" }
 rustc-hash = "=2.1.2"
-ratatui = "=0.29.0"
-crossterm = { version = "=0.28.1", features = ["event-stream"] }
 chrono = { version = "=0.4.45", features = ["serde"] }
 regex = "=1.12.4"
 walkdir = "=2.5.0"
@@ -92,13 +87,6 @@ rusqlite = { version = "=0.33.0", features = ["bundled"] }
 
 # v2.x — sqlx async SQLite (primary backend, compile-time checked queries)
 sqlx = { version = "=0.9.0", features = ["runtime-tokio", "sqlite", "migrate"] }
-
-# v2.x — BOW encrypted secret store
-aes-gcm = "0.10"
-argon2 = "0.5"
-zeroize = { version = "1.8", features = ["derive"] }
-rpassword = "7"
-thiserror = "2"
 
 # v0.2 — OpenTelemetry OTLP
 opentelemetry = "=0.27.1"
@@ -169,7 +157,6 @@ tokio = { workspace = true }
 
 [build-dependencies]
 chrono = "=0.4.45"
-utoipa = "5"
 
 [[bench]]
 name = "hot_paths"
@@ -181,8 +168,8 @@ copyright = "2026, Peter Lodri <peterlodri-sec@github.com>"
 license-file = ["LICENSE", "4"]
 extended-description = """\
 Portail is a unified proxy and gateway for AI services, MCP tools, \
-and CDN caching. Built in Rust with zero-copy I/O, SIMD-optimized \
-hashing, and a live TUI dashboard."""
+and CDN caching. Built in Rust with zero-copy I/O and SIMD-optimized \
+hashing."""
 depends = "$auto"
 section = "net"
 priority = "optional"

@@ -92,6 +92,23 @@ pub fn build_router(state: Arc<AppState>) -> Router {
             "/a2a/subscribe",
             axum::routing::post(crate::a2a::handle_rpc_stream),
         )
+        .route(
+            "/a2a/agents",
+            axum::routing::get(crate::a2a::registry::handle_list),
+        )
+        .route(
+            "/a2a/agents",
+            axum::routing::post(crate::a2a::registry::handle_register),
+        )
+        .route("/a2a/agents/{id}", get(crate::a2a::registry::handle_get))
+        .route(
+            "/a2a/agents/{id}",
+            delete(crate::a2a::registry::handle_deregister),
+        )
+        .route(
+            "/a2a/tasks",
+            axum::routing::post(crate::a2a::handle_task_create),
+        )
         .route("/a2c/chat", axum::routing::post(crate::a2c::handle_chat))
         // ── v4: local inference (OpenAI-compatible) ──
         .route(

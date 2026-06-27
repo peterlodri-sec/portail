@@ -8,12 +8,6 @@ use std::process::Command;
 
 pub fn run_dev(action: &super::DevAction) -> Result<()> {
     match action {
-        super::DevAction::Dashboard => {
-            // Launch the existing TUI dashboard
-            let mut dashboard = super::dashboard::Dashboard::new();
-            dashboard.run_tui()?;
-            Ok(())
-        }
         super::DevAction::Check => {
             cmd("cargo", &["check"])?;
             cmd("cargo", &["check", "--features", "jemalloc"])?;

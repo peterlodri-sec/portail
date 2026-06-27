@@ -1,3 +1,5 @@
+pub mod registry;
+
 use crate::types::BoundedMeta;
 use axum::extract::State;
 use axum::http::StatusCode;
@@ -497,12 +499,22 @@ async fn handle_tasks_send(
         .update_state(&task.id, TaskState::Working)
         .unwrap_or(task);
 
+    let skill = req.get("skill").and_then(|v| v.as_str());
+    let routed = skill.and_then(|tag| state.a2a_registry.find_by_skill(tag));
+
+    let mut metadata = BoundedMeta::from_iter([("task_id".into(), id.clone())]);
+    if let Some(ref agent) = routed {
+        let _ = metadata.insert("routed_to".into(), agent.id.clone());
+        let _ = metadata.insert("routed_url".into(), agent.url.clone());
+    }
+
+    let task = state.a2a_tasks.create(id);
     state.event_log.publish(crate::events::AgentEvent {
         agent_id: "a2a".into(),
         event_type: "task_received".into(),
         severity: "info".into(),
         timestamp: 0,
-        metadata: BoundedMeta::from_iter([("task_id".into(), task.id.clone())]),
+        metadata,
     });
 
     rpc_result(id.clone(), serde_json::to_value(task).unwrap())

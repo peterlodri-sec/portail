@@ -26,6 +26,18 @@ pub fn call_plugin_hooks(
         Err(_) => return HookResult::pass_through(),
     };
 
+    let hook_str = match hook {
+        HookPoint::PreRequest => "pre_request",
+        HookPoint::PostResponse => "post_response",
+        HookPoint::PreHookInject => "pre_hook_inject",
+        HookPoint::PostHookInject => "post_hook_inject",
+        HookPoint::OnError => "on_error",
+        HookPoint::OnAuth => "on_auth",
+    };
+    let request_id_str = request_id.to_string();
+    let provider_str = provider.map(|s| s.to_string());
+    let model_str = model.map(|s| s.to_string());
+
     let mut result = HookResult::pass_through();
 
     for name in registry.list() {
@@ -37,23 +49,15 @@ pub fn call_plugin_hooks(
 
         // Check if plugin declares this hook
         let plugin_hooks = plugin_hook_list(plugin);
-        let hook_str = match hook {
-            HookPoint::PreRequest => "pre_request",
-            HookPoint::PostResponse => "post_response",
-            HookPoint::PreHookInject => "pre_hook_inject",
-            HookPoint::PostHookInject => "post_hook_inject",
-            HookPoint::OnError => "on_error",
-            HookPoint::OnAuth => "on_auth",
-        };
         if !plugin_hooks.iter().any(|h| h == hook_str) {
             continue;
         }
 
         let ctx = HookContext {
             hook: hook.clone(),
-            request_id: request_id.to_string(),
-            provider: provider.map(|s| s.to_string()),
-            model: model.map(|s| s.to_string()),
+            request_id: request_id_str.clone(),
+            provider: provider_str.clone(),
+            model: model_str.clone(),
             body: if result.body.is_some() {
                 result.body.clone()
             } else {

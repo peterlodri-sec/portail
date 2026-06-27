@@ -1,6 +1,5 @@
 pub mod amberify;
 pub mod complexity;
-pub mod dashboard;
 pub mod dev;
 pub mod doctor;
 pub mod guide;
@@ -17,7 +16,7 @@ use std::path::PathBuf;
     name = "portail",
     about = "Unified proxy/gateway: AI Gateway + MCP Gateway + CDN cache",
     version,
-    long_about = "Portail is a unified proxy and gateway for AI services, MCP tools, and CDN caching.\n\nRun without arguments to launch the interactive TUI dashboard."
+    long_about = "Portail is a unified proxy and gateway for AI services, MCP tools, and CDN caching.\n\nRun 'portail serve' to start the server or 'portail --help' for commands."
 )]
 pub struct Cli {
     #[command(subcommand)]
@@ -123,17 +122,6 @@ pub enum Commands {
         command: crate::spec_verify::SpecCommand,
 
         /// CI mode: write report, always exit 0
-        #[arg(long)]
-        ci: bool,
-    },
-
-    /// Fuzz all routes with malformed input (crash detector)
-    FuzzRoute {
-        /// Proxy URL to fuzz
-        #[arg(long, default_value = "http://localhost:8787")]
-        url: String,
-
-        /// CI mode: write report, exit 1 on crash
         #[arg(long)]
         ci: bool,
     },
@@ -311,10 +299,6 @@ pub enum CacheAction {
 }
 
 impl Cli {
-    pub fn is_interactive(&self) -> bool {
-        self.command.is_none()
-    }
-
     pub fn is_server(&self) -> bool {
         matches!(self.command, Some(Commands::Serve))
     }
@@ -332,9 +316,6 @@ pub enum TargetAction {
 
 #[derive(Subcommand, Debug, Clone)]
 pub enum DevAction {
-    /// Interactive dev dashboard (TUI)
-    #[command(name = "dashboard")]
-    Dashboard,
     /// Cargo check across all allocator variants
     Check,
     /// Run tests (all suites)
