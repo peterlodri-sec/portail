@@ -1,16 +1,18 @@
-# portail/portail.nu — Nushell wrappers for the portail CLI
+# portail/portail.nu — CLI wrappers + fleet ops for Portail
 # Usage: use portail.nu
-#
-# Provides typed, composable nushell commands that wrap `cargo run --release --`
-# with structured output. Fleet operations (probe, deploy, drift) use par-each.
 
 const BIN = "cargo run --release --"
+const BENCH_HOST = "bench-node"
+const BENCH_IP = "178.105.245.135"
+const PORTAIL_SERVICE = "portail-staging"
+const HEALTH_URL = "http://localhost:8787/health"
+const REMOTE_BINARY = "/opt/portail-staging/target/release/portail"
 
 # ── Server ────────────────────────────────────────────────────────
 
 def "portail serve" [
-    --port (-p): int = 8787     # Listen port
-    --config (-c): string        # Config file path
+    --port (-p): int = 8787
+    --config (-c): string
 ] {
     let args = ["serve" $"--port=($port)"]
     let args = if $config != null { $args | merge [$"--config=($config)"] } else { $args }
@@ -59,8 +61,8 @@ def "portail doctor" [] {
 # ── Events ────────────────────────────────────────────────────────
 
 def "portail events" [
-    --tail (-t): int = 50       # Number of events to show
-    --follow (-f)               # Follow event stream
+    --tail (-t): int = 50
+    --follow (-f)
 ] {
     if $follow {
         ^cargo run --release -- events --tail $tail --follow
@@ -91,24 +93,19 @@ def "portail config validate" [] {
 # ── Hooks ─────────────────────────────────────────────────────────
 
 def "portail hooks list" [] {
-    let raw = (^cargo run --release -- hooks list | complete)
-    if $raw.exit_code == 0 {
-        $raw.stdout
-    } else {
-        print $raw.stderr
-    }
+    ^cargo run --release -- hooks list
 }
 
 def "portail hooks create" [
-    name: string                 # Hook name
-    --event: string = "request"  # Event type
-    --script: string             # Script path
+    name: string
+    --event: string = "request"
+    --script: string
 ] {
     ^cargo run --release -- hooks create $name --event $event --script $script
 }
 
 def "portail hooks delete" [
-    id: string                   # Hook ID
+    id: string
 ] {
     ^cargo run --release -- hooks delete $id
 }
@@ -133,7 +130,7 @@ def "portail target add" [
     name: string
     --provider: string = "openai"
     --url: string
-    --models: string             # Comma-separated model list
+    --models: string
 ] {
     let args = ["target" "add" $name $"--provider=($provider)" $"--url=($url)"]
     let args = if $models != null { $args | merge [$"--models=($models)"] } else { $args }
@@ -166,36 +163,112 @@ def "portail fuzz-route" [
     ^cargo run --release -- fuzz-route --url $url
 }
 
-# ── Fleet operations (SSH into bench-node) ────────────────────────
+# ── Fleet: probe ──────────────────────────────────────────────────
 
 def "portail probe" [] {
-    use fleet.nu *
-    probe-all
+    let service = (env PORTAIL_SERVICE | default $PORTAIL_SERVICE)
+    let checks = [
+        { label: "service", cmd: $"systemctl is-active ($service)" }
+        { label: "health",  cmd: $"curl -sf ($HEALTH_URL)" }
+        { label: "disk",    cmd: "df -h / | tail -1" }
+        { label: "load",    cmd: "cat /proc/loadavg" }
+        { label: "memory",  cmd: "free -h | awk '/^Mem:/{print $3\"/\"$2\" used, \" $4\" free\"}'" }
+    ]
+
+    print $"(ansi cyan_bold)── Probing (ansi yellow_bold)($BENCH_HOST)(ansi cyan_bold) ──(ansi reset)\n"
+
+    $checks | par-each { |check|
+        let result = (do -i { ssh $BENCH_HOST $check.cmd } | complete)
+        let status = if $result.exit_code == 0 { (ansi green_bold) + "ok" } else { (ansi red_bold) + "fail" }
+        let output = if $result.stdout != "" { $result.stdout | str trim } else { $result.stderr | str trim }
+        { check: $check.label, status: status, output: output }
+    } | table --index false
 }
+
+# ── Fleet: deploy ─────────────────────────────────────────────────
 
 def "portail deploy" [] {
-    use fleet.nu *
-    deploy-staging
+    let service = (env PORTAIL_SERVICE | default $PORTAIL_SERVICE)
+
+    print $"(ansi cyan_bold)── Building release ──(ansi reset)"
+    cargo build --release
+    if $env.LAST_EXIT_CODE != 0 {
+        print $"(ansi red_bold)Build failed.(ansi reset)"
+        return
+    }
+
+    let bin = ([$env.PWD, "target", "release", "portail"] | path join)
+    if not ($bin | path exists) {
+        print $"(ansi red_bold)Binary not found at ($bin)(ansi reset)"
+        return
+    }
+
+    print $"(ansi cyan_bold)── Rsyncing to ($BENCH_HOST) ──(ansi reset)"
+    rsync -azP --chmod=+x $bin $"($BENCH_HOST):($REMOTE_BINARY)"
+    if $env.LAST_EXIT_CODE != 0 {
+        print $"(ansi red_bold)Rsync failed.(ansi reset)"
+        return
+    }
+
+    print $"(ansi cyan_bold)── Restarting ($service) ──(ansi reset)"
+    ssh $BENCH_HOST $"sudo systemctl restart ($service)"
+    if $env.LAST_EXIT_CODE == 0 {
+        print $"(ansi green_bold)Deploy complete.(ansi reset)"
+    } else {
+        print $"(ansi red_bold)Restart failed.(ansi reset)"
+    }
 }
+
+# ── Fleet: drift ──────────────────────────────────────────────────
 
 def "portail drift" [] {
-    use fleet.nu *
-    drift-check
+    let local_version = (open Cargo.toml | get package.version)
+    let remote_toml = (do -i {
+        ssh $BENCH_HOST $"grep '^version' /opt/portail-staging/Cargo.toml | head -1"
+    } | complete | get stdout | str trim)
+    let remote_version = ($remote_toml | str replace --all 'version\s*=\s*"' "" | str replace --all '"' "")
+
+    let match = $local_version == $remote_version
+    let verdict = if $match {
+        $"(ansi green_bold)versions match(ansi reset)"
+    } else {
+        $"(ansi red_bold)DRIFT(ansi reset)"
+    }
+
+    { local: $local_version, remote: $remote_version, verdict: $verdict } | table --index false
 }
 
+# ── Fleet: restart ────────────────────────────────────────────────
+
 def "portail restart" [] {
-    use fleet.nu *
-    restart-staging
+    let service = (env PORTAIL_SERVICE | default $PORTAIL_SERVICE)
+    print $"(ansi cyan_bold)── Restarting ($service) on ($BENCH_HOST) ──(ansi reset)"
+    ssh $BENCH_HOST $"sudo systemctl restart ($service)"
+    if $env.LAST_EXIT_CODE == 0 {
+        print $"(ansi green_bold)Service restarted.(ansi reset)"
+    } else {
+        print $"(ansi red_bold)Restart failed.(ansi reset)"
+    }
 }
+
+# ── Fleet: logs ───────────────────────────────────────────────────
 
 def "portail logs" [
     --lines (-n): int = 80
 ] {
-    use fleet.nu *
-    logs-staging --lines $lines
+    let service = (env PORTAIL_SERVICE | default $PORTAIL_SERVICE)
+    ssh $BENCH_HOST $"journalctl -u ($service) -f --no-pager -n ($lines)"
 }
 
+# ── Fleet: bench status ──────────────────────────────────────────
+
 def "portail bench" [] {
-    use fleet.nu *
-    bench-status
+    let service = (env PORTAIL_SERVICE | default $PORTAIL_SERVICE)
+    let cmd = $"echo '--- load ---' && cat /proc/loadavg && echo '--- memory ---' && free -h | head -2 && echo '--- disk ---' && df -h / | head -2 && echo '--- process ---' && systemctl is-active ($service)"
+    let result = (do -i { ssh $BENCH_HOST $cmd } | complete)
+    if $result.exit_code == 0 {
+        print $result.stdout
+    } else {
+        print $"(ansi red_bold)bench-status failed: ($result.stderr)(ansi reset)"
+    }
 }
