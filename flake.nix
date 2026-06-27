@@ -69,6 +69,10 @@
               ++ pkgs.lib.optionals pkgs.stdenv.isDarwin
                 [ Security SystemConfiguration CoreFoundation ];
           };
+
+          opencodeMux = import ./nix/opencode-mux.nix {
+            inherit pkgs;
+          };
         in
         {
           treefmt = {
@@ -187,6 +191,15 @@
               echo "portail-dev-light — minimal dev shell"
             '';
           };
+
+          apps = {
+            ohmy-mux = opencodeMux.appMux;
+            opencode-mux = opencodeMux.appNoMux;
+          };
+          # Ops shell: nushell + zellij + opencode (no rust toolchain).
+          # `nix develop .#opencode-mux` enters a fast shell ready for
+          # `ohmy-slim mux-launch` or `nix run .#ohmy-mux`.
+          devShells.opencode-mux = opencodeMux.shell;
         };
     };
 }
