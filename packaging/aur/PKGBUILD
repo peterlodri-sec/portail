@@ -1,18 +1,19 @@
 # Maintainer: Peter Lodri <peterlodri-sec@github.com>
 pkgname=portail
-pkgver=0.1.0
+pkgver=2.1.0
 pkgrel=1
 pkgdesc="Unified proxy/gateway: AI Gateway + MCP Gateway + CDN cache"
 arch=('x86_64' 'aarch64')
 url="https://github.com/peterlodri-sec/portail"
 license=('MIT')
-depends=('gcc-libs')
-makedepends=('cargo')
+depends=('gcc-libs' 'openssl' 'zlib' 'zstd')
+makedepends=('cargo' 'pkg-config')
 source=("$pkgname-$pkgver.tar.gz::$url/archive/refs/tags/v$pkgver.tar.gz")
-sha256sums=('SKIP')
+sha256sums=('64dffd740f4b07063a15a1dfc2f472b66ec371c260b372c2657e9b85ba89769d')
 
 prepare() {
   cd "$pkgname-$pkgver"
+  # Fetch dependencies for target architecture
   cargo fetch --locked --target "$CARCH-unknown-linux-gnu"
 }
 
@@ -20,6 +21,12 @@ build() {
   cd "$pkgname-$pkgver"
   export RUSTUP_TOOLCHAIN=stable
   export CARGO_TARGET_DIR=target
+  
+  # Cross-compilation support for aarch64
+  if [[ "$CARCH" == "aarch64" ]]; then
+    export CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc
+  fi
+  
   cargo build --release --locked
 }
 
@@ -31,7 +38,22 @@ check() {
 
 package() {
   cd "$pkgname-$pkgver"
+  
+  # Install binary
   install -Dm755 "target/release/$pkgname" "$pkgdir/usr/bin/$pkgname"
+  
+  # Install license
   install -Dm644 LICENSE "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+  
+  # Install documentation
   install -Dm644 README.md "$pkgdir/usr/share/doc/$pkgname/README.md"
+  install -Dm644 CHANGELOG.md "$pkgdir/usr/share/doc/$pkgname/CHANGELOG.md" || true
+  
+  # Create systemd service file (optional, user can enable if desired)
+  # install -Dm644 packaging/systemd/portail.service "$pkgdir/usr/lib/systemd/system/portail.service" || true
+  
+  # Install completions if they exist
+  # install -Dm644 completions/portail.bash "$pkgdir/usr/share/bash-completion/completions/portail" || true
+  # install -Dm644 completions/portail.fish "$pkgdir/usr/share/fish/vendor_completions.d/portail.fish" || true
+  # install -Dm644 completions/_portail "$pkgdir/usr/share/zsh/functions/Completion/Unix/_portail" || true
 }
