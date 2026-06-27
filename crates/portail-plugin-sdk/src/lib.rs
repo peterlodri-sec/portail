@@ -240,7 +240,10 @@ impl VakedFile {
             }
             if let Some(ref services) = target.services {
                 for svc in services {
-                    nix.push_str(&format!("  services.{} = {{\n    enable = true;\n  }};\n", svc));
+                    nix.push_str(&format!(
+                        "  services.{} = {{\n    enable = true;\n  }};\n",
+                        svc
+                    ));
                 }
             }
             if let Some(ref env) = target.env {

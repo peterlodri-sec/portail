@@ -18,7 +18,9 @@ mod layer_tests {
             event_log: Arc::new(events::EventLog::new(100)),
             cdn_cache: None,
             hooks: Arc::new(hooks::HookStore::new()),
+            base_hooks: Arc::new(portail::base_hooks::default_registry()),
             a2a_tasks: Arc::new(a2a::TaskStore::new()),
+            a2a_registry: Arc::new(a2a::registry::AgentRegistry::new()),
             dns_store: Arc::new(dns::DnsStore::new()),
             doh_client: None,
             network_isolation: Arc::new(dns::NetworkIsolation::default()),
@@ -48,16 +50,16 @@ mod layer_tests {
             supervisor: std::sync::Arc::new(portail::supervisor::Supervisor::new(
                 std::sync::Arc::new(portail::events::EventLog::new(100)),
             )),
-            plugin_registry: portail::plugin_hooks::init_plugin_registry(
-                std::path::Path::new("vaked"),
-            ),
-            loop_manager: std::sync::Arc::new(
-                loop_state_manager::LoopStateManager::new("3.0.0"),
-            ),
+            plugin_registry: portail::plugin_hooks::init_plugin_registry(std::path::Path::new(
+                "vaked",
+            )),
+            loop_manager: std::sync::Arc::new(loop_state_manager::LoopStateManager::new("3.0.0")),
             loop_runner: loopeng::SharedLoopEngine::new(loopeng::LoopEngineConfig::default()),
-            pkg_ctx_memory: tokio::sync::Mutex::new(
-                pkg_ctx::memory::PkgCtxMemory::new().unwrap()
-            ),
+            inference_engine: None,
+            pkg_ctx_memory: tokio::sync::Mutex::new(pkg_ctx::memory::PkgCtxMemory::new().unwrap()),
+            tool_registry: Arc::new(std::sync::RwLock::new(
+                portail_claude_plugins::bridge::ToolRegistry::new(),
+            )),
         }
     }
 
@@ -87,6 +89,7 @@ mod layer_tests {
             inject: hooks::InjectMode::Prepend,
             content: "test".into(),
             enabled: true,
+            priority: 0,
         });
         assert_eq!(store.list().len(), 1);
     }
@@ -146,6 +149,7 @@ mod layer_tests {
             inject: hooks::InjectMode::Prepend,
             content: "test".into(),
             enabled: true,
+            priority: 0,
         });
 
         let matched = store.match_message("/test");
@@ -204,6 +208,7 @@ mod layer_tests {
             inject: hooks::InjectMode::Prepend,
             content: "test".into(),
             enabled: true,
+            priority: 0,
         });
         assert_eq!(state.hooks.list().len(), 1);
 
@@ -286,6 +291,7 @@ mod layer_tests {
             inject: hooks::InjectMode::Prepend,
             content: "be helpful".into(),
             enabled: true,
+            priority: 0,
         }];
 
         let modified = hooks::apply_message_hooks(&body, &hooks).unwrap();
@@ -307,6 +313,7 @@ mod layer_tests {
             inject: hooks::InjectMode::Prepend,
             content: "injected".into(),
             enabled: true,
+            priority: 0,
         });
 
         let matched = store.match_event("test-agent", "started");

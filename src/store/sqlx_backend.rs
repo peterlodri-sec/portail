@@ -6,9 +6,9 @@
 
 use std::time::{SystemTime, UNIX_EPOCH};
 
+use super::expand_tilde;
 use super::queries;
 use super::{StoreBackend, StoreConfig, StoredEvent};
-use super::expand_tilde;
 
 pub struct SqlxBackend {
     pub pool: sqlx::SqlitePool,
@@ -27,9 +27,18 @@ impl SqlxBackend {
             .await
             .map_err(|e| e.to_string())?;
 
-        sqlx::query(queries::MIGRATION_SQL).execute(&pool).await.ok();
-        sqlx::query(queries::CREATE_EVENTS_TABLE).execute(&pool).await.map_err(|e| e.to_string())?;
-        sqlx::query(queries::CREATE_INDEXES).execute(&pool).await.ok();
+        sqlx::query(queries::MIGRATION_SQL)
+            .execute(&pool)
+            .await
+            .ok();
+        sqlx::query(queries::CREATE_EVENTS_TABLE)
+            .execute(&pool)
+            .await
+            .map_err(|e| e.to_string())?;
+        sqlx::query(queries::CREATE_INDEXES)
+            .execute(&pool)
+            .await
+            .ok();
 
         Ok(Self { pool })
     }
@@ -53,17 +62,28 @@ impl StoreBackend for SqlxBackend {
     }
 
     fn query(
-        &self, agent_id: Option<&str>, event_type: Option<&str>,
-        since: Option<i64>, limit: Option<usize>,
+        &self,
+        agent_id: Option<&str>,
+        event_type: Option<&str>,
+        since: Option<i64>,
+        limit: Option<usize>,
     ) -> Result<Vec<StoredEvent>, String> {
         let rt = tokio::runtime::Handle::current();
         rt.block_on(async {
             let mut builder = sqlx::QueryBuilder::new(super::queries::SELECT_EVENTS_BASE);
-            if let Some(a) = agent_id { builder.push(" AND agent_id = ").push_bind(a); }
-            if let Some(e) = event_type { builder.push(" AND event_type = ").push_bind(e); }
-            if let Some(s) = since { builder.push(" AND timestamp >= ").push_bind(s); }
+            if let Some(a) = agent_id {
+                builder.push(" AND agent_id = ").push_bind(a);
+            }
+            if let Some(e) = event_type {
+                builder.push(" AND event_type = ").push_bind(e);
+            }
+            if let Some(s) = since {
+                builder.push(" AND timestamp >= ").push_bind(s);
+            }
             builder.push(" ORDER BY id DESC");
-            if let Some(l) = limit { builder.push(format!(" LIMIT {}", l.min(10000))); }
+            if let Some(l) = limit {
+                builder.push(format!(" LIMIT {}", l.min(10000)));
+            }
 
             let rows = builder
                 .build_query_as::<SqlxEventRow>()
@@ -78,13 +98,18 @@ impl StoreBackend for SqlxBackend {
         let rt = tokio::runtime::Handle::current();
         rt.block_on(async {
             let (count,): (i64,) = sqlx::query_as(queries::COUNT_EVENTS)
-                .fetch_one(&self.pool).await.map_err(|e| e.to_string())?;
+                .fetch_one(&self.pool)
+                .await
+                .map_err(|e| e.to_string())?;
             Ok(count)
         })
     }
 
     fn purge_expired(&self, retention_days: u32) -> Result<usize, String> {
-        let cutoff = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs() as i64
+        let cutoff = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_secs() as i64
             - (retention_days as i64 * 86400);
         let rt = tokio::runtime::Handle::current();
         rt.block_on(async {
@@ -116,8 +141,12 @@ struct SqlxEventRow {
 impl From<SqlxEventRow> for StoredEvent {
     fn from(r: SqlxEventRow) -> Self {
         StoredEvent {
-            id: Some(r.id), agent_id: r.agent_id, event_type: r.event_type,
-            severity: r.severity, timestamp: r.timestamp, metadata_json: r.metadata,
+            id: Some(r.id),
+            agent_id: r.agent_id,
+            event_type: r.event_type,
+            severity: r.severity,
+            timestamp: r.timestamp,
+            metadata_json: r.metadata,
         }
     }
 }

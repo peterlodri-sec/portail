@@ -6,8 +6,8 @@
 
 use chrono::Utc;
 use serde::{Deserialize, Serialize};
-use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::Instant;
 
 /// Configuration for the heartbeat agent.
@@ -82,8 +82,8 @@ impl HeartbeatState {
 pub fn build_heartbeat_agent(
     config: &NullClawConfig,
 ) -> anyhow::Result<Arc<dyn adk_rust::prelude::Agent>> {
+    use adk_rust::InvocationContext;
     use adk_rust::prelude::*;
-    use adk_rust::runner::InvocationContext;
 
     let state = HeartbeatState::new(config.agent_id.clone());
 
@@ -158,7 +158,7 @@ async fn invoke_heartbeat(
 ) -> anyhow::Result<()> {
     use adk_rust::prelude::*;
     use adk_rust::runner::{InvocationContext, MutableSession};
-    use adk_rust::session::{service::CreateRequest, InMemorySessionService};
+    use adk_session::{CreateRequest, InMemorySessionService, SessionService};
     use futures::StreamExt;
 
     let app_name = "portail";
@@ -175,7 +175,7 @@ async fn invoke_heartbeat(
             state: Default::default(),
         })
         .await?
-        .into_dyn();
+        .into();
     let mutable_session = Arc::new(MutableSession::new(session));
 
     let user_content = Content::new("user").with_text("beat");

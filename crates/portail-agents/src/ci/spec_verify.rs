@@ -208,8 +208,8 @@ pub async fn run_spec_verify(config: &SpecVerifyConfig) -> SpecVerifyReport {
 pub fn build_spec_verify_agent(
     config: &SpecVerifyConfig,
 ) -> anyhow::Result<Arc<dyn adk_rust::prelude::Agent>> {
+    use adk_rust::InvocationContext;
     use adk_rust::prelude::*;
-    use adk_rust::runner::InvocationContext;
 
     let golden_path = config.golden_path.clone();
 
@@ -219,15 +219,13 @@ pub fn build_spec_verify_agent(
             .handler(move |_ctx: Arc<dyn InvocationContext>| {
                 let golden_path = golden_path.clone();
                 async move {
-                    let report = check_routes(&golden_path).unwrap_or_else(|e| {
-                        SpecVerifyReport {
-                            generated_at: Utc::now().to_rfc3339(),
-                            total_routes: 0,
-                            added: vec![],
-                            removed: vec![],
-                            changed: vec![],
-                            has_diff: false,
-                        }
+                    let report = check_routes(&golden_path).unwrap_or_else(|_e| SpecVerifyReport {
+                        generated_at: Utc::now().to_rfc3339(),
+                        total_routes: 0,
+                        added: vec![],
+                        removed: vec![],
+                        changed: vec![],
+                        has_diff: false,
                     });
 
                     tracing::info!(

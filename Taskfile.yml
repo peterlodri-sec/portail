@@ -1,3 +1,5 @@
+# yaml-language-server: $schema=https://taskfile.dev/schema.json
+#
 # Portail Taskfile
 # https://taskfile.dev
 
@@ -53,9 +55,9 @@ tasks:
   check-all-allocs:
     desc: Check all allocator variants compile
     cmds:
-      - rtk cargo check 2>&1
-      - rtk cargo check --features jemalloc 2>&1
-      - rtk cargo check --features portail_system_alloc 2>&1
+      - cargo check 2>&1
+      - cargo check --features jemalloc 2>&1
+      - cargo check --features portail_system_alloc 2>&1
 
   bench:
     desc: Run benchmarks
@@ -389,3 +391,118 @@ tasks:
     desc: Show this help
     cmds:
       - task --list
+
+  # ── Contributor DX ───────────────────────────────────────────
+
+  setup:
+    desc: One-command full environment bootstrap for new contributors
+    cmds:
+      - bash scripts/contributor-setup.sh
+
+  coverage:
+    desc: Generate code coverage report (HTML) with cargo-llvm-cov
+    cmds:
+      - |
+        if ! command -v cargo-llvm-cov &> /dev/null; then
+          echo "Installing cargo-llvm-cov..."
+          cargo install cargo-llvm-cov
+        fi
+        cargo llvm-cov --open
+
+  coverage-report:
+    desc: Generate coverage report (terminal, no open)
+    cmds:
+      - |
+        if ! command -v cargo-llvm-cov &> /dev/null; then
+          echo "Installing cargo-llvm-cov..."
+          cargo install cargo-llvm-cov
+        fi
+        cargo llvm-cov
+
+  profile:
+    desc: Profile hot functions with samply (or dhat as fallback)
+    cmds:
+      - |
+        if command -v samply &> /dev/null; then
+          echo "Profile with samply..."
+          samply record cargo run -- serve
+        elif cargo install --list 2>/dev/null | grep -q 'dhat'; then
+          echo "Profile with dhat (heap only)..."
+          cargo run --features dhat-heap -- serve
+        else
+          echo "Install samply: cargo install samply"
+          echo "Or use dhat: cargo install dhat"
+        fi
+
+  docs-serve:
+    desc: Build docs and serve locally with mdbook or python http.server
+    cmds:
+      - |
+        if command -v mdbook &> /dev/null; then
+          if [ -f book.toml ]; then
+            mdbook serve --open
+          else
+            echo "No book.toml found, using cargo doc"
+            task: docs
+          fi
+        else
+          task: docs
+        fi
+
+  deny:
+    desc: Run cargo-deny license and duplicate check
+    cmds:
+      - cargo deny check
+
+  audit:
+    desc: Run cargo-audit security advisory check
+    cmds:
+      - cargo audit
+
+  # ── Pre-commit Hook ──────────────────────────────────────────
+
+  install-hooks:
+    desc: Install git pre-commit hooks
+    cmds:
+      - |
+        HOOKS_DIR=".git/hooks"
+        HOOK_FILE="$HOOKS_DIR/pre-commit"
+        if [ -f "$HOOK_FILE" ]; then
+          echo "Pre-commit hook already exists, overwrite? [y/N]"
+          read -r resp
+          [ "$resp" != "y" ] && exit 0
+        fi
+        cat > "$HOOK_FILE" << 'EOF'
+#!/usr/bin/env bash
+set -euo pipefail
+echo "=== Pre-commit: cargo fmt --check ==="
+cargo fmt --check || { echo "❌ Formatting issues — run 'cargo fmt' to fix"; exit 1; }
+echo "=== Pre-commit: cargo clippy ==="
+cargo clippy --locked --all-targets -- -D warnings || exit 1
+echo "=== Pre-commit: cargo check ==="
+cargo check --locked || exit 1
+echo "✅ Pre-commit checks passed"
+EOF
+        chmod +x "$HOOK_FILE"
+        echo "✅ Pre-commit hook installed at $HOOK_FILE"
+
+  # ── Not-in-Plan Dev Tasks ────────────────────────────────────
+
+  outdated:
+    desc: Check for outdated dependencies
+    cmds:
+      - cargo outdated
+
+  tree:
+    desc: Display dependency tree
+    cmds:
+      - cargo tree
+
+  udeps:
+    desc: Find unused dependencies
+    cmds:
+      - |
+        if ! command -v cargo-udeps &> /dev/null; then
+          cargo install cargo-udeps
+        fi
+        cargo +nightly udeps

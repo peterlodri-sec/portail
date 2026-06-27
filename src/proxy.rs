@@ -91,8 +91,14 @@ pub fn build_router(state: Arc<AppState>) -> Router {
         .route("/sessions/{id}", axum::routing::get(session_detail_handler))
         .route("/api-docs/openapi.json", get(openapi_json))
         .route("/v1/loop/status", get(loop_status_handler))
-        .route("/v1/loop/run/{schedule}", axum::routing::post(loop_run_handler))
-        .route("/v1/pkg-ctx/search", axum::routing::post(pkg_ctx_search_handler))
+        .route(
+            "/v1/loop/run/{schedule}",
+            axum::routing::post(loop_run_handler),
+        )
+        .route(
+            "/v1/pkg-ctx/search",
+            axum::routing::post(pkg_ctx_search_handler),
+        )
         .route("/v1/pkg-ctx/list", get(pkg_ctx_list_handler))
         .fallback(route_to_ai_gateway)
         // Decorating middleware (inner → outer)
@@ -346,7 +352,8 @@ async fn route_to_ai_gateway(State(state): State<Arc<AppState>>, req: Request) -
     let (upstream, provider) = {
         let c = state.config.read().unwrap();
         let cfg = c.ai_gateway.as_ref().filter(|g| g.enabled);
-        let provider_header = req.headers()
+        let provider_header = req
+            .headers()
             .get("x-provider")
             .and_then(|v| v.to_str().ok());
         let body: Option<&serde_json::Value> = None; // lazy — only parse if needed for model routing
@@ -359,7 +366,10 @@ async fn route_to_ai_gateway(State(state): State<Arc<AppState>>, req: Request) -
                     crate::target_router::ResolvedTarget::NotFound
                 } else {
                     crate::target_router::resolve_upstream(
-                        targets, g.default_provider.as_deref(), provider_header, body,
+                        targets,
+                        g.default_provider.as_deref(),
+                        provider_header,
+                        body,
                     )
                 };
                 match resolved.base_url() {
@@ -387,8 +397,11 @@ async fn route_to_ai_gateway(State(state): State<Arc<AppState>>, req: Request) -
         std::collections::HashMap::new(),
     );
     if let Some(status) = plugin_result.abort_status {
-        return (StatusCode::from_u16(status).unwrap_or(StatusCode::FORBIDDEN),
-                plugin_result.abort_message.unwrap_or_default()).into_response();
+        return (
+            StatusCode::from_u16(status).unwrap_or(StatusCode::FORBIDDEN),
+            plugin_result.abort_message.unwrap_or_default(),
+        )
+            .into_response();
     }
 
     let result = if matching_hooks.is_empty() {
@@ -545,7 +558,9 @@ mod tests {
             event_log: Arc::new(crate::events::EventLog::new(100)),
             cdn_cache: None,
             hooks: Arc::new(crate::hooks::HookStore::new()),
+            base_hooks: Arc::new(crate::base_hooks::default_registry()),
             a2a_tasks: Arc::new(crate::a2a::TaskStore::new()),
+            a2a_registry: Arc::new(crate::a2a::registry::AgentRegistry::new()),
             dns_store: Arc::new(crate::dns::DnsStore::new()),
             doh_client: None,
             network_isolation: Arc::new(crate::dns::NetworkIsolation::default()),
@@ -575,16 +590,16 @@ mod tests {
             supervisor: std::sync::Arc::new(crate::supervisor::Supervisor::new(
                 std::sync::Arc::new(crate::events::EventLog::new(100)),
             )),
-            plugin_registry: crate::plugin_hooks::init_plugin_registry(
-                &std::path::Path::new("vaked"),
-            ),
-            loop_manager: std::sync::Arc::new(
-                loop_state_manager::LoopStateManager::new("3.0.0"),
-            ),
+            plugin_registry: crate::plugin_hooks::init_plugin_registry(&std::path::Path::new(
+                "vaked",
+            )),
+            loop_manager: std::sync::Arc::new(loop_state_manager::LoopStateManager::new("3.0.0")),
             loop_runner: loopeng::SharedLoopEngine::new(loopeng::LoopEngineConfig::default()),
-            pkg_ctx_memory: tokio::sync::Mutex::new(
-                pkg_ctx::memory::PkgCtxMemory::new().unwrap()
-            ),
+            inference_engine: None,
+            pkg_ctx_memory: tokio::sync::Mutex::new(pkg_ctx::memory::PkgCtxMemory::new().unwrap()),
+            tool_registry: Arc::new(std::sync::RwLock::new(
+                portail_claude_plugins::bridge::ToolRegistry::new(),
+            )),
         })
     }
 
@@ -908,9 +923,7 @@ async fn pkg_ctx_search_handler(
     Json(serde_json::json!({ "result": text, "count": results.len() })).into_response()
 }
 
-async fn pkg_ctx_list_handler(
-    State(state): State<Arc<AppState>>,
-) -> Json<serde_json::Value> {
+async fn pkg_ctx_list_handler(State(state): State<Arc<AppState>>) -> Json<serde_json::Value> {
     let summary = state.pkg_ctx_memory.lock().await.summarize();
     Json(serde_json::json!({ "summary": summary }))
 }
@@ -943,5 +956,3 @@ async fn openapi_json() -> Json<serde_json::Value> {
         ]
     }))
 }
-
-

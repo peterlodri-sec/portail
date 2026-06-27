@@ -16,6 +16,23 @@ pub async fn run_sentinel(
         metadata: BoundedMeta::from_iter([("pid".into(), pid)]),
     });
 
+    // Background listener for the HELLO integration test
+    let el = event_log.clone();
+    tokio::spawn(async move {
+        let mut rx = el.subscribe();
+        while let Ok(event) = rx.recv().await {
+            if event.event_type == "HELLO" {
+                el.publish(AgentEvent {
+                    agent_id: "sentinel".into(),
+                    event_type: "sentinel_hello_success".into(),
+                    severity: "info".into(),
+                    timestamp: 0,
+                    metadata: BoundedMeta::default(),
+                });
+            }
+        }
+    });
+
     let mut tick = tokio::time::interval(std::time::Duration::from_secs(30));
     tick.tick().await;
 

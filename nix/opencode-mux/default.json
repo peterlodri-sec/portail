@@ -1,0 +1,7 @@
+{
+  "multiplexer": {
+    "type": "zellij",
+    "layout": "main-vertical",
+    "zellij_pane_mode": "agent-tab"
+  }
+}

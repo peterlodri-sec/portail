@@ -32,7 +32,10 @@ pub fn extract_title(markdown: &str) -> String {
             continue;
         }
         if in_frontmatter {
-            if let Some(val) = line.strip_prefix("title:").or_else(|| line.strip_prefix("title: ")) {
+            if let Some(val) = line
+                .strip_prefix("title:")
+                .or_else(|| line.strip_prefix("title: "))
+            {
                 return val.trim().trim_matches('"').to_string();
             }
             continue;
@@ -84,7 +87,12 @@ fn strip_frontmatter(markdown: &str) -> String {
         while idx < lines.len() && lines[idx].trim() != "---" {
             idx += 1;
         }
-        lines.iter().skip(idx + 1).copied().collect::<Vec<_>>().join("\n")
+        lines
+            .iter()
+            .skip(idx + 1)
+            .copied()
+            .collect::<Vec<_>>()
+            .join("\n")
     } else {
         markdown.to_string()
     }
@@ -100,7 +108,9 @@ fn detect_toc_boundaries(markdown: &str) -> HashSet<usize> {
             .take(15)
             .filter(|l| {
                 let t = l.trim();
-                t.starts_with("- [") || t.starts_with("* [") || (t.starts_with('[') && t.contains("](/"))
+                t.starts_with("- [")
+                    || t.starts_with("* [")
+                    || (t.starts_with('[') && t.contains("](/"))
             })
             .count();
         if link_count >= 3 {
@@ -204,11 +214,16 @@ pub fn strip_mdx_tags(content: &str) -> String {
     let mut in_tag = 0;
     for line in content.lines() {
         let trimmed = line.trim();
-        if trimmed.starts_with('<') && trimmed.ends_with('>') && !trimmed.starts_with("```")
-            && !trimmed.starts_with("</") && !trimmed.contains('=') && !trimmed.starts_with("<!--") {
-                in_tag += 1;
-                continue;
-            }
+        if trimmed.starts_with('<')
+            && trimmed.ends_with('>')
+            && !trimmed.starts_with("```")
+            && !trimmed.starts_with("</")
+            && !trimmed.contains('=')
+            && !trimmed.starts_with("<!--")
+        {
+            in_tag += 1;
+            continue;
+        }
         if in_tag > 0 {
             if trimmed.starts_with("</") {
                 in_tag -= 1;
@@ -240,9 +255,14 @@ mod tests {
         let sec1 = large_section("word", 900);
         let sec2 = large_section("content", 400);
         let sec3 = large_section("more", 400);
-        let md = format!("# Test\n\n{sec1}\n\n## Section One\n\n{sec2}\n\n## Section Two\n\n{sec3}\n");
+        let md =
+            format!("# Test\n\n{sec1}\n\n## Section One\n\n{sec2}\n\n## Section Two\n\n{sec3}\n");
         let chunks = chunk_markdown("test.md", &md);
-        assert!(chunks.len() >= 2, "expected >=2 chunks, got {}", chunks.len());
+        assert!(
+            chunks.len() >= 2,
+            "expected >=2 chunks, got {}",
+            chunks.len()
+        );
         assert_eq!(chunks[0].doc_title, "Test");
     }
 
@@ -270,9 +290,15 @@ mod tests {
     #[test]
     fn test_chunk_handles_code_blocks() {
         let intro = large_section("word", 900);
-        let md = format!("# Code\n\n{intro}\n\n## Setup\n\n```rust\nfn main() {{}}\n```\n\n## More\n\ntext\n");
+        let md = format!(
+            "# Code\n\n{intro}\n\n## Setup\n\n```rust\nfn main() {{}}\n```\n\n## More\n\ntext\n"
+        );
         let chunks = chunk_markdown("code.md", &md);
-        assert!(chunks.len() >= 2, "expected >=2 chunks, got {}", chunks.len());
+        assert!(
+            chunks.len() >= 2,
+            "expected >=2 chunks, got {}",
+            chunks.len()
+        );
         assert!(chunks.iter().any(|c| c.has_code));
     }
 

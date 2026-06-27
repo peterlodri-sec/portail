@@ -81,11 +81,10 @@ pub fn generate() -> RouteSpec {
         route("GET", "/hooks"),
         route("POST", "/hooks"),
         route("DELETE", "/hooks/{id}"),
-        // A2A
+        // A2A (JSON-RPC 2.0)
         route("GET", "/.well-known/agent.json"),
-        route("POST", "/a2a/tasks"),
-        route("GET", "/a2a/tasks/{id}"),
-        route("GET", "/a2a/ws"),
+        route("POST", "/a2a"),
+        route("POST", "/a2a/subscribe"),
         // A2C
         route("POST", "/a2c/chat"),
         // CI

@@ -4,10 +4,10 @@
 //! stores them in-memory (with optional persistence via `event_store`) and can
 //! route A2A tasks to the agent whose skills best match the request.
 
-use super::{AgentCard, Skill};
+use super::AgentCard;
+use axum::Json;
 use axum::extract::{Path, State};
 use axum::http::StatusCode;
-use axum::Json;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
@@ -83,7 +83,12 @@ impl AgentRegistry {
     }
 
     pub fn get(&self, id: &str) -> Option<RegisteredAgent> {
-        self.inner.read().unwrap_or_else(|e| e.into_inner()).agents.get(id).cloned()
+        self.inner
+            .read()
+            .unwrap_or_else(|e| e.into_inner())
+            .agents
+            .get(id)
+            .cloned()
     }
 
     pub fn list(&self) -> Vec<RegisteredAgent> {
@@ -112,10 +117,7 @@ impl AgentRegistry {
             })
             .max_by_key(|a| {
                 // Prefer exact skill-id matches.
-                a.card
-                    .skills
-                    .iter()
-                    .any(|s| s.id.eq_ignore_ascii_case(tag)) as u8
+                a.card.skills.iter().any(|s| s.id.eq_ignore_ascii_case(tag)) as u8
             })
     }
 }
@@ -127,7 +129,10 @@ pub async fn handle_register(
     Json(req): Json<RegisterRequest>,
 ) -> impl axum::response::IntoResponse {
     let agent = state.a2a_registry.register(req);
-    (StatusCode::CREATED, Json(serde_json::json!({ "agent": agent })))
+    (
+        StatusCode::CREATED,
+        Json(serde_json::json!({ "agent": agent })),
+    )
 }
 
 pub async fn handle_deregister(

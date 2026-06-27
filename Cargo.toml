@@ -30,7 +30,7 @@ serde = { version = "=1.0.228", features = ["derive"] }
 serde_json = "=1.0.150"
 toml = "=0.8.23"
 clap = { version = "=4.6.1", features = ["derive", "env"] }
-clap_complete = "=4.5.44"
+clap_complete = "=4.6.5"
 moka = { version = "=0.12.15", features = ["future"] }
 async-nats = "=0.39.0"
 tracing = "=0.1.44"
@@ -49,6 +49,9 @@ tikv-jemallocator = { version = "=0.6.1", optional = true }
 portail-agents = { path = "crates/portail-agents" }
 portail-plugin-sdk = { path = "crates/portail-plugin-sdk" }
 portail-vaked = { path = "crates/portail-vaked" }
+portail-claude-plugins = { path = "crates/portail-claude-plugins" }
+portail-mcp-gateway = { path = "crates/portail-mcp-gateway" }
+portail-mcp-wasm = { path = "crates/portail-mcp-wasm" }
 loop-state-manager = { path = "crates/loop-state-manager" }
 loopeng = { path = "crates/loopeng" }
 pkg-ctx = { path = "crates/pkg-ctx" }
@@ -64,9 +67,14 @@ hex = "=0.4.3"
 figment = { version = "=0.10.19", features = ["toml", "env"] }
 dotenvy = "=0.15.7"
 dirs = "=5.0.1"
+rpassword = "=7.4.0"
 
-# v0.6 — system resource monitor (Godfather)
+# v0.6 — BOW encrypted secret store
 sysinfo = "=0.32.1"
+aes-gcm = "=0.10.3"
+argon2 = "=0.5.3"
+zeroize = "=1.8.1"
+thiserror = "=1.0.69"
 
 # v0.6 — file cache (content-addressable, ~500MB fort)
 cacache = { version = "=13.1.0", features = ["mmap"] }
