@@ -55,9 +55,9 @@ tasks:
   check-all-allocs:
     desc: Check all allocator variants compile
     cmds:
-      - rtk cargo check 2>&1
-      - rtk cargo check --features jemalloc 2>&1
-      - rtk cargo check --features portail_system_alloc 2>&1
+      - cargo check 2>&1
+      - cargo check --features jemalloc 2>&1
+      - cargo check --features portail_system_alloc 2>&1
 
   bench:
     desc: Run benchmarks
