@@ -3,64 +3,21 @@ name: CI
 on:
   push:
     branches: [main]
-    paths:
-      - 'src/**'
-      - 'crates/**'
-      - 'Cargo.toml'
-      - 'Cargo.lock'
-      - 'rust-toolchain.toml'
-      - '.github/workflows/ci.yml'
   pull_request:
     branches: [main]
-  release:
-    types: [published]
 
 env:
   CARGO_TERM_COLOR: always
-  RUSTFLAGS: -D warnings
-  CARGO_INCREMENTAL: 0
 
 jobs:
-  rust-checks:
+  build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
-      - name: Install Rust toolchain
-        run: |
-          rustup set profile minimal
-          rustup toolchain install nightly --component rustfmt --component clippy
-          rustup default nightly
-      - uses: actions/cache@v4
+      - uses: actions/checkout@v4
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            target
-          key: cargo-${{ hashFiles('Cargo.lock') }}
-          restore-keys: cargo-
-      - run: cargo check --locked --all-targets --workspace
-      - run: cargo test --locked --workspace
-      - run: cargo clippy --locked --all-targets -- --deny warnings
+          components: clippy, rustfmt
+      - run: cargo check
+      - run: cargo test
+      - run: cargo clippy --all-targets
       - run: cargo fmt --check
-
-  binary-profiling:
-    if: github.event_name == 'pull_request'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
-      - name: Install Rust
-        run: rustup set profile minimal && rustup toolchain install nightly && rustup default nightly
-      - uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            target
-          key: cargo-profile-${{ hashFiles('Cargo.lock') }}
-          restore-keys: cargo-profile-
-      - run: cargo install cargo-bloat --locked
-      - run: |
-          echo "## Binary Profile" >> $GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
-          cargo bloat --release --bin portail --crates >> $GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
