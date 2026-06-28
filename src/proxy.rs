@@ -108,17 +108,22 @@ pub fn build_router(state: Arc<AppState>) -> Router {
         .route("/a2c/chat", axum::routing::post(crate::a2c::handle_chat))
         // ── v4: local inference (OpenAI-compatible) ──
         .route(
-            "/v1/chat/completions",
-            axum::routing::post(crate::local_inference::handle_chat_completions),
-        )
-        .route(
             "/v1/models",
             axum::routing::get(crate::local_inference::handle_list_models),
         )
         .route(
             "/v1/health",
             axum::routing::get(crate::local_inference::handle_health),
-        )
+        );
+
+    if state.inference_engine.is_some() {
+        router = router.route(
+            "/v1/chat/completions",
+            axum::routing::post(crate::local_inference::handle_chat_completions),
+        );
+    }
+
+    router = router
         // ── v0.2: plugin & diagnostics routers ──
         .merge(crate::ci::router())
         .merge(crate::discovery::router())
@@ -395,7 +400,7 @@ async fn readyz(State(state): State<Arc<AppState>>) -> (StatusCode, &'static str
 
 async fn route_to_ai_gateway(State(state): State<Arc<AppState>>, req: Request) -> Response {
     // Resolve target from config
-    let (upstream, provider) = {
+    let (upstream, provider, target_api_key) = {
         let c = state.config.read().unwrap();
         let cfg = c.ai_gateway.as_ref().filter(|g| g.enabled);
         let provider_header = req
@@ -418,9 +423,15 @@ async fn route_to_ai_gateway(State(state): State<Arc<AppState>>, req: Request) -
                         body,
                     )
                 };
-                match resolved.base_url() {
-                    Some(url) => (url.to_string(), resolved.provider().map(|p| p.to_string())),
-                    None => (g.upstream.clone(), None), // legacy fallback
+                match resolved {
+                    crate::target_router::ResolvedTarget::Found(t) => (
+                        t.base_url.clone(),
+                        Some(t.provider.clone()),
+                        t.api_key.clone(),
+                    ),
+                    crate::target_router::ResolvedTarget::NotFound => {
+                        (g.upstream.clone(), None, None)
+                    }
                 }
             }
             None => {
@@ -428,6 +439,19 @@ async fn route_to_ai_gateway(State(state): State<Arc<AppState>>, req: Request) -
             }
         }
     };
+
+    let mut req = req;
+    if let Some(ref key) = target_api_key {
+        let resolved_key = if key.starts_with('$') {
+            std::env::var(&key[1..]).unwrap_or_else(|_| key.clone())
+        } else {
+            key.clone()
+        };
+        if let Ok(hv) = axum::http::HeaderValue::from_str(&format!("Bearer {resolved_key}")) {
+            req.headers_mut()
+                .insert(axum::http::header::AUTHORIZATION, hv);
+        }
+    }
 
     let path = req.uri().path().to_string();
     let matching_hooks = state.hooks.match_message(&path);
