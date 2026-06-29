@@ -421,13 +421,24 @@ pub async fn handle_compress(Json(req): Json<CompressRequest>) -> Response {
     let original_tokens = words.len();
 
     // Critical token regexes
-    let path_regex = regex::Regex::new(r"^(src/|/|\./|\.\./)[a-zA-Z0-9_\-\./]+$").unwrap();
-    let ip_regex = regex::Regex::new(r"^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$").unwrap();
-    let cmd_regex =
-        regex::Regex::new(r"^(cargo|git|docker|npm|bun|pip|python|rustc|make)$").unwrap();
-    let secret_regex =
-        regex::Regex::new(r"^(SECRET|KEY|PASSWORD|TOKEN|API|AUTH|env|ENV|config)$").unwrap();
-    let num_regex = regex::Regex::new(r"^\d+$").unwrap();
+    use std::sync::OnceLock;
+    static PATH_REG: OnceLock<regex::Regex> = OnceLock::new();
+    static IP_REG: OnceLock<regex::Regex> = OnceLock::new();
+    static CMD_REG: OnceLock<regex::Regex> = OnceLock::new();
+    static SECRET_REG: OnceLock<regex::Regex> = OnceLock::new();
+    static NUM_REG: OnceLock<regex::Regex> = OnceLock::new();
+
+    let path_regex = PATH_REG
+        .get_or_init(|| regex::Regex::new(r"^(src/|/|\./|\.\./)[a-zA-Z0-9_\-\./]+$").unwrap());
+    let ip_regex =
+        IP_REG.get_or_init(|| regex::Regex::new(r"^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$").unwrap());
+    let cmd_regex = CMD_REG.get_or_init(|| {
+        regex::Regex::new(r"^(cargo|git|docker|npm|bun|pip|python|rustc|make)$").unwrap()
+    });
+    let secret_regex = SECRET_REG.get_or_init(|| {
+        regex::Regex::new(r"^(SECRET|KEY|PASSWORD|TOKEN|API|AUTH|env|ENV|config)$").unwrap()
+    });
+    let num_regex = NUM_REG.get_or_init(|| regex::Regex::new(r"^\d+$").unwrap());
 
     let mut compressed_words = Vec::new();
 
