@@ -82,8 +82,8 @@ impl HeartbeatState {
 pub fn build_heartbeat_agent(
     config: &NullClawConfig,
 ) -> anyhow::Result<Arc<dyn adk_rust::prelude::Agent>> {
+    use adk_rust::InvocationContext;
     use adk_rust::prelude::*;
-    use adk_rust::runner::InvocationContext;
 
     let state = HeartbeatState::new(config.agent_id.clone());
 
@@ -158,7 +158,7 @@ async fn invoke_heartbeat(
 ) -> anyhow::Result<()> {
     use adk_rust::prelude::*;
     use adk_rust::runner::{InvocationContext, MutableSession};
-    use adk_rust::session::{service::CreateRequest, InMemorySessionService};
+    use adk_rust::session::{InMemorySessionService, SessionService, service::CreateRequest};
     use futures::StreamExt;
 
     let app_name = "portail";
@@ -174,9 +174,8 @@ async fn invoke_heartbeat(
             session_id: Some(session_id.clone()),
             state: Default::default(),
         })
-        .await?
-        .into_dyn();
-    let mutable_session = Arc::new(MutableSession::new(session));
+        .await?;
+    let mutable_session = Arc::new(MutableSession::new(session.into()));
 
     let user_content = Content::new("user").with_text("beat");
     let ctx = Arc::new(InvocationContext::with_mutable_session(

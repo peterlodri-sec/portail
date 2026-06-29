@@ -383,6 +383,120 @@ pub async fn handle_health(State(state): State<Arc<crate::AppState>>) -> Respons
     (code, Json(serde_json::json!({"status": status}))).into_response()
 }
 
+// ── Context Compression ──────────────────────────────────────────
+
+#[derive(Debug, Deserialize)]
+pub struct CompressRequest {
+    pub text: String,
+    #[serde(default)]
+    pub threshold: Option<f32>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct CompressResponse {
+    pub original_text: String,
+    pub compressed_text: String,
+    pub original_tokens: usize,
+    pub compressed_tokens: usize,
+    pub savings_percent: usize,
+    pub latency_ms: f32,
+}
+
+/// POST /v1/compress — High-performance context compression
+pub async fn handle_compress(Json(req): Json<CompressRequest>) -> Response {
+    let start = std::time::Instant::now();
+    let text = req.text;
+
+    if text.len() > 5000 {
+        return (
+            StatusCode::BAD_REQUEST,
+            Json(serde_json::json!({
+                "error": "Input text exceeds maximum length of 5000 characters."
+            })),
+        )
+            .into_response();
+    }
+
+    let words: Vec<&str> = text.split_whitespace().collect();
+    let original_tokens = words.len();
+
+    // Critical token regexes
+    let path_regex = regex::Regex::new(r"^(src/|/|\./|\.\./)[a-zA-Z0-9_\-\./]+$").unwrap();
+    let ip_regex = regex::Regex::new(r"^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$").unwrap();
+    let cmd_regex =
+        regex::Regex::new(r"^(cargo|git|docker|npm|bun|pip|python|rustc|make)$").unwrap();
+    let secret_regex =
+        regex::Regex::new(r"^(SECRET|KEY|PASSWORD|TOKEN|API|AUTH|env|ENV|config)$").unwrap();
+    let num_regex = regex::Regex::new(r"^\d+$").unwrap();
+
+    let mut compressed_words = Vec::new();
+
+    let filler_words = [
+        "would",
+        "should",
+        "could",
+        "happy",
+        "please",
+        "kindly",
+        "just",
+        "really",
+        "actually",
+        "basically",
+        "essentially",
+        "going",
+        "want",
+        "like",
+        "think",
+        "maybe",
+        "perhaps",
+        "simply",
+        "about",
+        "there",
+        "their",
+        "these",
+        "those",
+    ];
+
+    for word in words {
+        let clean_word = word.trim_matches(|c: char| !c.is_alphanumeric());
+        let is_critical = path_regex.is_match(word)
+            || ip_regex.is_match(word)
+            || cmd_regex.is_match(clean_word)
+            || secret_regex.is_match(clean_word)
+            || num_regex.is_match(clean_word);
+
+        if is_critical {
+            compressed_words.push(word);
+        } else {
+            let is_filler = filler_words.contains(&clean_word.to_lowercase().as_str());
+            if !is_filler && (word.len() > 4 || clean_word.chars().any(|c| c.is_uppercase())) {
+                compressed_words.push(word);
+            }
+        }
+    }
+
+    let compressed_text = compressed_words.join(" ");
+    let compressed_tokens = compressed_words.len();
+
+    let savings_percent = (original_tokens - compressed_tokens)
+        .checked_mul(100)
+        .and_then(|val| val.checked_div(original_tokens))
+        .unwrap_or(0);
+
+    let latency_ms = start.elapsed().as_secs_f32() * 1000.0;
+
+    let resp = CompressResponse {
+        original_text: text,
+        compressed_text,
+        original_tokens,
+        compressed_tokens,
+        savings_percent,
+        latency_ms,
+    };
+
+    (StatusCode::OK, Json(resp)).into_response()
+}
+
 // ── Tests ────────────────────────────────────────────────────────
 
 #[cfg(test)]
