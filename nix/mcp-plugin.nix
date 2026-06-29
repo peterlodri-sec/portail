@@ -10,12 +10,12 @@ python3.pkgs.buildPythonApplication {
   build-system = [ python3.pkgs.setuptools ];
 
   dependencies = with python3.pkgs; [
-    httpx
+    litellm
     fastapi
     uvicorn
+    httpx
     pydantic
-  ] ++ lib.optionals (builtins.pathExists ../.litellm-path) [
-    # LiteLLM — added as an optional dep when available
+    mcp
   ];
 
   meta = {
