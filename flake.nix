@@ -125,6 +125,8 @@
             });
 
             portail = self'.packages.default;
+
+            portail-mcp = pkgs.callPackage ./nix/mcp-plugin.nix { };
           };
 
           checks = {
