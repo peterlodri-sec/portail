@@ -201,5 +201,8 @@
           # `ohmy-slim mux-launch` or `nix run .#ohmy-mux`.
           devShells.opencode-mux = opencodeMux.shell;
         };
+
+        # NixOS module for services.portail — used by nix-base dev-cx53 config.
+        flake.nixosModules.default = ./nix/module.nix;
     };
 }
