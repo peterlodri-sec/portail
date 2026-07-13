@@ -83,14 +83,13 @@ pub fn build_heartbeat_agent(
     config: &NullClawConfig,
 ) -> anyhow::Result<Arc<dyn adk_rust::prelude::Agent>> {
     use adk_rust::prelude::*;
-    use adk_rust::runner::InvocationContext;
 
     let state = HeartbeatState::new(config.agent_id.clone());
 
     let agent: Arc<dyn Agent> = Arc::new(
         CustomAgentBuilder::new(&config.agent_id)
             .description("Network-native heartbeat agent for Portail")
-            .handler(move |_ctx: Arc<dyn InvocationContext>| {
+            .handler(move |_ctx: Arc<dyn adk_rust::runner::InvocationContext>| {
                 let state = state.clone();
                 async move {
                     let hb = state.generate();
@@ -158,7 +157,7 @@ async fn invoke_heartbeat(
 ) -> anyhow::Result<()> {
     use adk_rust::prelude::*;
     use adk_rust::runner::{InvocationContext, MutableSession};
-    use adk_rust::session::{InMemorySessionService, service::CreateRequest};
+    use adk_rust::session::{InMemorySessionService, SessionService, service::CreateRequest};
     use futures::StreamExt;
 
     let app_name = "portail";
