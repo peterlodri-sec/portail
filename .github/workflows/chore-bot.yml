@@ -8,6 +8,10 @@ on:
     branches: [main]
     paths: ['src/**', 'crates/**', 'Cargo.toml', 'Cargo.lock']
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   chore:
     runs-on: ubuntu-latest
