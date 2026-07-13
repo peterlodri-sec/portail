@@ -2,7 +2,7 @@ name: Benchmark Pipeline
 
 on:
   schedule:
-    - cron: '0 */2 * * *'
+    - cron: '0 */6 * * *'
   release:
     types: [published]
   workflow_dispatch:
