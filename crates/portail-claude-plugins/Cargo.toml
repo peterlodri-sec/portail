@@ -8,7 +8,7 @@ description = "Claude Code plugin system for Portail — parse, load, and bridge
 anyhow = "1"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
-serde_yml = "0.0.12"
+serde_yml = "0.0.13"
 tracing = "0.1"
 walkdir = "2"
 uuid = { version = "=1.23.4", features = ["v4"] }
