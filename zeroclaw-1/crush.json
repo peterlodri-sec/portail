@@ -1,0 +1,16 @@
+{
+  "providers": {
+    "mesh-llm": {
+      "type": "openai-compat",
+      "base_url": "http://100.109.83.55:9337/v1",
+      "api_key": "",
+      "models": [
+        {
+          "id": "unsloth/Qwen3-8B-GGUF@main:Q4_K_M",
+          "name": "Qwen3 8B (Mesh)"
+        }
+      ]
+    }
+  },
+  "model": "mesh-llm/unsloth/Qwen3-8B-GGUF@main:Q4_K_M"
+}
