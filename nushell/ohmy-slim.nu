@@ -105,26 +105,25 @@ export def "ohmy-slim ultra" [
         }
     }
 
-    try {
-        ^nice -n -10 $env.PID o+e>| ignore
-    }
-
     let binary = ([$PLUGIN_DIR "ohmy-slim-native"] | path join)
     let cmd = if ($binary | path exists) { $binary } else { "opencode" }
-    ^$cmd ...["--port", ($port | into string)]
+    # Run under `nice` to raise scheduling priority. (nushell has no $env.PID, so we
+    # nice the child command directly instead of trying to renice the shell.)
+    ^nice -n -10 $cmd ...["--port", ($port | into string)]
 }
 
 # Multiplexer launcher: write config + start zellij + run opencode.
 export def "ohmy-slim mux-launch" [
     --port: int = 0
-    --layout: string = "main-vertical"
+    --layout: string = "default"
 ] {
     if not (which zellij | is-not-empty) {
         print $"WARN zellij not on PATH, falling back to 'ohmy-slim launch'"
         ohmy-slim launch
         return
     }
-    if (not ($env.TERM_PROGRAM? | default "") | is-empty) and ($env.ZELLIJ? | default "") != "" {
+    # Refuse to nest: if we are already inside a zellij session, fall back to a plain launch.
+    if ($env.ZELLIJ? | default "") != "" {
         print $"WARN already inside a zellij session, refusing to nest"
         ohmy-slim launch
         return
@@ -132,9 +131,8 @@ export def "ohmy-slim mux-launch" [
     ohmy-slim write-config
     let actual_port = if $port == 0 { ohmy-slim pick-port } else { $port }
     $env.OPENCODE_PORT = ($actual_port | into string)
-    let layout_arg = $"--layout=($layout)"
-    ^zellij --new-session-with-layout default $layout_arg -- \
-        ^nu -c $'use ohmy-slim.nu *; ohmy-slim launch --port ($actual_port)'
+    # Pass the command as separate argv entries so zellij runs: nu -c 'use ...; launch ...'
+    ^zellij --new-session-with-layout $layout -- "nu" "-c" $"use ohmy-slim.nu *; ohmy-slim launch --port ($actual_port)"
 }
 
 # ── Portail MCP & Sentinel Integration ─────────────────────────────

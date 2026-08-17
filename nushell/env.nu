@@ -29,8 +29,13 @@ alias staging-logs = ssh bench-node 'journalctl -u portail-staging -f'
 alias staging-health = ssh bench-node 'curl -s http://localhost:8787/health'
 
 # ── Dev helpers ────────────────────────────────────────────────
-alias watch-build = watch ./src/ { |op, path, new_path| if $op == "Write" { print $"($op) ($path)"; cargo check } }
-alias test-w = watch ./src/ { |op, path, new_path| if $op == "Write" { print $"($op) ($path)"; cargo test } }
+# `watch` emits a stream of {operation, path} events (the closure form is deprecated).
+def watch-build [] {
+    watch ./src/ --quiet | each { |e| if $e.operation == "Write" { print $"($e.operation) ($e.path)"; cargo check } }
+}
+def test-w [] {
+    watch ./src/ --quiet | each { |e| if $e.operation == "Write" { print $"($e.operation) ($e.path)"; cargo test } }
+}
 
 # ── Quick health ───────────────────────────────────────────────
 def health [] {
