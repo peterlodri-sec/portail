@@ -129,7 +129,7 @@ impl SemanticCache {
         let mut best_match: Option<(String, String, f32)> = None;
 
         for row in rows {
-            let (id, prompt, response, cached_embedding, _threshold) = row?;
+            let (id, prompt, _response, cached_embedding, _threshold) = row?;
             let similarity = cosine_similarity(embedding, &cached_embedding);
 
             if similarity >= threshold {

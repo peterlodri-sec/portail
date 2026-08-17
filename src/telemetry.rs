@@ -64,7 +64,7 @@ fn default_sampling() -> f64 {
 }
 
 pub struct OtelGuard {
-    _provider: Option<opentelemetry_sdk::trace::TracerProvider>,
+    _provider: Option<opentelemetry_sdk::trace::SdkTracerProvider>,
 }
 
 impl OtelGuard {
@@ -97,12 +97,16 @@ pub fn init(config: &TelemetryConfig) -> Option<OtelGuard> {
         opentelemetry_sdk::trace::Sampler::TraceIdRatioBased(config.sampling_ratio)
     };
 
-    let provider = opentelemetry_sdk::trace::TracerProvider::builder()
-        .with_batch_exporter(exporter, opentelemetry_sdk::runtime::Tokio)
-        .with_resource(Resource::new(vec![KeyValue::new(
-            "service.name",
-            config.service_name.clone(),
-        )]))
+    let provider = opentelemetry_sdk::trace::SdkTracerProvider::builder()
+        .with_batch_exporter(exporter)
+        .with_resource(
+            Resource::builder()
+                .with_attribute(KeyValue::new(
+                    "service.name",
+                    config.service_name.clone(),
+                ))
+                .build(),
+        )
         .with_sampler(sampler)
         .build();
 

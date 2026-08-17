@@ -117,7 +117,7 @@ pub fn parse_skill_file(path: &Path) -> anyhow::Result<SkillDefinition> {
     let (fm_yaml, body) = split_frontmatter(&content);
 
     let mut def: SkillDefinition = if let Some(yaml) = fm_yaml {
-        serde_yml::from_str(yaml)?
+        serde_yaml_ng::from_str(yaml)?
     } else {
         SkillDefinition::default()
     };
@@ -143,7 +143,7 @@ pub fn parse_command_file(path: &Path) -> anyhow::Result<CommandDefinition> {
     let (fm_yaml, body) = split_frontmatter(&content);
 
     let mut def: CommandDefinition = if let Some(yaml) = fm_yaml {
-        serde_yml::from_str(yaml)?
+        serde_yaml_ng::from_str(yaml)?
     } else {
         CommandDefinition::default()
     };
@@ -168,7 +168,7 @@ pub fn parse_agent_file(path: &Path) -> anyhow::Result<AgentDefinition> {
     let (fm_yaml, body) = split_frontmatter(&content);
 
     let mut def: AgentDefinition = if let Some(yaml) = fm_yaml {
-        serde_yml::from_str(yaml)?
+        serde_yaml_ng::from_str(yaml)?
     } else {
         AgentDefinition::default()
     };
@@ -293,7 +293,7 @@ Body.
     fn parse_skill_content(content: &str) -> SkillDefinition {
         let (fm, body) = split_frontmatter(content);
         let mut def: SkillDefinition = fm
-            .map(|y| serde_yml::from_str(y).unwrap())
+            .map(|y| serde_yaml_ng::from_str(y).unwrap())
             .unwrap_or_default();
         def.body = body.to_string();
         def
@@ -302,7 +302,7 @@ Body.
     fn parse_command_content(content: &str) -> CommandDefinition {
         let (fm, body) = split_frontmatter(content);
         let mut def: CommandDefinition = fm
-            .map(|y| serde_yml::from_str(y).unwrap())
+            .map(|y| serde_yaml_ng::from_str(y).unwrap())
             .unwrap_or_default();
         def.body = body.to_string();
         def
@@ -311,7 +311,7 @@ Body.
     fn parse_agent_content(content: &str) -> AgentDefinition {
         let (fm, body) = split_frontmatter(content);
         let mut def: AgentDefinition = fm
-            .map(|y| serde_yml::from_str(y).unwrap())
+            .map(|y| serde_yaml_ng::from_str(y).unwrap())
             .unwrap_or_default();
         def.body = body.to_string();
         def

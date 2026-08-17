@@ -99,6 +99,17 @@ pub struct AuthState {
     inner: Arc<AuthInner>,
 }
 
+/// Minimal JWT claims decoded from the token payload.
+///
+/// Decoding into a typed struct (rather than `serde_json::Value`) avoids the
+/// type-confusion class of bugs fixed in jsonwebtoken 10.x: the payload can no
+/// longer be deserialized in a way that aliases the header, and only the claims
+/// we actually consume are populated.
+#[derive(Debug, Deserialize)]
+struct Claims {
+    sub: Option<String>,
+}
+
 struct AuthInner {
     config: AuthConfig,
     /// Pre-parsed JWT decoding keys indexed by key ID
@@ -190,12 +201,8 @@ impl AuthState {
             // Try each key
             for (kid, key) in &inner.jwk_map {
                 let v = validation.clone();
-                if let Ok(data) = decode::<serde_json::Value>(token, key, &v) {
-                    return data
-                        .claims
-                        .get("sub")
-                        .and_then(|s| s.as_str())
-                        .map(String::from);
+                if let Ok(data) = decode::<Claims>(token, key, &v) {
+                    return data.claims.sub.map(String::from);
                 }
                 // Also try without key ID
                 let _ = kid;

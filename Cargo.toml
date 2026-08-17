@@ -79,7 +79,10 @@ cacache = { version = "=13.1.0", features = ["mmap"] }
 governor = { version = "=0.7.0", features = ["std"] }
 
 # v0.2 — authentication
-jsonwebtoken = "=9.3.1"
+# aws_lc_rs feature installs a CryptoProvider (required by jsonwebtoken 10.x,
+# which otherwise panics at decode time) and uses AWS-LC for RS/ES/HS — avoiding
+# the RustCrypto `rsa` crate, which has an unfixable timing side-channel advisory.
+jsonwebtoken = { version = "=10.4.0", features = ["aws_lc_rs"] }
 base64 = "=0.22.1"
 
 # v2.x — SSL: AWS-LC (optimized, FIPS-compliant). Replaces OpenSSL.
@@ -99,11 +102,10 @@ rpassword = "7"
 thiserror = "2"
 
 # v0.2 — OpenTelemetry OTLP
-opentelemetry = "=0.27.1"
-opentelemetry_sdk = { version = "=0.27.1", features = ["rt-tokio"] }
-opentelemetry-otlp = { version = "=0.27.0", features = ["grpc-tonic", "metrics"] }
-opentelemetry-semantic-conventions = "=0.27.0"
-tracing-opentelemetry = "=0.28.0"
+opentelemetry = "=0.32.0"
+opentelemetry_sdk = { version = "=0.32.1", features = ["rt-tokio"] }
+opentelemetry-otlp = { version = "=0.32.0", features = ["grpc-tonic", "metrics"] }
+tracing-opentelemetry = "=0.33.0"
 
 # v0.6 — GraphQL API
 async-graphql = "=7.2.1"

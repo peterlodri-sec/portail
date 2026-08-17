@@ -89,7 +89,7 @@ pub fn build_heartbeat_agent(
     let agent: Arc<dyn Agent> = Arc::new(
         CustomAgentBuilder::new(&config.agent_id)
             .description("Network-native heartbeat agent for Portail")
-            .handler(move |_ctx: Arc<dyn adk_rust::runner::InvocationContext>| {
+            .handler(move |_ctx: Arc<dyn adk_rust::InvocationContext>| {
                 let state = state.clone();
                 async move {
                     let hb = state.generate();
@@ -173,8 +173,9 @@ async fn invoke_heartbeat(
             session_id: Some(session_id.clone()),
             state: Default::default(),
         })
-        .await?
-        .into_dyn();
+        .await?;
+    // `create()` returns `Box<dyn Session>`; MutableSession::new wants `Arc<dyn Session>`.
+    let session: Arc<dyn adk_rust::session::Session> = session.into();
     let mutable_session = Arc::new(MutableSession::new(session));
 
     let user_content = Content::new("user").with_text("beat");

@@ -101,10 +101,7 @@ pub fn build_router(state: Arc<AppState>) -> Router {
             "/a2a/agents/{id}",
             delete(crate::a2a::registry::handle_deregister),
         )
-        .route(
-            "/a2a/tasks",
-            axum::routing::post(crate::a2a::handle_task_create),
-        )
+        // Task creation is handled via JSON-RPC `tasks/send` at POST /a2a.
         .route("/a2c/chat", axum::routing::post(crate::a2c::handle_chat))
         // ── v4: local inference (OpenAI-compatible) ──
         .route(

@@ -8,8 +8,6 @@
 //! Supports OpenAI-compatible function calling format.
 
 use crate::mcp;
-use axum::http::request::Parts;
-use bytes::Bytes;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
