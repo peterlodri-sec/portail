@@ -7,8 +7,6 @@
 **Unified proxy/gateway: AI Gateway + MCP Gateway + CDN cache + Agent protocol + DNS + Observability**
 
 <p align="center">
-  <a href="https://portail.vaked.dev"><img src="https://portail.vaked.dev/ci/badge" alt="CI Status"></a>
-  <a href="https://github.com/peterlodri-sec/portail/actions"><img src="https://github.com/peterlodri-sec/portail/actions/workflows/ci.yml/badge.svg" alt="GitHub CI"></a>
   <a href="https://crates.io/crates/portail"><img src="https://img.shields.io/crates/v/portail" alt="Crates.io"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License: MIT"></a>
   <a href="https://github.com/peterlodri-sec/portail"><img src="https://img.shields.io/badge/language-Rust-orange" alt="Language: Rust"></a>
