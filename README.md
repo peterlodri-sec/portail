@@ -11,14 +11,14 @@
   <a href="https://github.com/peterlodri-sec/portail/actions"><img src="https://github.com/peterlodri-sec/portail/actions/workflows/ci.yml/badge.svg" alt="GitHub CI"></a>
   <a href="https://crates.io/crates/portail"><img src="https://img.shields.io/crates/v/portail" alt="Crates.io"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License: MIT"></a>
-  <a href="https://github.com/peterlodri-sec/portail/actions/workflows/release.yml"><img src="https://img.shields.io/badge/tests-174%20passing-brightgreen" alt="Tests"></a>
+  <a href="https://github.com/peterlodri-sec/portail"><img src="https://img.shields.io/badge/language-Rust-orange" alt="Language: Rust"></a>
 </p>
 
 <p align="center">
   <a href="https://pocoo.vaked.dev">Blog</a> · <a href="https://github.com/peterlodri-sec">GitHub</a> · <a href="https://x.com/0xp3t3rl">X/Twitter</a> · <a href="https://patreon.com/vaked">Patreon</a> · <a href="https://chat.vaked.dev">Chat</a>
 </p>
 
-> **v2.0.0** · 201 tests · 0 warnings · 7 CI agents · MIT-licensed since 2026.
+> **v2.1.0** · 0 compiler warnings · 7 CI agents · MIT-licensed since 2026.
 > Read the philosophy: [`PHILOSOPHY.md`](PHILOSOPHY.md)
 
 Portail is a high-performance, self-hosted proxy and gateway giving you a single
@@ -85,15 +85,19 @@ curl http://localhost:8787/dashboard | jq
 | Endpoint | Method | Description |
 |----------|--------|-------------|
 | `/healthz` | GET | Health check |
+| `/livez` | GET | Liveness probe |
 | `/readyz` | GET | Readiness (dependencies) |
 | `/dashboard` | GET | Health snapshot: config, rate, auth, CDN |
 | `/metrics` | GET | Prometheus metrics |
+| `/api-docs/` | GET | Scalar API reference UI |
 | `/v1/chat/completions` | POST | OpenAI-compatible chat |
 | `/v1/messages` | POST | Anthropic-compatible messages |
+| `/v1/models` | GET | Local inference: list models |
+| `/v1/health` | GET | Local inference: health |
 | `/.well-known/agent.json` | GET | A2A agent card |
-| `/a2a/tasks` | POST | Create A2A task |
-| `/a2a/tasks/{id}` | GET | Get A2A task |
-| `/a2a/ws` | WebSocket | A2A real-time streaming |
+| `/a2a` | POST | A2A JSON-RPC (`tasks/send`, `tasks/get`, `tasks/cancel`, push notifications) |
+| `/a2a/agents` | GET/POST | List / register agents |
+| `/a2a/agents/{id}` | GET/DELETE | Get / deregister agent |
 | `/a2c/chat` | POST | Agent-to-Consumer chat |
 | `/events` | GET/POST | Recent events / publish |
 | `/events/stream` | GET | SSE event stream |
@@ -107,6 +111,7 @@ curl http://localhost:8787/dashboard | jq
 | `/file-cache/stats` | GET | File cache stats |
 | `/cdn/{*path}` | * | CDN cache proxy |
 | `/mcp/{*path}` | * | MCP sidecar proxy |
+| `/mcp-rest/{*path}` | * | MCP REST proxy |
 
 ## CLI
 
@@ -154,7 +159,7 @@ portail loop schedules     # List registered schedules
 | fuzz-route | ⚠️ only on crash | ✅ |
 | chore-bot | ❌ advisory only | ✅ |
 | clippy | ✅ always | ✅ |
-| test | ✅ always (174 passing) | ✅ |
+| test | ✅ always | ✅ |
 
 All advisory agents post comments, never fail the build.
 
@@ -162,7 +167,7 @@ All advisory agents post comments, never fail the build.
 
 ```bash
 task c              # cargo check (fast)
-task t              # cargo test (174 passing)
+task t              # cargo test (all suites)
 task lint           # clippy + fmt check
 task counts         # test + warning counts
 task chore-check    # auto-fixable issues
@@ -180,4 +185,6 @@ task docs           # generate + open docs
 
 ## License
 
-MIT
+Portail is released under the [MIT License](LICENSE).
+
+Copyright © 2026 Peter Lodri

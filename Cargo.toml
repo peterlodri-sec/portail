@@ -176,8 +176,8 @@ name = "hot_paths"
 harness = false
 
 [package.metadata.deb]
-maintainer = "Peter Lodri <peterlodri-sec@github.com>"
-copyright = "2026, Peter Lodri <peterlodri-sec@github.com>"
+maintainer = "Peter Lodri <peterlodri@vaked.dev>"
+copyright = "2026, Peter Lodri"
 license-file = ["LICENSE", "4"]
 extended-description = """\
 Portail is a unified proxy and gateway for AI services, MCP tools, \

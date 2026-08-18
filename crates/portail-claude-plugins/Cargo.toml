@@ -2,6 +2,7 @@
 name = "portail-claude-plugins"
 version = "0.1.0"
 edition = "2024"
+license.workspace = true
 description = "Claude Code plugin system for Portail — parse, load, and bridge Claude plugins into MCP tools"
 
 [dependencies]
